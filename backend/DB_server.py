@@ -1,20 +1,30 @@
 import sqlalchemy
-from sqlalchemy.engine.base import Connection
+from sqlalchemy import Column, Text, Table, Integer, MetaData
+from sqlalchemy.engine.base import Engine
+
+METADATA = None
+ENGINE = None
+
+PLAYER_CREDENTIALS_TABLE = None
 
 
-def init_db(db_conn: Connection):
-    """
-    Initializes tables and stuff.
+def create_tables(db_engine: Engine):
+    metadata = MetaData()
+    metadata.drop_all(bind=db_engine)  # TODO: change
+    global PLAYER_CREDENTIALS_TABLE  # TODO: change
+    PLAYER_CREDENTIALS_TABLE = Table(
+        "players_creds", metadata,
+        Column("id", Integer, primary_key=True),
+        Column("username", Text),
+        Column("password", Text),
+        Column("salt", Text)
+    )
 
-    :param db_conn: Database Connection
-    :type db_conn: Connection
-    """
-    ...
+    metadata.create_all(bind=db_engine)
+    return metadata
 
 
 if __name__ == "__main__":
     engine = sqlalchemy.create_engine(f"mysql://dummy:dummyPass@localhost/users")
-    db_connection = engine.connect()
-    print(type(db_connection))
-    metadata = sqlalchemy.MetaData()
-    print(f"{db_connection=} {metadata=}")
+    METADATA = create_tables(engine)
+    ENGINE = engine
