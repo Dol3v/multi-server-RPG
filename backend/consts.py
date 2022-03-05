@@ -12,3 +12,7 @@ MAX_SIZE = 0xff
 USERS_CREDENTIALS_TABLE = "users_creds"
 PLAYER_STATS_TABLE = "players_stats"
 CHAT_TABLE = "chat"
+# Colunms
+USERNAME = 0
+HASH = 1
+SALT = 2

@@ -1,21 +1,19 @@
 import ssl
 import logging
-from click import Tuple
 
 import sqlalchemy
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, insert, select
 
 from consts import *
-import sys
-sys.tracebacklimit = 0
 
-class database:
+
+class Database:
 
     def __init__(self, db_hostname: str): 
         """
         Use: connect to the DB server through ssl by a given hostname
         """
-        ssl_args = database.generate_ssl_cert()
+        ssl_args = Database.generate_ssl_cert()
 
         self.engine = sqlalchemy.create_engine(
             # Equivalent URL:
@@ -121,7 +119,7 @@ class database:
         Use: check if given username inside the database table
         """
         stmt = select(self.tables[USERS_CREDENTIALS_TABLE].c.username)
-        columns = [row[0] for row in self.execute_stmt(stmt)]
+        columns = [row[USERNAME] for row in self.execute_stmt(stmt)]
 
         return username in columns
 
@@ -131,7 +129,7 @@ class database:
         """
         stmt = select(self.tables[USERS_CREDENTIALS_TABLE])
         for row in self.execute_stmt(stmt):
-            if username in row[0]:
-                return row[1], row[2]
+            if username in row[USERNAME]:
+                return row[HASH], row[SALT]
         
         return None
