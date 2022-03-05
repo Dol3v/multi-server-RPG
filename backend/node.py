@@ -37,3 +37,4 @@ def recv_credentials(conn: DefaultConnection) -> tuple[str, bytes]:
 if __name__ == "__main__":
     host = input("[Enter host]: ")
     db = database(host)
+    db.print_table(CHAT_TABLE)

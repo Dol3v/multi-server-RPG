@@ -1,10 +1,12 @@
 import ssl
+import logging
 
 import sqlalchemy
-from sqlalchemy import Integer, Text, Table, Column, MetaData, VARCHAR
+from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, text
 
 from consts import *
-
+import sys
+sys.tracebacklimit = 0
 
 class database:
 
@@ -30,24 +32,26 @@ class database:
 
         # Tables
         #---------------------------------------------------------------------------
-        # Cerds
-        self.creds_table = Table(USERS_CREDENTIALS_TABLE, self.metadata,
-            Column("username", VARCHAR(MAX_SIZE), primary_key=True),
-            Column("password", Text),
-            Column("salt", Text))
-            # TODO: Column("stats", stats table link),
+        self.tables = {
+                        # Cerds
+                        USERS_CREDENTIALS_TABLE: Table(USERS_CREDENTIALS_TABLE, self.metadata,
+                                                    Column("username", VARCHAR(MAX_SIZE), primary_key=True),
+                                                    Column("password", Text),
+                                                    Column("salt", Text)), 
+                                                    # TODO: Column("stats", stats table link),
 
-        # Stats 
-        self.stats_table = Table(PLAYER_STATS_TABLE, self.metadata,
-            Column("username", VARCHAR(MAX_SIZE), primary_key=True),
-            Column("skin", Text),
-            Column("inventory", Text)) # TODO: change to array of Texts
+                        # Stats 
+                        PLAYER_STATS_TABLE: Table(PLAYER_STATS_TABLE, self.metadata,
+                                                Column("username", VARCHAR(MAX_SIZE), primary_key=True),
+                                                Column("skin", Text),
+                                                Column("inventory", Text)), # TODO: change to array of Texts
 
-        # Chat
-        self.chat_table = Table(CHAT_TABLE, self.metadata,
-            Column("username", VARCHAR(MAX_SIZE), primary_key=True),
-            Column("date", Text),
-            Column("content", Text))
+                        # Chat
+                        CHAT_TABLE: Table(CHAT_TABLE, self.metadata,
+                                            Column("username", VARCHAR(MAX_SIZE), primary_key=True),
+                                            Column("date", Text),
+                                            Column("content", Text))
+         }
         #---------------------------------------------------------------------------
 
     @ staticmethod
@@ -63,6 +67,41 @@ class database:
         return ssl_args
 
 
+    def execute_stmt(self, statement) : #-> :
+        """
+        Use: execute a commend on the database
+        """
+        try:
+            with self.engine.connect() as conn:
+                return conn.execute(statement)
+        except Exception:
+            logging.exception(f"[Cannot execute statment]: {statement} a\n", exc_info=True)
+
+
+    
+    def write_tables(self) -> None:
+        """
+        Use: gen tables if given engine and metadata
+        """
+        self.metadata.create_all(bind=self.engine)
+    
+    def print_table(self, table_name: str) -> None:
+        """
+        Use: prints a given table content
+        """
+        if table_name in self.tables:
+
+            stmt = self.tables[table_name].select()
+            try:
+                res = self.execute_stmt(stmt).fetchall()
+            except:
+                ...
+
+            print(f"Table len: {len(res)}")
+            for row in res:
+                print(row)
+
+
 
     def user_in_database(username: str) -> bool:
         ...
@@ -73,28 +112,3 @@ class database:
 
     def get_user_credentials(username: str):
         ...
-
-    
-    def write_tables(self) -> None:
-        """
-        Use: gen tables if given engine and metadata
-        """
-        self.metadata.create_all(bind=self.engine)
-
-
-"""
-        with self.engine.connect() as conn:
-
-            metadata = MetaData()
-            users_creds = Table(
-                USERS_CREDENTIALS_TABLE, metadata,
-                Column("id", Integer, primary_key=True),
-                Column("username", Text),
-                Column("password", Text),
-                Column("salt", Text))
-
-            res = conn.execute(sqlalchemy.select(users_creds)).fetchall()
-
-            for row in res:
-                print(row)
-"""
