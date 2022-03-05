@@ -10,7 +10,7 @@ from backend.consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R
 from comms import DefaultConnection
 
 
-def get_credentials(conn: DefaultConnection) -> tuple[str, bytes] | None:
+def get_credentials(conn: DefaultConnection) -> tuple[str, bytes]:
     fernet = Fernet(conn.key)
     username = conn.recv()
     password = conn.recv()
