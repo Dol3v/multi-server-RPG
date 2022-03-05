@@ -2,7 +2,7 @@ import ssl
 import logging
 
 import sqlalchemy
-from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, insert 
+from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, insert, select
 
 from consts import *
 import sys
@@ -75,7 +75,7 @@ class database:
             with self.engine.connect() as conn:
                 return conn.execute(statement)
         except Exception:
-            logging.exception(f"[Cannot execute statment]: {statement} a\n", exc_info=True)
+            logging.exception(f"[Cannot execute statment]: {statement}  \n", exc_info=True)
 
 
     
@@ -118,8 +118,15 @@ class database:
         """
         Use: check if given username inside the database table
         """
+        stmt = select(self.tables[USERS_CREDENTIALS_TABLE].c.username)
+        columns = [row[0] for row in self.execute_stmt(stmt)]
+
+        return username in columns
 
     def get_user_credentials(self, username: str):
         """
         Use: get user hash and salt
         """
+        stmt = select(self.tables[USERS_CREDENTIALS_TABLE])
+        for row in self.execute_stmt(stmt):
+            print(row)
