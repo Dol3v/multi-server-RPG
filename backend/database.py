@@ -1,5 +1,6 @@
 import ssl
 import logging
+from click import Tuple
 
 import sqlalchemy
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, insert, select
@@ -103,10 +104,11 @@ class database:
                 print(row)
 
 
-    def add_user_to_database(self, username: str, password_key: bytes, password_salt: bytes):
+    def add_user_to_database(self, username: str, password_key: bytes, password_salt: bytes) -> None:
         """
         Use: add user to the table
         """
+        # NOTE: if we add user that already inside the database, an error will occurr
         stmt = (
             insert(self.tables[USERS_CREDENTIALS_TABLE]).
             values(username=username, password=password_key, salt=password_salt)
@@ -123,10 +125,13 @@ class database:
 
         return username in columns
 
-    def get_user_credentials(self, username: str):
+    def get_user_credentials(self, username: str):# -> Tuple[bytes, bytes]:
         """
         Use: get user hash and salt
         """
         stmt = select(self.tables[USERS_CREDENTIALS_TABLE])
         for row in self.execute_stmt(stmt):
-            print(row)
+            if username in row[0]:
+                return row[1], row[2]
+        
+        return None
