@@ -1,7 +1,7 @@
 import ssl
 
 import sqlalchemy
-from sqlalchemy import Integer, Text, Table, Column, MetaData, text
+from sqlalchemy import Integer, Text, Table, Column, MetaData, VARCHAR
 
 from consts import *
 
@@ -27,7 +27,6 @@ def init_engine(db_user: str, db_pass: str, db_hostname: str, db_port: int, db_n
     )
 
 
-# May not work...
 def generate_ssl_cert(cert_path: str = "") -> dict:
     """
     Use: generate certificats for ssl connection
@@ -46,20 +45,20 @@ def init_tables(metadata: MetaData, engine) -> None:
     """
     # Cerds
     Table(USERS_CREDENTIALS_TABLE, metadata,
-          Column("username", Text, primary_key=True),
+          Column("username", VARCHAR(MAX_SIZE), primary_key=True),
           Column("password", Text),
           Column("salt", Text))
           # Column("stats", stats table link),
 
-    # Stats
+    # Stats https://stackoverflow.com/questions/1827063/mysql-error-key-specification-without-a-key-length
     Table(PLAYER_STATS_TABLE, metadata,
-          Column("username", primary_key=True),
+          Column("username", VARCHAR(MAX_SIZE), primary_key=True),
           Column("skin", Text),
           Column("inventory", Text)) # TODO: change to array of Texts
 
     # Chat
     Table(CHAT_TABLE, metadata,
-          Column("username", primary_key=True),
+          Column("username", VARCHAR(MAX_SIZE), primary_key=True),
           Column("date", Text),
           Column("content", Text))
 
