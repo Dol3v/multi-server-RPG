@@ -1,7 +1,7 @@
 from db_api import *
 from authN import *
 
-def login(conn: DLS) -> bool:
+def login(conn: DefaultConnection) -> bool:
     """
     Use: add the the new user to the database, and 
     """
@@ -17,7 +17,7 @@ def login(conn: DLS) -> bool:
 
 
 
-def recv_credentials(conn: DLS) -> tuple[str, bytes]:
+def recv_credentials(conn: DefaultConnection) -> tuple[str, bytes]:
     """
     Use: recevie symatric encrypted (by the shared key) username and password and decrypt them.
     """

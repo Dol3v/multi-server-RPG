@@ -1,4 +1,7 @@
 """Socket-Communication API"""
+# to import from a dir
+import sys
+sys.path.append( '.' )
 
 import hmac
 import logging
@@ -47,7 +50,7 @@ class PacketInfo(NamedTuple):
     content: bytes
 
 
-class DLS:
+class DefaultConnection:
     """Connection object, that supports send-n-recv functions with ECDH, hmacs, and replay/MITM attack protection.
     
     Usage example:

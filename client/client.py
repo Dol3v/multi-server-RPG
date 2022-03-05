@@ -1,9 +1,14 @@
-from common.comms import DLS, PacketID
+# to import from a dir
+import sys
+sys.path.append( '.' )
+
+from common.comms import DefaultConnection, PacketID
 from cryptography.fernet import Fernet
 from game import Game
 
 
-def login(username: str, password: str, conn: DLS):
+
+def login(username: str, password: str, conn: DefaultConnection):
     """
     Use: login to the server
     """
@@ -18,7 +23,7 @@ def login(username: str, password: str, conn: DLS):
 
 if __name__ == "__main__":
 
-    with DLS() as conn:
+    with DefaultConnection() as conn:
         username = input("Enter username: ")
         password = input("Enter password: ")
 
