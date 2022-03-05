@@ -1,3 +1,7 @@
+# to import from a dir
+import sys
+sys.path.append( '.' )
+
 import logging
 from os import urandom
 from sre_constants import SUCCESS

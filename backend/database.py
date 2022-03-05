@@ -42,13 +42,26 @@ def generate_ssl_cert(cert_path: str = "") -> dict:
 
 def init_tables(metadata: MetaData, engine) -> None:
     """
-    Use: create a table inside the create
+    Use: gen tables if given engine and metadata
     """
+    # Cerds
     Table(USERS_CREDENTIALS_TABLE, metadata,
-          Column("id", Integer, primary_key=True),
-          Column("username", Text),
+          Column("username", Text, primary_key=True),
           Column("password", Text),
           Column("salt", Text))
+          # Column("stats", stats table link),
+
+    # Stats
+    Table(PLAYER_STATS_TABLE, metadata,
+          Column("username", primary_key=True),
+          Column("skin", Text),
+          Column("inventory", Text)) # TODO: change to array of Texts
+
+    # Chat
+    Table(CHAT_TABLE, metadata,
+          Column("username", primary_key=True),
+          Column("date", Text),
+          Column("content", Text))
 
     metadata.create_all(bind=engine)
 
@@ -56,13 +69,14 @@ def init_tables(metadata: MetaData, engine) -> None:
 def init_db():
     """
     Use: init DB tables
+    Requirements: create a dummy user and database called db
     """
     db_pass = input("[Enter DB password]: ")
     # connect to the localhost database
     engine = init_engine(DB_USERNAME, db_pass, "localhost", DB_PORT, DB_NAME)
     metadata = MetaData(bind=engine)
 
-    return init_tables(metadata, engine)
+    init_tables(metadata, engine)
 
 
 def init_node_comm():
