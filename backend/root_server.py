@@ -34,5 +34,7 @@ def recv_credentials(conn: DLS) -> tuple[str, bytes]:
 
     return username, password
 
+
 if __name__ == "__main__":
     init_db()
+    
