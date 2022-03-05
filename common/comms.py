@@ -47,7 +47,7 @@ class PacketInfo(NamedTuple):
     content: bytes
 
 
-class DefaultConnection:
+class DLS:
     """Connection object, that supports send-n-recv functions with ECDH, hmacs, and replay/MITM attack protection.
     
     Usage example:
@@ -60,41 +60,56 @@ class DefaultConnection:
         self.conn = conn  # FIXME: add SYN attack protection (prob some sort of mini firewall thingy)
         self.key = self.get_shared_key(conn)
 
+
     def send(self, content: bytes, type: PacketID):
+        """
+        Use: send data with time stemp and shared key
+        Format: [md5(key, data) + data]
+        """
         encoded_time = int(datetime.now().timestamp() * 1000).to_bytes(TIMESTAMP_SIZE, "big")
+
         header = (
                 int(type).to_bytes(TYPE_SIZE, "big")
                 + len(content).to_bytes(CONTENT_LENGTH_SIZE, "big")
-                + encoded_time
-        )
+                + encoded_time)
+
         data = header + content
         self.conn.sendall(hmac.digest(self.key, data, "md5") + data)
 
+
     def recv(self) -> PacketInfo:
+        """
+        Use: recv data using the shared key in the format 
+        Format: [md5(key, data) + data]
+        """
         header = self.conn.recv(HEADER_SIZE)
         msg_hmac, header = header[:HMAC_SIZE], header[HMAC_SIZE:]
+
         try:
+
             packet_type, content_length, time_stamp = (
                 PacketID(header[TYPE_OFFSET]),
                 int.from_bytes(header[LENGTH_OFFSET:TIMESTAMP_OFFSET], "big"),
-                datetime.fromtimestamp(int.from_bytes(header[TIMESTAMP_OFFSET:], "big") / 1000),
-            )
+                datetime.fromtimestamp(int.from_bytes(header[TIMESTAMP_OFFSET:], "big") / 1000),)
+
         except Exception:
-            logging.warning(
-                f"Invalid header was given to socket {self.conn}", exc_info=True
-            )
+            logging.warning( f"Invalid header was given to socket {self.conn}", exc_info=True)
             return None
+
         content = self.conn.recv(content_length)
-        if not hmac.compare_digest(
-                msg_hmac, hmac.digest(self.key, header + content, "md5")
-        ):
+
+        if not hmac.compare_digest(msg_hmac, hmac.digest(self.key, header + content, "md5")):
+
             logging.critical(
                 f"HMACs doesn't match in message given to {self.conn}: {content=},{time_stamp=},{content_length=},"
-                f"{packet_type=},{msg_hmac=}"
-            )
+                f"{packet_type=},{msg_hmac=}")
+
             self.__exit__(None, None, None)
             return None
+
         return PacketInfo(packet_type, time_stamp, content)
+
+
 
     @staticmethod
     def get_shared_key(conn: socket) -> bytes:
@@ -106,19 +121,20 @@ class DefaultConnection:
         :return: shared & derived key
         :rtype: bytes
         """
+        # generate key set
         private_key = generate_private_key(ELLIPTIC_CURVE)
-        conn.send(
-            private_key.public_key().public_bytes(
-                Encoding.X962, PublicFormat.CompressedPoint
-            )
-        )
+
+        # Send public key
+        conn.send(private_key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint))
+
+        # Receive public key of peer
         peer_public_key = EllipticCurvePublicKey.from_encoded_point(
-            curve=ELLIPTIC_CURVE, data=conn.recv(COMPRESSED_POINT_SIZE)
-        )
+            curve=ELLIPTIC_CURVE, data=conn.recv(COMPRESSED_POINT_SIZE))
+
+        # Generate shared key and return it
         shared = private_key.exchange(ECDH(), peer_public_key)
-        return HKDF(
-            algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data"
-        ).derive(shared)
+
+        return HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data").derive(shared)
 
     def __enter__(self):
         return self

@@ -1,13 +1,10 @@
 """Logins to the server"""
-# to import common.comms
-import sys
-sys.path.append( '.' )
 
-from common.comms import DefaultConnection, PacketID
+from common.comms import DLS, PacketID
 from cryptography.fernet import Fernet
 
 
-def login(username: str, password: str, conn: DefaultConnection):
+def login(username: str, password: str, conn: DLS):
     fernet = Fernet(conn.key)
     username_token = fernet.encrypt(username.encode())
     password_token = fernet.encrypt(password.encode())

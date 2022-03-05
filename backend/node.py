@@ -1,4 +1,4 @@
-from DB_API import *
+from db_api import *
 
 if __name__ == "__main__":
-    init_node_comm()
+    metadata = init_node_comm()

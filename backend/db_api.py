@@ -40,7 +40,10 @@ def generate_ssl_cert(cert_path: str = "") -> dict:
     return ssl_args
 
 
-def init_tables(metadata: MetaData, engine) -> MetaData:
+def init_tables(metadata: MetaData, engine) -> None:
+    """
+    Use: create a table inside the create
+    """
     Table(USERS_CREDENTIALS_TABLE, metadata,
           Column("id", Integer, primary_key=True),
           Column("username", Text),
@@ -48,7 +51,6 @@ def init_tables(metadata: MetaData, engine) -> MetaData:
           Column("salt", Text))
 
     metadata.create_all(bind=engine)
-    return metadata
 
 
 def init_db():
@@ -58,8 +60,7 @@ def init_db():
     db_pass = input("[Enter DB password]: ")
     # connect to the localhost database
     engine = init_engine(DB_USERNAME, db_pass, "localhost", DB_PORT, DB_NAME)
-    engine.connect()
-    metadata = MetaData()
+    metadata = MetaData(bind=engine)
 
     return init_tables(metadata, engine)
 
@@ -72,6 +73,31 @@ def init_node_comm():
     db_ip = input("[Enter DB ip]: ")
     # connect to the database
     engine = init_engine(DB_USERNAME, db_pass, db_ip, DB_PORT, DB_NAME)
+
+    with engine.connect() as conn:
+
+        metadata = MetaData()
+        users_creds = Table(
+            USERS_CREDENTIALS_TABLE, metadata,
+            Column("id", Integer, primary_key=True),
+            Column("username", Text),
+            Column("password", Text),
+            Column("salt", Text))
+
+        res = conn.execute(sqlalchemy.select(users_creds)).fetchall()
+
+        for row in res:
+            print(row)
+
     return MetaData(bind=engine)
 
 
+def user_in_database(username: str) -> bool:
+    ...
+
+
+def add_user_to_database(username: str, password_key: bytes, password_salt: bytes):
+    ...
+
+def get_user_credentials(username: str):
+    ...
