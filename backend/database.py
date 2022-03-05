@@ -2,7 +2,7 @@ import ssl
 import logging
 
 import sqlalchemy
-from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, text
+from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, insert 
 
 from consts import *
 import sys
@@ -85,6 +85,7 @@ class database:
         """
         self.metadata.create_all(bind=self.engine)
     
+
     def print_table(self, table_name: str) -> None:
         """
         Use: prints a given table content
@@ -102,13 +103,23 @@ class database:
                 print(row)
 
 
+    def add_user_to_database(self, username: str, password_key: bytes, password_salt: bytes):
+        """
+        Use: add user to the table
+        """
+        stmt = (
+            insert(self.tables[USERS_CREDENTIALS_TABLE]).
+            values(username=username, password=password_key, salt=password_salt)
+        )
+        self.execute_stmt(stmt)
 
-    def user_in_database(username: str) -> bool:
-        ...
 
+    def user_in_database(self, username: str) -> bool:
+        """
+        Use: check if given username inside the database table
+        """
 
-    def add_user_to_database(username: str, password_key: bytes, password_salt: bytes):
-        ...
-
-    def get_user_credentials(username: str):
-        ...
+    def get_user_credentials(self, username: str):
+        """
+        Use: get user hash and salt
+        """

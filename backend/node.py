@@ -37,4 +37,5 @@ def recv_credentials(conn: DefaultConnection) -> tuple[str, bytes]:
 if __name__ == "__main__":
     host = input("[Enter host]: ")
     db = database(host)
-    db.print_table(CHAT_TABLE)
+    db.add_user_to_database("second_reem", "secertPass", "asdfasdljwr49033")
+    db.print_table(USERS_CREDENTIALS_TABLE)
