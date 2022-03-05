@@ -4,6 +4,7 @@ SQL_TYPE = "mysql"
 DB_PORT = 3306
 DB_NAME = "db"
 DB_USERNAME = "reem"
+DB_PASS = 1234
 
 
 # Database configurations

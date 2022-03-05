@@ -35,4 +35,5 @@ def recv_credentials(conn: DefaultConnection) -> tuple[str, bytes]:
     return username, password
 
 if __name__ == "__main__":
-    metadata = init_node_comm()
+    host = input("[Enter host]: ")
+    db = database(host)
