@@ -4,10 +4,10 @@ import os
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, obstacle_sprites):
-        super().__init__(groups)
-        sourceFileDir = os.path.dirname(os.path.abspath(__file__))
-        fondImgPath = os.path.join(sourceFileDir, 'idle_down.png')
-        self.image = pygame.image.load(fondImgPath).convert_alpha()
+        super().__init__(*groups)
+        source_file_dir = os.path.dirname(os.path.abspath(__file__))
+        fond_img_path = os.path.join(source_file_dir, 'idle_down.png')
+        self.image = pygame.image.load(fond_img_path).convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
 
         self.direction = pygame.math.Vector2()

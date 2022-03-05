@@ -16,8 +16,8 @@ class Level:
     def create_map(self):
         for row_index, row in enumerate(WORLD_MAP):
             for col_index, col in enumerate(row):
-                x = col_index * TILESIZE
-                y = row_index * TILESIZE
+                x = col_index * TILE_SIZE
+                y = row_index * TILE_SIZE
                 if col == 'x':
                     Tile((x, y), [self.visible_sprites, self.obstacles_sprites])
                 if col == 'p':
