@@ -1,5 +1,6 @@
 SQL_TYPE = "mysql"
-DB_PORT = 9001
-DB_NAME = "RSN@DB"
+DB_PORT = 3306
+DB_NAME = "users"
+DB_USERNAME = "dummy"
 
-USERS_CREADS_TABLE = "players_creds"
+USERS_CREDENTIALS_TABLE = "player_creds"
