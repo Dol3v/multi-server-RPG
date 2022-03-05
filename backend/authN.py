@@ -14,9 +14,8 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from common.consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R
 from common.comms import DefaultConnection
 
-from database import *
 
-def gen_hash_and_salt(password: bytes) -> Tuple[bytes, bytes]:
+def gen_hash_and_salt(password: bytes):# -> Tuple[bytes, bytes]:
     """
     Use: generate salt and hashed passowrd
     """
