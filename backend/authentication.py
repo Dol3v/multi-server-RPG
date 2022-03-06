@@ -2,6 +2,7 @@ import logging
 import sys
 from os import urandom
 from typing import Optional, Tuple
+from base64 import urlsafe_b64encode
 
 from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet, InvalidToken
@@ -11,7 +12,7 @@ from sqlalchemy import select, insert
 from backend.database import SqlDatabase
 from common.comms import DefaultConnection
 from consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R, USERNAME_COL, HASH_COL, SALT_COL
-from utils import *
+from common.utils import *
 
 # to import from a dir
 sys.path.append('.')
@@ -90,7 +91,7 @@ def recv_credentials(conn: DefaultConnection) -> Optional[Tuple[str, bytes]]:
     """
     Use: receive symmetrically encrypted (by the shared key) username and password and decrypt them.
     """
-    fernet = Fernet(conn.key)
+    fernet = Fernet(urlsafe_b64encode(conn.key))
     username = conn.recv()
     password = conn.recv()
     try:
