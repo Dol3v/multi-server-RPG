@@ -55,9 +55,9 @@ class DefaultConnection:
     """Connection object, that supports send-n-recv functions with ECDH, hmacs, and replay/MITM attack protection.
     
     Usage example:
-    `with Connection(sock) as conn:
-        conn.send(b'Hello World!', PacketID.GENERAL_DATA)
-        print(conn.recv())`
+    `with Connection(sock) as connection:
+        connection.send(b'Hello World!', PacketID.GENERAL_DATA)
+        print(connection.recv())`
     """
 
     def __init__(self, conn: socket) -> None:
@@ -121,7 +121,6 @@ class DefaultConnection:
         Uses ECDH to get a shared key between the client and the server.
 
         :param conn: socket connection with peer
-        :packet_id conn: socket
         :return: shared & derived key
         :rtype: bytes
         """
