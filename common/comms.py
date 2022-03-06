@@ -1,10 +1,7 @@
 """Socket-Communication API"""
-# to import from a dir
-import sys
-sys.path.append( '.' )
-
 import hmac
 import logging
+import sys
 from datetime import datetime
 from enum import IntEnum
 from socket import socket
@@ -21,6 +18,9 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from common.consts import *
 
+# to import from a dir
+sys.path.append('.')
+
 
 class PacketID(IntEnum):
     """Packet IDs"""
@@ -33,7 +33,8 @@ class PacketID(IntEnum):
     ITEM_ACTION = 3  # action with items (like swords and stuff)
 
     # Server success response for requests
-    CONFIRMED_STATUS = 4
+    SERVER_OK = 4
+    SERVER_NOK = 5
 
     # User Movement
     MOVE_UP = ord("w")
@@ -43,7 +44,7 @@ class PacketID(IntEnum):
 
 
 class PacketInfo(NamedTuple):
-    """Info relevant to a packet: the packet's type, the time it was sent, and its contents"""
+    """Info relevant to a packet: the packet's packet_id, the time it was sent, and its contents"""
 
     packet_type: PacketID
     time_sent: datetime
@@ -63,27 +64,27 @@ class DefaultConnection:
         self.conn = conn  # FIXME: add SYN attack protection (prob some sort of mini firewall thingy)
         self.key = self.get_shared_key(conn)
 
-
-    def send(self, content: bytes, type: PacketID):
+    def send(self, content: bytes, packet_id: PacketID):
         """
-        Use: send data with time stemp and shared key
-        Format: [md5(key, data) + data]
+        Use: send data with time stamp and shared key.
+
+        Format: [hmac(header + data, key) + header + data]
         """
         encoded_time = int(datetime.now().timestamp() * 1000).to_bytes(TIMESTAMP_SIZE, "big")
 
         header = (
-                int(type).to_bytes(TYPE_SIZE, "big")
+                int(packet_id).to_bytes(TYPE_SIZE, "big")
                 + len(content).to_bytes(CONTENT_LENGTH_SIZE, "big")
                 + encoded_time)
 
         data = header + content
         self.conn.sendall(hmac.digest(self.key, data, "md5") + data)
 
-
     def recv(self) -> PacketInfo:
         """
-        Use: recv data using the shared key in the format 
-        Format: [md5(key, data) + data]
+        Use: recv data using the shared key in the format.
+
+        Format: [hmac(header + data, key) + header + data]
         """
         header = self.conn.recv(HEADER_SIZE)
         msg_hmac, header = header[:HMAC_SIZE], header[HMAC_SIZE:]
@@ -96,13 +97,12 @@ class DefaultConnection:
                 datetime.fromtimestamp(int.from_bytes(header[TIMESTAMP_OFFSET:], "big") / 1000),)
 
         except Exception:
-            logging.warning( f"Invalid header was given to socket {self.conn}", exc_info=True)
+            logging.warning(f"Invalid header was given to socket {self.conn}", exc_info=True)
             return None
 
         content = self.conn.recv(content_length)
 
         if not hmac.compare_digest(msg_hmac, hmac.digest(self.key, header + content, "md5")):
-
             logging.critical(
                 f"HMACs doesn't match in message given to {self.conn}: {content=},{time_stamp=},{content_length=},"
                 f"{packet_type=},{msg_hmac=}")
@@ -112,15 +112,13 @@ class DefaultConnection:
 
         return PacketInfo(packet_type, time_stamp, content)
 
-
-
     @staticmethod
     def get_shared_key(conn: socket) -> bytes:
         """
         Uses ECDH to get a shared key between the client and the server.
 
         :param conn: socket connection with peer
-        :type conn: socket
+        :packet_id conn: socket
         :return: shared & derived key
         :rtype: bytes
         """
