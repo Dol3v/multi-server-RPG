@@ -8,9 +8,12 @@ from consts import *
 
 class SqlDatabase:
 
-    def __init__(self, db_hostname: str):
+    def __init__(self, db_hostname: str, user_password: str):
         """
         Use: connect to the DB server through ssl by a given hostname
+
+        :param db_hostname: ip address to connect to
+        :param user_password: DB_USERNAME@"$db_hostname"'s password
         """
         ssl_args = SqlDatabase.generate_ssl_cert()
 
@@ -19,7 +22,7 @@ class SqlDatabase:
             sqlalchemy.engine.url.URL.create(
                 drivername=SQL_TYPE,
                 username=DB_USERNAME,
-                password=DB_PASS,
+                password=user_password,
                 host=db_hostname,
                 port=DB_PORT,
                 database=DB_NAME),
