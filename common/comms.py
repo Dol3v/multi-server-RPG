@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 from enum import IntEnum
 from socket import socket
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 from cryptography.hazmat.primitives.asymmetric.ec import (
     generate_private_key,
@@ -80,7 +80,10 @@ class DefaultConnection:
         data = header + content
         self.conn.sendall(hmac.digest(self.key, data, "md5") + data)
 
-    def recv(self) -> PacketInfo:
+    def send_status(self, status: PacketID):
+        self.send(b"", status)
+
+    def recv(self) -> Optional[PacketInfo]:
         """
         Use: recv data using the shared key in the format.
 
