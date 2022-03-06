@@ -51,40 +51,39 @@ def verify_credentials(expected_key: bytes, unverified_password: bytes, salt: by
     return True
 
 
-def signup(username: str, password: bytes, db: SqlDatabase) -> bool:
+def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
     """
     Gets user credentials and tries to sign up. If successful, the user's credentials will be entered to the
     database, where byte data will be entered in base64 format.
     Returns whether the signup was successful.
 
     :param username: username
-    :type username: str
+    :packet_id username: str
     :param password: user password
-    :type password: bytes
+    :packet_id password: bytes
     :param db: database object
-    :type db: SqlDatabase
-    :returns: if the signup was successful.
+    :packet_id db: SqlDatabase
+    :returns: if the signup was successful, returns (True, None). Else, returns (False, err_msg)
     """
     if user_in_database(username, db):
-        return False
+        return False, "User exists already"
     res = add_user_to_database(db, username, *gen_hash_and_salt(password))
-    return True if res else False
+    return (True, None) if res else (False, "Server encountered error while adding user to database")
 
 
-def login(username: str, password: bytes, db: SqlDatabase) -> bool:
+def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
     """
     Verifies that the user's creds match up to existing creds in the database.
 
-    :rtype: bool
-    :returns: whether the login was successful
+    :returns: if the login was successful, returns (True, None). Else, returns (False, err_msg)
     """
     if not user_in_database(username, db):
-        return False
+        return False, "User does not exist"
     creds = get_user_credentials(username, db)
     if not creds:
-        return False
+        return False, "Server encountered error while receiving client data"
     password_hash, salt = creds
-    return verify_credentials(password_hash, password, salt)
+    return (True, None) if verify_credentials(password_hash, password, salt) else (False, "Password does not match")
 
 
 def recv_credentials(conn: DefaultConnection) -> Optional[Tuple[str, bytes]]:
