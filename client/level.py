@@ -7,6 +7,7 @@ from debug import debug
 
 class Level:
     def __init__(self):
+        self.player = None
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = YSortCameraGroup()
         self.obstacles_sprites = pygame.sprite.Group()

@@ -4,24 +4,25 @@ import sys
 from base64 import urlsafe_b64encode
 from cryptography.fernet import Fernet
 
-from common.comms import DefaultConnection, PacketID
+from common.comms import DefaultConnection
+from common.communication import send, PacketID
+from common.consts import PASSWORD_OFFSET_LENGTH
 from game import Game
 
 # to import from a dir
 sys.path.append('.')
 
 
-def send_credentials(username: str, password: str, conn: DefaultConnection):
+def send_credentials(username: str, password: str, conn: socket.socket, key: bytes, login=True):
     """
     Use: login to the server
     """
-    fernet = Fernet(urlsafe_b64encode(conn.key))
+    fernet = Fernet(urlsafe_b64encode(key))
 
     username_token = fernet.encrypt(username.encode())
     password_token = fernet.encrypt(password.encode())
-
-    conn.send(username_token, PacketID.INITIAL_AUTH)
-    conn.send(password_token, PacketID.INITIAL_AUTH)
+    send(len(username_token).to_bytes(PASSWORD_OFFSET_LENGTH, "little") + username_token + password_token,
+         PacketID.LOGIN if login else PacketID.SIGNUP, conn, key)
 
 
 if __name__ == "__main__":

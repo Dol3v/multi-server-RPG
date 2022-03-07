@@ -1,9 +1,9 @@
-import pygame
 import sys
+
+import pygame
 
 from level import Level
 from settings import *
-
 
 
 class Game:
@@ -11,7 +11,7 @@ class Game:
 
         # general setup
         pygame.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGTH))
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("MMORPG Game")
         pygame.display.set_icon(pygame.image.load('idle_down.png'))
         self.clock = pygame.time.Clock()
@@ -29,4 +29,3 @@ class Game:
             self.level.run()
             pygame.display.update()
             self.clock.tick(FPS)
-

@@ -1,5 +1,6 @@
 import socket
 
+from backend.consts import SERVER_PORT
 from common.comms import PacketID
 from authentication import *
 
@@ -16,7 +17,7 @@ def handle_signup_request(conn: DefaultConnection, db: SqlDatabase):
 if __name__ == "__main__":
     with SqlDatabase("127.0.0.1", "dummyPass") as database, socket.socket() as sock:
         database.write_tables()
-        sock.bind(("127.0.0.1", 5000))
+        sock.bind(("127.0.0.1", SERVER_PORT))
         sock.listen()
         while True:
             client_conn, addr = sock.accept()
