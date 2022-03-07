@@ -1,8 +1,9 @@
 import logging
+import socket
 import sys
-from os import urandom
-from typing import Optional, Tuple
 from base64 import urlsafe_b64encode
+from os import urandom
+from typing import Tuple
 
 from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet, InvalidToken
@@ -10,9 +11,10 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from sqlalchemy import select, insert
 
 from backend.database import SqlDatabase
-from common.comms import DefaultConnection
-from consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R, USERNAME_COL, HASH_COL, SALT_COL
+from common.communication import recv, PacketID
+from common.consts import PASSWORD_OFFSET_LENGTH
 from common.utils import *
+from consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R, USERNAME_COL, HASH_COL, SALT_COL
 
 # to import from a dir
 sys.path.append('.')
@@ -72,7 +74,7 @@ def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
     return (True, None) if res else (False, "Server encountered error while adding user to database")
 
 
-def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
+def verify_login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
     """
     Verifies that the user's creds match up to existing creds in the database.
 
@@ -87,16 +89,21 @@ def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
     return (True, None) if verify_credentials(password_hash, password, salt) else (False, "Password does not match")
 
 
-def recv_credentials(conn: DefaultConnection) -> Optional[Tuple[str, bytes]]:
+def recv_credentials(conn: socket.socket, key: bytes) -> Tuple[str, bytes] | None:
     """
     Use: receive symmetrically encrypted (by the shared key) username and password and decrypt them.
     """
-    fernet = Fernet(urlsafe_b64encode(conn.key))
-    username = conn.recv()
-    password = conn.recv()
+    fernet = Fernet(urlsafe_b64encode(key))
+    packet_type, _, content = recv(conn, key)
+    if packet_type != PacketID.SIGNUP and packet_type != PacketID.LOGIN:
+        logging.warning(f"Received different-than-expected packet at recv_credentials; {packet_type=} {content=}")
+        return None
+    password_offset, content = int.from_bytes(content[:PASSWORD_OFFSET_LENGTH], "little"), \
+                               content[PASSWORD_OFFSET_LENGTH:]
+    username, password = content[:password_offset], content[:password_offset]
     try:
-        username = fernet.decrypt(username.content).decode()
-        password = fernet.decrypt(password.content)
+        username = fernet.decrypt(username).decode()
+        password = fernet.decrypt(password)
 
     except InvalidToken as e:
         logging.critical(f"Decryption of username/password failed {e=}")
@@ -125,7 +132,7 @@ def user_in_database(username: str, db: SqlDatabase) -> bool:
     return username in columns
 
 
-def get_user_credentials(username: str, db: SqlDatabase) -> Optional[Tuple[bytes, bytes]]:
+def get_user_credentials(username: str, db: SqlDatabase) -> Tuple[bytes, bytes] | None:
     """
     Use: get user hash and salt
     """
