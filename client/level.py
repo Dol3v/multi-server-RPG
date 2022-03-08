@@ -1,13 +1,14 @@
 import pygame
+
+from debug import debug
+from player import Player
 from settings import *
 from tile import Tile
-from player import Player
-from debug import debug
 
 
 class Level:
     def __init__(self):
-        self.player = None
+        self.player = None  # FIXME: where do u update self.player lol (temp to create new commit, will be removed)
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = YSortCameraGroup()
         self.obstacles_sprites = pygame.sprite.Group()
