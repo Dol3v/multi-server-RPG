@@ -3,7 +3,7 @@ import ssl
 import sqlalchemy
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR
 
-from consts import *
+from backend_consts import *
 
 
 class SqlDatabase:

@@ -1,6 +1,8 @@
 import pygame
 import os
 
+from common.consts import SPEED
+
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, obstacle_sprites):
@@ -11,7 +13,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=pos)
 
         self.direction = pygame.math.Vector2()
-        self.speed = 5
+        self.speed = SPEED
 
         self.obstacle_sprites = obstacle_sprites
 

@@ -7,7 +7,12 @@ from enum import IntEnum, auto
 # to import from a dir
 from typing import NamedTuple, Optional
 
-from consts import *
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.asymmetric.ec import generate_private_key, EllipticCurvePublicKey, ECDH
+from cryptography.hazmat.primitives.hashes import SHA256
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+from common.consts import *
 
 sys.path.append('.')
 
@@ -92,3 +97,27 @@ def recv(conn: socket.socket, key: bytes) -> Optional[PacketInfo]:
 
 def send_status(status: PacketID, conn: socket.socket, key: bytes):
     send(b"", status, conn, key)
+
+
+def get_shared_key(conn: socket.socket) -> bytes:
+    """
+    Uses ECDH to get a shared key between the client and the server. Note: to be used only by the client
+
+    :param conn: socket connection with peer
+    :return: shared & derived key
+    :rtype: bytes
+    """
+    # generate key set
+    private_key = generate_private_key(ELLIPTIC_CURVE)
+
+    # Send public key
+    conn.send(private_key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint))
+
+    # Receive public key of peer
+    peer_public_key = EllipticCurvePublicKey.from_encoded_point(
+        curve=ELLIPTIC_CURVE, data=conn.recv(COMPRESSED_POINT_SIZE))
+
+    # Generate shared key and return it
+    shared = private_key.exchange(ECDH(), peer_public_key)
+
+    return HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data").derive(shared)

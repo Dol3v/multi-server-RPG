@@ -11,10 +11,10 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from sqlalchemy import select, insert
 
 from backend.database import SqlDatabase
+from backend_consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R, USERNAME_COL, HASH_COL, SALT_COL
 from common.communication import recv, PacketID
-from common.consts import PASSWORD_OFFSET_LENGTH
+from common.consts import PASSWORD_OFFSET_LENGTH, IS_LOGIN_LENGTH
 from common.utils import *
-from consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R, USERNAME_COL, HASH_COL, SALT_COL
 
 # to import from a dir
 sys.path.append('.')
@@ -89,7 +89,7 @@ def verify_login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool,
     return (True, None) if verify_credentials(password_hash, password, salt) else (False, "Password does not match")
 
 
-def recv_credentials(conn: socket.socket, key: bytes) -> Tuple[str, bytes] | None:
+def recv_credentials(conn: socket.socket, key: bytes) -> tuple[bool, str, bytes] | None:
     """
     Use: receive symmetrically encrypted (by the shared key) username and password and decrypt them.
     """
@@ -98,6 +98,8 @@ def recv_credentials(conn: socket.socket, key: bytes) -> Tuple[str, bytes] | Non
     if packet_type != PacketID.SIGNUP and packet_type != PacketID.LOGIN:
         logging.warning(f"Received different-than-expected packet at recv_credentials; {packet_type=} {content=}")
         return None
+    is_login, content = True if int.from_bytes(content[:IS_LOGIN_LENGTH], "little") == 1 else False, \
+                        content[IS_LOGIN_LENGTH:]
     password_offset, content = int.from_bytes(content[:PASSWORD_OFFSET_LENGTH], "little"), \
                                content[PASSWORD_OFFSET_LENGTH:]
     username, password = content[:password_offset], content[:password_offset]
@@ -109,7 +111,7 @@ def recv_credentials(conn: socket.socket, key: bytes) -> Tuple[str, bytes] | Non
         logging.critical(f"Decryption of username/password failed {e=}")
         return None
 
-    return username, password
+    return is_login, username, password
 
 
 def add_user_to_database(db: SqlDatabase, username: str, password_hash: bytes, password_salt: bytes):

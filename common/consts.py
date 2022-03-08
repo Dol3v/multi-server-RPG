@@ -23,4 +23,11 @@ SERVER_IP = "127.0.0.1"
 SERVER_PORT = 8999
 
 # Login format consts
+IS_LOGIN_LENGTH = 1
 PASSWORD_OFFSET_LENGTH = 2
+
+# Client consts
+SPEED = 5
+WIDTH = 1280
+HEIGHT = 720
+
