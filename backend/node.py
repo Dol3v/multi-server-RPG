@@ -69,17 +69,10 @@ def accept(server_sock: socket.socket):
         bytes(), generate_private_key(ELLIPTIC_CURVE), Player(), ConnectionState.WAITING_FOR_DH, []))
 
 
-def handle_movement(data: ConnectionData, direction: PacketID):
-    # Super basic stuff
-    match direction:
-        case PacketID.MOVE_UP:
-            data.player.y += SPEED
-        case PacketID.MOVE_DOWN:
-            data.player.y -= SPEED
-        case PacketID.MOVE_LEFT:
-            data.player.x += SPEED
-        case PacketID.MOVE_RIGHT:
-            data.player.x -= SPEED
+def handle_movement(data: ConnectionData, content: bytes):
+    x_delta, y_delta = content
+    data.player.x += x_delta
+    data.player.y += y_delta
     print(data.player.x, data.player.y)
 
 
@@ -116,8 +109,8 @@ def serve(key: SelectorKey, mask: int, db: SqlDatabase):
                 logging.critical(f"Could not receive data from {conn=}")
             else:
                 match info.packet_type:
-                    case PacketID.MOVE_DOWN | PacketID.MOVE_UP | PacketID.MOVE_LEFT | PacketID.MOVE_RIGHT:
-                        handle_movement(data, info.packet_type)
+                    case PacketID.USER_DIR:
+                        handle_movement(data, info.content)
 
     if mask & EVENT_WRITE:
         if data.state == ConnectionState.WAITING_FOR_DH or data.state == ConnectionState.SERVER_RECEIVED_KEY:

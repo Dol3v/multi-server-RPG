@@ -34,10 +34,7 @@ class PacketID(IntEnum):
     SERVER_NOK = auto()
 
     # User Movement
-    MOVE_UP = auto()
-    MOVE_DOWN = auto()
-    MOVE_LEFT = auto()
-    MOVE_RIGHT = auto()
+    USER_DIR = auto()
 
 
 class PacketInfo(NamedTuple):
