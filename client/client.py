@@ -34,7 +34,6 @@ if __name__ == "__main__":
         user_pass = input("Enter password: ")
 
         shared_key = get_shared_key(sock)
-        print(shared_key)
 
         send_credentials(user, user_pass, sock, shared_key, False)
 

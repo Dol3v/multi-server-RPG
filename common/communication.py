@@ -62,13 +62,15 @@ def send(content: bytes, packet_id: PacketID, conn: socket.socket, key: bytes):
     conn.sendall(hmac.digest(key, data, "md5") + data)
 
 
-def recv(conn: socket.socket, key: bytes) -> Optional[PacketInfo]:
+def recv(conn: socket.socket, key: bytes) -> PacketInfo | None:
     """
     Use: recv data using the shared key in the format.
 
     Format: [hmac(header + data, key) + header + data]
     """
     header = conn.recv(HEADER_SIZE)
+    if not header:
+        return None
     msg_hmac, header = header[:HMAC_SIZE], header[HMAC_SIZE:]
     try:
         packet_type, content_length, time_stamp = (

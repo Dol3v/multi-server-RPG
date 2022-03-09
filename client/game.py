@@ -1,3 +1,4 @@
+import socket
 import sys
 
 import pygame
@@ -7,10 +8,11 @@ from settings import *
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, conn: socket.socket):
 
         # general setup
         pygame.init()
+        self.conn = conn
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("MMORPG Game")
         pygame.display.set_icon(pygame.image.load('idle_down.png'))

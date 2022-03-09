@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from authentication import *
 from backend.player import Player
 from common.communication import recv, PacketID, send
-from common.consts import ELLIPTIC_CURVE, COMPRESSED_POINT_SIZE, SHARED_KEY_SIZE, SERVER_IP, SERVER_PORT, SPEED
+from common.consts import ELLIPTIC_CURVE, COMPRESSED_POINT_SIZE, SHARED_KEY_SIZE, SERVER_IP, SERVER_PORT
 
 sel = DefaultSelector()
 hkdf = HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data")
@@ -61,19 +61,30 @@ def handle_login_request(data: ConnectionData, username: str, password: bytes, d
         data.send_list.append((PacketID.SERVER_NOK, bytes()))
 
 
-def accept(server_sock: socket.socket):
-    conn, addr = server_sock.accept()
-    conn.setblocking(False)
-    logging.info(f"Client {addr} joined")
-    sel.register(conn, EVENT_READ | EVENT_WRITE, data=ConnectionData(
-        bytes(), generate_private_key(ELLIPTIC_CURVE), Player(), ConnectionState.WAITING_FOR_DH, []))
-
-
 def handle_movement(data: ConnectionData, content: bytes):
     x_delta, y_delta = content
     data.player.x += x_delta
     data.player.y += y_delta
     print(data.player.x, data.player.y)
+
+
+def handle_dh(data: ConnectionData, conn: socket.socket, mask: int):
+    if mask & EVENT_READ and data.state != ConnectionState.SERVER_RECEIVED_KEY:
+        # receive client public key, and create shared-derived key from it
+        peer_public_key = EllipticCurvePublicKey.from_encoded_point(
+            curve=ELLIPTIC_CURVE, data=conn.recv(COMPRESSED_POINT_SIZE))
+        shared = data.private_key.exchange(ECDH(), peer_public_key)
+        data.shared_key = hkdf.derive(shared)
+        # state update
+        data.state = ConnectionState.WAITING_FOR_LOGIN \
+            if data.state == ConnectionState.CLIENT_RECEIVED_KEY else ConnectionState.SERVER_RECEIVED_KEY
+
+    if mask & EVENT_WRITE and data.state != ConnectionState.CLIENT_RECEIVED_KEY:
+        # send server's public key
+        conn.send(data.private_key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint))
+        # state update
+        data.state = ConnectionState.WAITING_FOR_LOGIN \
+            if data.state == ConnectionState.SERVER_RECEIVED_KEY else ConnectionState.CLIENT_RECEIVED_KEY
 
 
 def serve(key: SelectorKey, mask: int, db: SqlDatabase):
@@ -106,7 +117,7 @@ def serve(key: SelectorKey, mask: int, db: SqlDatabase):
             # connection is up, we can receive data and handle it accordingly
             info = recv(conn, data.shared_key)
             if not info:
-                logging.critical(f"Could not receive data from {conn=}")
+                logging.info(f"No data was sent from {conn=}")
             else:
                 match info.packet_type:
                     case PacketID.USER_DIR:
@@ -122,6 +133,14 @@ def serve(key: SelectorKey, mask: int, db: SqlDatabase):
         elif len(data.send_list) != 0:
             packet_id, content = data.send_list.pop(0)
             send(content, packet_id, conn, data.shared_key)
+
+
+def accept(server_sock: socket.socket):
+    conn, addr = server_sock.accept()
+    conn.setblocking(False)
+    logging.info(f"Client {addr} joined")
+    sel.register(conn, EVENT_READ | EVENT_WRITE, data=ConnectionData(
+        bytes(), generate_private_key(ELLIPTIC_CURVE), Player(), ConnectionState.WAITING_FOR_DH, []))
 
 
 if __name__ == "__main__":
