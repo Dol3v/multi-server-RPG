@@ -1,22 +1,58 @@
+import pygame.transform
+
 from py_utils import *
 from settings import *
 
 
 class ConnectScreen:
-    def __init__(self, screen):
+    def __init__(self, game):
         self.width = WIDTH
         self.height = HEIGHT
-        self.screen = screen
-        self.background = pygame.transform.scale(pygame.image.load("background.jpg"), (WIDTH, HEIGHT))
-        input_box = LimitedTextBox(0, HEIGHT * 0.30, 250, pygame.font.SysFont("arial", 35), 15)
+        self.screen = game.screen
+        self.background = pygame.transform.scale(pygame.image.load("assets/background.jpg"), (WIDTH, HEIGHT))
+
+        server_ip = Text(0, HEIGHT * 0.20, "Enter Server's IP", pygame.font.SysFont("arial", 25))
+        server_ip.position_center()
+
+        input_box = LimitedTextBox(0, HEIGHT * 0.25, 250, pygame.font.SysFont("arial", 35), 15)
         input_box.position_center()
 
-        connect_btn = ConnectButton(0, HEIGHT * 0.45, 200, 50, "connect_btn.png")
+        username = Text(0, HEIGHT * 0.35, "Enter Username", pygame.font.SysFont("arial", 25))
+        username.position_center()
+
+        username_input = LimitedTextBox(0, HEIGHT * 0.40, 250, pygame.font.SysFont("arial", 35), 15)
+        username_input.position_center()
+
+        password = Text(0, HEIGHT * 0.50, "Enter Password", pygame.font.SysFont("arial", 25))
+        password.position_center()
+
+        password_input = LimitedTextBox(0, HEIGHT * 0.55, 250, pygame.font.SysFont("arial", 35), 15)
+        password_input.position_center()
+
+        connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, "assets/connect_btn.png", game)
         connect_btn.position_center()
 
-        self.group = pygame.sprite.Group(input_box, connect_btn)
+        self.group = pygame.sprite.Group(server_ip, input_box, username, username_input,
+                                         password, password_input, connect_btn)
+
+        anim = [None] * 40
+        for i in range(40):
+            anim[i] = pygame.image.load(f"assets/loading_animation/l-{i}.png")
+
+        self.loading_animation = Animation(anim, 40)
+        self.is_loading_animation = False
 
     def run(self, event_list):
         self.screen.blit(self.background, self.background.get_rect())
         self.group.update(event_list)
-        self.group.draw(self.screen)
+        if not self.is_loading_animation:
+            self.group.draw(self.screen)
+        self.run_loading_animation()
+
+    def run_loading_animation(self):
+        if self.is_loading_animation:
+            frame = self.loading_animation.get_next_frame(pygame.time.get_ticks())
+            # frame = pygame.transform.scale(frame, (frame.get_width() * 2, frame.get_height() * 2))
+            x = (WIDTH - frame.get_width()) / 2
+            y = (HEIGHT - frame.get_height()) / 2
+            self.screen.blit(frame, (x, y))

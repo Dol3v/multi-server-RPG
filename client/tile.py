@@ -14,6 +14,6 @@ class Tile(pygame.sprite.Sprite):
 
 		# get the directory of this file
 		sourceFileDir = os.path.dirname(os.path.abspath(__file__))
-		fondImgPath = os.path.join(sourceFileDir, 'tree.png')
+		fondImgPath = os.path.join(sourceFileDir, 'assets/tree.png')
 		self.image = pygame.image.load(fondImgPath).convert_alpha()
 		self.rect = self.image.get_rect(topleft = pos)

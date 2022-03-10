@@ -14,9 +14,9 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.full_screen = False
         pygame.display.set_caption("MMORPG Game")
-        pygame.display.set_icon(pygame.image.load('idle_down.png'))
+        pygame.display.set_icon(pygame.image.load('assets/idle_down.png'))
         self.clock = pygame.time.Clock()
-        self.current_screen = ConnectScreen(self.screen)
+        self.current_screen = ConnectScreen(self)
 
     def run(self):
         while True:

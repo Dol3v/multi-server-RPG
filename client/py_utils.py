@@ -1,5 +1,6 @@
 import pygame
 from settings import *
+from level import Level
 
 
 class TextInputBox(pygame.sprite.Sprite):
@@ -33,7 +34,7 @@ class TextInputBox(pygame.sprite.Sprite):
         self.width = self.image.get_width()
         self.pos = ((WIDTH - self.width) / 2, self.y)
 
-        background = pygame.image.load("text-box.png")
+        background = pygame.image.load("assets/text-box.png")
         background = pygame.transform.scale(background,
                                             (max(self.width, t_surf.get_width() + 10), self.height))
 
@@ -81,6 +82,35 @@ class LimitedTextBox(TextInputBox):
                 self.render_text()
 
 
+class Text(pygame.sprite.Sprite):
+    def __init__(self, x, y, text, font, color=(0, 0, 0), backcolor=None):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.pos = (x, y)
+        self.text = text
+        self.font = font
+        self.color = color
+        self.backcolor = backcolor
+        self.width = 0
+        self.render_text()
+
+    def position_center(self):
+        self.pos = ((WIDTH - self.width) / 2, self.y)
+        self.render_text()
+
+    def render_text(self):
+        t_surf = self.font.render(self.text, True, self.color, self.backcolor)
+        self.image = pygame.Surface((t_surf.get_width(), t_surf.get_height()),
+                                    pygame.SRCALPHA)
+        self.width = t_surf.get_width()
+        self.image.blit(t_surf, (0, 0))
+        self.rect = self.image.get_rect(topleft=self.pos)
+
+    def update(self, event_list):
+        self.render_text()
+
+
 class Button(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height, image_path):
         super().__init__()
@@ -103,11 +133,58 @@ class Button(pygame.sprite.Sprite):
 
 
 class ConnectButton(Button):
-    def __init__(self, x, y, width, height, image_path):
+    def __init__(self, x, y, width, height, image_path, game):
         super().__init__(x, y, width, height, image_path)
+        self.game = game
 
     def update(self, event_list):
+        self.render_button()
         for event in event_list:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if self.rect.collidepoint(event.pos):
                     print("Clicked")
+                    self.game.current_screen.is_loading_animation = True
+                    #self.game.current_screen = Level()
+
+
+class Animation:
+    """A class to simplify the act of adding animations to sprites."""
+
+    def __init__(self, frames, fps, loops=-1):
+        """
+        The argument frames is a list of frames in the correct order;
+        fps is the frames per second of the animation;
+        loops is the number of times the animation will loop (a value of -1
+        will loop indefinitely).
+        """
+        self.frames = frames
+        self.fps = fps
+        self.frame = 0
+        self.timer = None
+        self.loops = loops
+        self.loop_count = 0
+        self.done = False
+
+    def get_next_frame(self, now):
+        """
+        Advance the frame if enough time has elapsed and the animation has
+        not finished looping.
+        """
+        if not self.timer:
+            self.timer = now
+        if not self.done and now - self.timer > 1000.0 / self.fps:
+            self.frame = (self.frame + 1) % len(self.frames)
+            if not self.frame:
+                self.loop_count += 1
+                if self.loops != -1 and self.loop_count >= self.loops:
+                    self.done = True
+                    self.frame -= 1
+            self.timer = now
+        return self.frames[self.frame]
+
+    def reset(self):
+        """Set frame, timer, and loop status back to the initialized state."""
+        self.frame = 0
+        self.timer = None
+        self.loop_count = 0
+        self.done = False

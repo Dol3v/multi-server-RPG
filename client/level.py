@@ -23,7 +23,8 @@ class Level:
                 if col == 'p':
                     self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites)
 
-    def run(self):
+    def run(self, event_list):
+        self.display_surface.fill("black")
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
         debug(self.player.direction)

@@ -6,7 +6,7 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, obstacle_sprites):
         super().__init__(groups)
         sourceFileDir = os.path.dirname(os.path.abspath(__file__))
-        fondImgPath = os.path.join(sourceFileDir, 'idle_down.png')
+        fondImgPath = os.path.join(sourceFileDir, 'assets/idle_down.png')
         self.image = pygame.image.load(fondImgPath).convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
 
