@@ -4,12 +4,12 @@ from base64 import urlsafe_b64encode
 
 from cryptography.fernet import Fernet
 
+# to import from a dir
+sys.path.append('../')
 from common.communication import send, PacketID, get_shared_key, recv
 from common.consts import PASSWORD_OFFSET_LENGTH, SERVER_PORT, SERVER_IP, IS_LOGIN_LENGTH
 from game import Game
 
-# to import from a dir
-sys.path.append('.')
 
 
 def send_credentials(username: str, password: str, conn: socket.socket, key: bytes, login=True):
@@ -43,5 +43,6 @@ if __name__ == "__main__":
             print(response.content)
             sys.exit(1)
         print("Success!")
-        game = Game()
+
+        game = Game(sock)   
         game.run()
