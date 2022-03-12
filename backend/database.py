@@ -35,16 +35,14 @@ class SqlDatabase:
                                  Column("username", VARCHAR(MAX_SIZE), primary_key=True),
                                  Column("password", Text),
                                  Column("salt", Text))
-        self.players_table = Table(PLAYER_STATS_TABLE, self.metadata,
-                                   Column("username", VARCHAR(MAX_SIZE), primary_key=True),
-                                   Column("skin", Text),
-                                   Column("inventory", Text))
         self.chat_table = Table(CHAT_TABLE, self.metadata,
                                 Column("username", VARCHAR(MAX_SIZE), primary_key=True),
                                 Column("date", Text),
                                 Column("content", Text))
 
         self.conn = self.engine.connect()
+        # Generate tables
+        self.metadata.create_all(bind=self.engine)
 
     @staticmethod
     def generate_ssl_cert(cert_path: str = "") -> dict:
@@ -58,11 +56,6 @@ class SqlDatabase:
 
         return ssl_args
 
-    def write_tables(self) -> None:
-        """
-        Use: gen tables given engine and metadata
-        """
-        self.metadata.create_all(bind=self.engine)
 
     def exec(self, statement):
         return self.conn.execute(statement)

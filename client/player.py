@@ -1,7 +1,7 @@
 import pygame
 import os
 
-from common.consts import SPEED
+from consts import SPEED
 
 
 class Player(pygame.sprite.Sprite):

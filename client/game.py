@@ -4,7 +4,7 @@ import sys
 import pygame
 
 from level import Level
-from settings import *
+from consts import *
 
 
 class Game:
@@ -21,11 +21,14 @@ class Game:
         self.level = Level()
 
     def run(self):
+
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+
+                # send()
 
             self.screen.fill('black')
             self.level.run()
