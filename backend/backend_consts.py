@@ -2,23 +2,19 @@
 # SqlDatabase configurations
 SQL_TYPE = "mysql"
 DB_PORT = 3306
-DB_NAME = "users"
-DB_USERNAME = "dummy"
+DB_NAME = "db"
+DB_USERNAME = "reem"
+DB_IP = "127.0.0.1"
+DB_PASS = "12"
 
 
-# SqlDatabase configurations
+# SqlDatabase tables configurations
 MAX_SIZE = 0xff
 USERS_CREDENTIALS_TABLE = "users_creds"
 PLAYER_STATS_TABLE = "players_stats"
 CHAT_TABLE = "chat"
 
-# Column Numbers
-USERNAME_COL = 0
-HASH_COL = 1
-SALT_COL = 2
-
-# Scrypt Consts
-SCRYPT_KEY_LENGTH = 32
-SCRYPT_N = 2 ** 14
-SCRYPT_R = 8
-SCRYPT_P = 1
+# Server configurations
+SERVER_IP = "127.0.0.1"
+SERVER_PORT = 9001
+THREADS_COUNT = 2

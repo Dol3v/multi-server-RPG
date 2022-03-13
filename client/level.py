@@ -1,8 +1,7 @@
 import pygame
 
-from debug import debug
 from player import Player
-from settings import *
+from consts import *
 from tile import Tile
 
 
@@ -28,7 +27,6 @@ class Level:
     def run(self):
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
-        debug(self.player.direction)
 
 
 class YSortCameraGroup(pygame.sprite.Group):

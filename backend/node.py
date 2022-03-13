@@ -1,165 +1,57 @@
-from dataclasses import dataclass
-from enum import Enum, auto
-from selectors import DefaultSelector, SelectorKey, EVENT_READ, EVENT_WRITE
-from typing import List
+import sys, logging, socket, threading
 
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, generate_private_key, \
-    EllipticCurvePublicKey, ECDH
-from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+# to import from a dir
+sys.path.append('../')
+from database import SqlDatabase
+from backend_consts import *
 
-from authentication import *
-from backend.player import Player
-from common.communication import recv, PacketID, send
-from common.consts import ELLIPTIC_CURVE, COMPRESSED_POINT_SIZE, SHARED_KEY_SIZE, SERVER_IP, SERVER_PORT
+class Node:
 
-sel = DefaultSelector()
-hkdf = HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data")
-players = []
+    def __init__(self, ip, port):
+        self.address = (ip, port)
+        self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # timeout of 0.5 seconds
+        self.server_sock.settimeout(0.5)
+        self.entities = {}
+        # Starts the node
+        self.run()
 
 
-class ConnectionState(Enum):
-    WAITING_FOR_DH = auto()
-    CLIENT_RECEIVED_KEY = auto()
-    SERVER_RECEIVED_KEY = auto()
-    # and signup
-    WAITING_FOR_LOGIN = auto()
-    WAITING_FOR_LOGIN_CONFIRM = auto()
-    # basically default afterwards
-    CONNECTION_UP = auto()
+    def handle_clients(self):
+        """
+        Use: communicate with client
+        param: conn: socket for communication
+        """
+        while True:
+            try:
+                data, addr = self.server_sock.recvfrom(1024) 
+                print(f"[CLIENT]{addr}: {data}")
+
+                self.server_sock.sendto(b"[SERVER]: hello from server", addr)
+            except:
+                ...
 
 
-@dataclass
-class ConnectionData:
-    shared_key: bytes
-    private_key: EllipticCurvePrivateKey
-    player: Player | None
-    state: ConnectionState
-    send_list: List[tuple[PacketID, bytes]]
+
+    def run(self):
+        """
+        Use: starts node threads
+        """
+
+        self.server_sock.bind(self.address)
+
+        try:
+            for i in range(THREADS_COUNT):
+               # starts thread per client
+               client_thread = threading.Thread(target=self.handle_clients) 
+               client_thread.start()
 
 
-def handle_signup_request(data: ConnectionData, username: str, password: bytes, db: SqlDatabase):
-    """Handles sign up. If successful, adds the player's creds to the database, adds a player object to players,
-    and adds SERVER_OK to send_list. Else, it adds SERVER_NOK."""
-    result, error_msg = signup(username, password, db)
-    if result:
-        data.send_list.append((PacketID.SERVER_OK, bytes()))
-        data.player.username = username
-        players.append(data.player)
-    else:
-        data.send_list.append((PacketID.SERVER_NOK, bytes()))
+        except Exception as e:
+            logging.error(f"[SERVER Error]: {e}")
 
-
-def handle_login_request(data: ConnectionData, username: str, password: bytes, db: SqlDatabase):
-    """Handles login. """
-    if verify_login(username, password, db=db):
-        data.send_list.append((PacketID.SERVER_OK, bytes()))
-        data.player.username = username  # username
-        players.append(data.player)
-    else:
-        data.send_list.append((PacketID.SERVER_NOK, bytes()))
-
-
-def handle_movement(data: ConnectionData, content: bytes):
-    x_delta, y_delta = content
-    data.player.x += x_delta
-    data.player.y += y_delta
-    print(data.player.x, data.player.y)
-
-
-def handle_dh(data: ConnectionData, conn: socket.socket, mask: int):
-    if mask & EVENT_READ and data.state != ConnectionState.SERVER_RECEIVED_KEY:
-        # receive client public key, and create shared-derived key from it
-        peer_public_key = EllipticCurvePublicKey.from_encoded_point(
-            curve=ELLIPTIC_CURVE, data=conn.recv(COMPRESSED_POINT_SIZE))
-        shared = data.private_key.exchange(ECDH(), peer_public_key)
-        data.shared_key = hkdf.derive(shared)
-        # state update
-        data.state = ConnectionState.WAITING_FOR_LOGIN \
-            if data.state == ConnectionState.CLIENT_RECEIVED_KEY else ConnectionState.SERVER_RECEIVED_KEY
-
-    if mask & EVENT_WRITE and data.state != ConnectionState.CLIENT_RECEIVED_KEY:
-        # send server's public key
-        conn.send(data.private_key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint))
-        # state update
-        data.state = ConnectionState.WAITING_FOR_LOGIN \
-            if data.state == ConnectionState.SERVER_RECEIVED_KEY else ConnectionState.CLIENT_RECEIVED_KEY
-
-
-def serve(key: SelectorKey, mask: int, db: SqlDatabase):
-    conn: socket.socket = key.fileobj
-    data = key.data
-    if mask & EVENT_READ:
-        if data.state == ConnectionState.WAITING_FOR_DH or data.state == ConnectionState.CLIENT_RECEIVED_KEY:
-            # receive client public key, and create shared-derived key from it
-            peer_public_key = EllipticCurvePublicKey.from_encoded_point(
-                curve=ELLIPTIC_CURVE, data=conn.recv(COMPRESSED_POINT_SIZE))
-            shared = data.private_key.exchange(ECDH(), peer_public_key)
-            data.shared_key = hkdf.derive(shared)
-            # state update
-            data.state = ConnectionState.WAITING_FOR_LOGIN \
-                if data.state == ConnectionState.CLIENT_RECEIVED_KEY else ConnectionState.SERVER_RECEIVED_KEY
-
-        elif data.state == ConnectionState.WAITING_FOR_LOGIN:
-            creds = recv_credentials(conn, data.shared_key)
-            if not creds:
-                data.send_list.append((PacketID.SERVER_NOK, bytes()))
-            else:
-                is_login, username, password = creds
-                if is_login:
-                    handle_login_request(data, username, password, db)
-                else:
-                    handle_signup_request(data, username, password, db)
-                data.state = ConnectionState.CONNECTION_UP
-
-        elif data.state == ConnectionState.CONNECTION_UP:
-            # connection is up, we can receive data and handle it accordingly
-            info = recv(conn, data.shared_key)
-            if not info:
-                logging.info(f"No data was sent from {conn=}")
-            else:
-                match info.packet_type:
-                    case PacketID.USER_DIR:
-                        handle_movement(data, info.content)
-
-    if mask & EVENT_WRITE:
-        if data.state == ConnectionState.WAITING_FOR_DH or data.state == ConnectionState.SERVER_RECEIVED_KEY:
-            # send server's public key
-            conn.send(data.private_key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint))
-            # state update
-            data.state = ConnectionState.WAITING_FOR_LOGIN \
-                if data.state == ConnectionState.SERVER_RECEIVED_KEY else ConnectionState.CLIENT_RECEIVED_KEY
-        elif len(data.send_list) != 0:
-            packet_id, content = data.send_list.pop(0)
-            send(content, packet_id, conn, data.shared_key)
-
-
-def accept(server_sock: socket.socket):
-    conn, addr = server_sock.accept()
-    conn.setblocking(False)
-    logging.info(f"Client {addr} joined")
-    sel.register(conn, EVENT_READ | EVENT_WRITE, data=ConnectionData(
-        bytes(), generate_private_key(ELLIPTIC_CURVE), Player(), ConnectionState.WAITING_FOR_DH, []))
 
 
 if __name__ == "__main__":
-    with SqlDatabase("127.0.0.1", "dummyPass") as database, socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        # initialization stuff
-        database.write_tables()
-        sock.bind((SERVER_IP, SERVER_PORT))
-        sock.listen()
-        sock.setblocking(False)
-        sel.register(sock, EVENT_READ, data=None)
-        # listening loop
-        try:
-            while True:
-                for key, mask in sel.select(timeout=None):
-                    if key.data is None:
-                        accept(key.fileobj)
-                    else:
-                        serve(key, mask, database)
-        except KeyboardInterrupt:
-            print("Bye byte")
-        finally:
-            sel.close()
+    Node(SERVER_IP, SERVER_PORT)
+

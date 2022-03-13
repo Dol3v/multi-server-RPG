@@ -2,6 +2,7 @@ WIDTH = 1280
 HEIGHT = 720
 FPS = 60
 TILE_SIZE = 64
+SPEED = 5
 
 WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
@@ -26,4 +27,6 @@ WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
 ]
 
-SERVER_PORT = 5000
+# Server configurations
+SERVER_PORT = 9001
+SERVER_IP = "127.0.0.1"
