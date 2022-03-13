@@ -12,6 +12,8 @@ class Game:
 
         # communication 
         self.conn = conn
+        # timeout of 0.5 seconds
+        self.conn.settimeout(0.5)
         self.server_addr = server_addr
 
 
@@ -29,12 +31,15 @@ class Game:
         """
         Use: communicate with the server over UDP.
         """
-        # sending location and actions
-        self.conn.sendto(b"location", self.server_addr)
+        try:
+            # sending location and actions
+            self.conn.sendto(b"location", self.server_addr)
 
-        # receive server update
-        data, addr = self.conn.recvfrom(1024)
-        print(f"Data: {data}\nFrom: {addr}")
+            # receive server update
+            data, addr = self.conn.recvfrom(1024)
+            print(f"Data: {data}\nFrom: {addr}")
+        except TimeoutError:
+            print("Timeout")
         
 
     def run(self):

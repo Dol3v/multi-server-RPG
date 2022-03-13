@@ -10,6 +10,8 @@ class Node:
     def __init__(self, ip, port):
         self.address = (ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # timeout of 0.5 seconds
+        self.server_sock.settimeout(0.5)
         self.entities = {}
         # Starts the node
         self.run()
@@ -21,10 +23,13 @@ class Node:
         param: conn: socket for communication
         """
         while True:
-            data, addr = self.server_sock.recvfrom(1024) 
-            print(f"[CLIENT]{addr}: {data}")
+            try:
+                data, addr = self.server_sock.recvfrom(1024) 
+                print(f"[CLIENT]{addr}: {data}")
 
-            self.server_sock.sendto(b"[SERVER]: hello from server", addr)
+                self.server_sock.sendto(b"[SERVER]: hello from server", addr)
+            except:
+                ...
 
 
 
