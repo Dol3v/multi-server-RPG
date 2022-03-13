@@ -8,17 +8,34 @@ from consts import *
 
 
 class Game:
-    def __init__(self, conn: socket.socket):
+    def __init__(self, conn: socket.socket, server_addr: tuple):
 
-        # general setup
-        pygame.init()
+        # communication 
         self.conn = conn
+        self.server_addr = server_addr
+
+
+        # pygame globals
+        pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("MMORPG Game")
         pygame.display.set_icon(pygame.image.load('idle_down.png'))
         self.clock = pygame.time.Clock()
 
+        # logic
         self.level = Level()
+
+    def server_handler(self):
+        """
+        Use: communicate with the server over UDP.
+        """
+        # sending location and actions
+        self.conn.sendto(b"location", self.server_addr)
+
+        # receive server update
+        data, addr = self.conn.recvfrom(1024)
+        print(f"Data: {data}\nFrom: {addr}")
+        
 
     def run(self):
 
@@ -28,9 +45,13 @@ class Game:
                     pygame.quit()
                     sys.exit()
 
-                # send()
 
+            # run level
             self.screen.fill('black')
             self.level.run()
             pygame.display.update()
             self.clock.tick(FPS)
+
+            # server synchronization 
+            self.server_handler()
+

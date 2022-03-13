@@ -8,11 +8,9 @@ from consts import SERVER_PORT, SERVER_IP
 
 
 def run():
-    with socket.socket() as sock:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
 
-        sock.connect((SERVER_IP, SERVER_PORT))
-
-        game = Game(sock)   
+        game = Game(sock, (SERVER_IP, SERVER_PORT))   
         game.run()
 
 
