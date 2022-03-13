@@ -1,3 +1,5 @@
+import random
+
 import pygame
 from settings import *
 from level import Level
@@ -144,7 +146,12 @@ class ConnectButton(Button):
                 if self.rect.collidepoint(event.pos):
                     print("Clicked")
                     self.game.current_screen.is_loading_animation = True
-                    #self.game.current_screen = Level()
+                    connect_screen = self.game.current_screen
+                    ip = connect_screen.get_sprite_by_position(1).text
+                    username = connect_screen.get_sprite_by_position(3).text
+                    password = connect_screen.get_sprite_by_position(5).text
+
+                    self.game.current_screen = Level()
 
 
 class Animation:
@@ -165,11 +172,12 @@ class Animation:
         self.loop_count = 0
         self.done = False
 
-    def get_next_frame(self, now):
+    def get_next_frame(self):
         """
         Advance the frame if enough time has elapsed and the animation has
         not finished looping.
         """
+        now = pygame.time.get_ticks()
         if not self.timer:
             self.timer = now
         if not self.done and now - self.timer > 1000.0 / self.fps:
@@ -188,3 +196,48 @@ class Animation:
         self.timer = None
         self.loop_count = 0
         self.done = False
+
+
+class TipBox(pygame.sprite.Sprite):
+    def __init__(self, x, y, font, seconds_per_tip):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.pos = (x, y)
+        self.font = font
+        self.seconds_per_tip = seconds_per_tip
+
+        with open("assets/tips.txt") as f:
+            self.tips = [line.rstrip('\n') for line in f]
+
+        self.tip = random.choice(self.tips)
+        self.now = pygame.time.get_ticks()
+        self.timer = None
+        self.width = 0
+        self.render_text()
+
+    def render_text(self):
+        t_surf = self.font.render(self.tip, True, (0, 0, 0), None)
+        self.width = t_surf.get_width()
+        self.pos = ((WIDTH - self.width) / 2, self.y)
+
+        self.image = pygame.Surface((t_surf.get_width(), t_surf.get_height()),
+                                    pygame.SRCALPHA)
+        self.width = t_surf.get_width()
+        self.image.blit(t_surf, (0, 0))
+        self.rect = self.image.get_rect(topleft=self.pos)
+
+    def update(self, event_list):
+        self.now = pygame.time.get_ticks()
+
+        if not self.timer:
+            self.timer = pygame.time.get_ticks()
+
+        if self.now - self.timer > 1000 * self.seconds_per_tip:
+            print("Changed!")
+
+            random_tip = self.tip
+            while self.tip == random_tip:
+                self.tip = random.choice(self.tips)
+            self.timer = self.now
+        self.render_text()

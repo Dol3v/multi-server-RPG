@@ -2,7 +2,6 @@ import pygame
 from settings import *
 from tile import Tile
 from player import Player
-from debug import debug
 
 
 class Level:
@@ -10,6 +9,14 @@ class Level:
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = YSortCameraGroup()
         self.obstacles_sprites = pygame.sprite.Group()
+
+        self.health_background = pygame.image.load("assets/health/health_background.png")
+        self.health_background = pygame.transform.scale(self.health_background, (self.health_background.get_width() * 4,
+                                                                                 self.health_background.get_height() * 4))
+
+        self.health_bar = pygame.image.load("assets/health/health_bar.png")
+        self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
+                                                                   self.health_bar.get_height() * 4))
 
         self.create_map()
 
@@ -27,7 +34,14 @@ class Level:
         self.display_surface.fill("black")
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
-        debug(self.player.direction)
+        self.draw_health_bar()
+
+    def draw_health_bar(self):
+        self.display_surface.blit(self.health_background, (WIDTH * 0, HEIGHT * 0.895))
+
+        width = (self.player.current_health / self.player.max_health) * self.health_bar.get_width() # Health Percentage
+        new_bar = pygame.transform.scale(self.health_bar, (width, self.health_bar.get_height()))
+        self.display_surface.blit(new_bar, (WIDTH * 0.06, HEIGHT * 0.94))
 
 
 class YSortCameraGroup(pygame.sprite.Group):

@@ -32,9 +32,10 @@ class ConnectScreen:
         connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, "assets/connect_btn.png", game)
         connect_btn.position_center()
 
+        self.tip_box = TipBox(0, HEIGHT * 0.8, pygame.font.SysFont("arial", 30), 5)
+
         self.group = pygame.sprite.Group(server_ip, input_box, username, username_input,
                                          password, password_input, connect_btn)
-
         anim = [None] * 40
         for i in range(40):
             anim[i] = pygame.image.load(f"assets/loading_animation/l-{i}.png")
@@ -47,12 +48,24 @@ class ConnectScreen:
         self.group.update(event_list)
         if not self.is_loading_animation:
             self.group.draw(self.screen)
-        self.run_loading_animation()
+        else:
+            self.run_loading_animation()
+            text = Text(0, HEIGHT * 0.75, "Some Useful Tips:", pygame.font.SysFont("arial", 30))
+            text.position_center()
+            new_group = pygame.sprite.Group(self.tip_box, text)
+            new_group.update(event_list)
+            new_group.draw(self.screen)
 
     def run_loading_animation(self):
         if self.is_loading_animation:
-            frame = self.loading_animation.get_next_frame(pygame.time.get_ticks())
-            # frame = pygame.transform.scale(frame, (frame.get_width() * 2, frame.get_height() * 2))
+            frame = self.loading_animation.get_next_frame()
+            frame = pygame.transform.scale(frame, (WIDTH * 0.375, HEIGHT * 0.5))
             x = (WIDTH - frame.get_width()) / 2
             y = (HEIGHT - frame.get_height()) / 2
             self.screen.blit(frame, (x, y))
+
+    def get_sprite_by_position(self, position):
+        for index, spr in enumerate(self.group):
+            if index == position:
+                return spr
+        return False

@@ -1,19 +1,18 @@
 import pygame
-import os
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, obstacle_sprites):
         super().__init__(groups)
-        sourceFileDir = os.path.dirname(os.path.abspath(__file__))
-        fondImgPath = os.path.join(sourceFileDir, 'assets/idle_down.png')
-        self.image = pygame.image.load(fondImgPath).convert_alpha()
+        self.image = pygame.image.load('assets/idle_down.png').convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
 
         self.direction = pygame.math.Vector2()
         self.speed = 5
 
         self.obstacle_sprites = obstacle_sprites
+        self.max_health = 100
+        self.current_health = self.max_health
 
     def input(self):
         keys = pygame.key.get_pressed()
