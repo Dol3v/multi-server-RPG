@@ -47,8 +47,7 @@ class Game:
         """
         Use: print client by the given x and y
         """
-        self.screen.blit(self.player_img, (x, y))
-        pygame.display.update()
+        self.screen.blit(self.player_img, self.player_img.get_rect(center=(x, y)))
 
     
     def render_clients(self, clients_info: list):
@@ -71,9 +70,9 @@ class Game:
 
             # run level
             self.screen.fill('black')
-            self.render_client(-121, 440)
+            self.render_client(0, 0)
             self.level.run()
-            pygame.display.update()
+            pygame.display.flip()
             self.clock.tick(FPS)
 
             # server synchronization 
