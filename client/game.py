@@ -6,7 +6,6 @@ import pygame
 from level import Level
 from consts import *
 
-
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple):
 
@@ -20,9 +19,11 @@ class Game:
         # pygame globals
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("MMORPG Game")
-        pygame.display.set_icon(pygame.image.load('idle_down.png'))
+        pygame.display.set_caption(GAME_NAME)
+        pygame.display.set_icon(pygame.image.load(PLAYER_IMG))
         self.clock = pygame.time.Clock()
+
+        self.player_img = pygame.image.load(PLAYER_IMG)
 
         # logic
         self.level = Level()
@@ -41,6 +42,23 @@ class Game:
         except TimeoutError:
             print("Timeout")
         
+    # ------------------------------------------------------------------
+    def render_client(self, x: int, y: int):
+        """
+        Use: print client by the given x and y
+        """
+        self.screen.blit(self.player_img, (x, y))
+        pygame.display.update()
+
+    
+    def render_clients(self, clients_info: list):
+        """
+        Use: prints the other clients by the given info about them
+        """
+        for client in clients_info:
+            render_client(client[0][1])
+    # ------------------------------------------------------------------
+
 
     def run(self):
 
@@ -53,10 +71,13 @@ class Game:
 
             # run level
             self.screen.fill('black')
+            self.render_client(-121, 440)
             self.level.run()
             pygame.display.update()
             self.clock.tick(FPS)
 
             # server synchronization 
             self.server_handler()
+
+
 
