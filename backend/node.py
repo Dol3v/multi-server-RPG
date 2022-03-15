@@ -1,9 +1,14 @@
-import sys, logging, socket, threading
+import logging
+import socket
+import struct
+import sys
+import threading
+
+from backend_consts import *
+from common.protocol_api import *
 
 # to import from a dir
 sys.path.append('../')
-from database import SqlDatabase
-from backend_consts import *
 
 
 class Node:
@@ -12,7 +17,7 @@ class Node:
         self.address = (ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # timeout of 0.5 seconds
-        self.server_sock.settimeout(0.5)
+        # self.server_sock.settimeout(0.5)
         self.entities = {}
         # Starts the node
         self.run()
@@ -20,16 +25,22 @@ class Node:
     def handle_clients(self):
         """
         Use: communicate with client
-        param: conn: socket for communication
         """
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(1024)
-                print(f"[CLIENT]{addr}: {data}")
+                # update current player data
+                player_pos = struct.unpack(">ll", data)
+                update_msg = encode_entity_locations_for_player(self.entities, player_pos=player_pos)
 
-                self.server_sock.sendto(b"[SERVER]: hello from server", addr)
-            except:
-                ...
+                # send message to client only if there is something to update
+                if update_msg:
+                    self.server_sock.sendto(update_msg, addr)
+
+                self.entities[addr] = parse(CLIENT_FORMAT, data)
+
+            except Exception as e:
+                print(e)
 
     def run(self):
         """
@@ -43,7 +54,6 @@ class Node:
                 # starts thread per client
                 client_thread = threading.Thread(target=self.handle_clients)
                 client_thread.start()
-
 
         except Exception as e:
             logging.error(f"[SERVER Error]: {e}")
