@@ -1,5 +1,6 @@
 import logging
 import socket
+import struct
 import sys
 import threading
 
@@ -29,7 +30,8 @@ class Node:
             try:
                 data, addr = self.server_sock.recvfrom(1024)
                 # update current player data
-                update_msg = encode_entity_locations(self.entities)
+                player_pos = struct.unpack(">ll", data)
+                update_msg = encode_entity_locations_for_player(self.entities, player_pos=player_pos)
 
                 # send message to client only if there is something to update
                 if update_msg:
