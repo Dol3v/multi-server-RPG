@@ -5,7 +5,7 @@ from consts import *
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, obstacle_sprites):
+    def __init__(self, pos, groups, obstacle_sprites, create_attack, destroy_attack):
         super().__init__(*groups)
         self.image = pygame.image.load(PLAYER_IMG).convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
@@ -16,20 +16,51 @@ class Player(pygame.sprite.Sprite):
         self.current_health = self.max_health
         self.obstacle_sprites = obstacle_sprites
 
+        self.create_attack = create_attack
+        self.attack_cooldown = pygame.time.get_ticks()
+        self.destroy_attack = destroy_attack
+        self.attacking = False
+
     def input(self):
+
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
+            if pygame.time.get_ticks() < self.attack_cooldown:
+                self.direction.x = 0
+                self.direction.y = 0
+                return
             self.direction.y = -1
         elif keys[pygame.K_s]:
+            if pygame.time.get_ticks() < self.attack_cooldown:
+                self.direction.x = 0
+                self.direction.y = 0
+                return
             self.direction.y = 1
         else:
             self.direction.y = 0
         if keys[pygame.K_d]:
+            if pygame.time.get_ticks() < self.attack_cooldown:
+                self.direction.x = 0
+                self.direction.y = 0
+                return
             self.direction.x = 1
         elif keys[pygame.K_a]:
+            if pygame.time.get_ticks() < self.attack_cooldown:
+                self.direction.x = 0
+                self.direction.y = 0
+                return
             self.direction.x = -1
         else:
             self.direction.x = 0
+
+        if pygame.mouse.get_pressed()[0]:  # Check if the mouse is clicked
+            if not self.attacking:
+                if self.attack_cooldown < pygame.time.get_ticks():
+                    self.create_attack()
+                    self.attacking = True
+                    self.attack_cooldown = pygame.time.get_ticks() + 600
+        else:
+            self.attacking = False
 
     def move(self, speed):
         if self.direction.magnitude() != 0:
@@ -63,7 +94,8 @@ class Player(pygame.sprite.Sprite):
         half_height = HEIGHT / 2
         return [self.rect.centerx - half_width, self.rect.centery - half_height]
 
-
     def update(self):
+        if pygame.time.get_ticks() >= self.attack_cooldown:
+            self.destroy_attack()
         self.input()
         self.move(self.speed)

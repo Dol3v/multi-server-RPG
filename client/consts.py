@@ -7,6 +7,12 @@ SPEED = 5
 GAME_NAME = "MMORPG Game"
 PLAYER_IMG = "assets/idle_down.png"
 
+weapon_data = {
+    'sword': {'cooldown': 100, 'damage': 15, 'graphics': "assets/weapons/sword/full.png"},
+    'axe': {'cooldown': 300, 'damage': 30, 'graphics': "assets/weapons/axe/full.png"}
+
+}
+
 WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
     ['x', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'x'],

@@ -5,10 +5,10 @@ from consts import *
 
 
 class ConnectScreen:
-    def __init__(self, game):
+    def __init__(self, window):
         self.width = WIDTH
         self.height = HEIGHT
-        self.screen = game.screen
+        self.screen = window.screen
         self.background = pygame.transform.scale(pygame.image.load("assets/background.jpg"), (WIDTH, HEIGHT))
 
         server_ip = Text(0, HEIGHT * 0.20, "Enter Server's IP", pygame.font.SysFont("arial", 25))
@@ -29,7 +29,7 @@ class ConnectScreen:
         password_input = LimitedTextBox(0, HEIGHT * 0.55, 250, pygame.font.SysFont("arial", 35), 15)
         password_input.position_center()
 
-        connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, "assets/connect_btn.png", game)
+        connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, "assets/connect_btn.png", window)
         connect_btn.position_center()
 
         self.tip_box = TipBox(0, HEIGHT * 0.8, pygame.font.SysFont("arial", 30), 5)

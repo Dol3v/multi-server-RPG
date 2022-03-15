@@ -151,7 +151,7 @@ class ConnectButton(Button):
                     ip = connect_screen.get_sprite_by_position(1).text
                     username = connect_screen.get_sprite_by_position(3).text
                     password = connect_screen.get_sprite_by_position(5).text
-                    print(ip)
+
                     self.window.current_screen = Game(socket.socket(socket.AF_INET, socket.SOCK_DGRAM), (ip, SERVER_PORT))
 
 
