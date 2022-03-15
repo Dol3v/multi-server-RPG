@@ -1,5 +1,9 @@
-import pygame
-import socket
+import pygame, socket, sys
+
+# to import from a dir
+sys.path.append('../')
+
+from common.protocol_api import *
 from player import Player
 from consts import *
 from tile import Tile
@@ -31,22 +35,34 @@ class Game:
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
 
+
+
+
     def server_handler(self):
         """
         Use: communicate with the server over UDP.
         """
         try:
             # sending location and actions
-            print(self.conn)
-            self.conn.sendto(b"location", self.server_addr)
+            x = self.player.rect.centerx
+            y = self.player.rect.centery
+            
+            self.conn.sendto(gen_client_msg(x, y), self.server_addr)
 
             # receive server update
-            data, addr = self.conn.recvfrom(1024)
-            print(f"Data: {data}\nFrom: {addr}")
+            data, addr = self.conn.recvfrom(ENTITIES_HEADER_LEN)
+            num_of_entities = int.from_bytes(data, "big") # may cause problems
+
+            data, addr = self.conn.recvfrom(num_of_entities * LONG_INT_SIZE)
+
+            server_msg = parse(SERVER_FORMAT * num_of_entities, data)
+
+            print(server_msg)
+            
+
         except TimeoutError:
             print("Timeout")
 
-    # ------------------------------------------------------------------
     def render_client(self, x: int, y: int):
         """
         Use: print client by the given x and y (Global locations)
@@ -61,9 +77,9 @@ class Game:
         Use: prints the other clients by the given info about them
         """
         for client in clients_info:
-            self.render_client(client[0][1])
+            #self.render_client(client[0][1])
+            ...
 
-    # ------------------------------------------------------------------
 
     def create_map(self):
         for row_index, row in enumerate(WORLD_MAP):

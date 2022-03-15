@@ -33,3 +33,4 @@ WORLD_MAP = [
 # Server configurations
 SERVER_PORT = 42069
 SERVER_IP = "127.0.0.1"
+ENTITIES_HEADER_LEN = 4

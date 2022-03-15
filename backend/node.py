@@ -4,6 +4,7 @@ import sys, logging, socket, threading
 sys.path.append('../')
 from database import SqlDatabase
 from backend_consts import *
+from common.protocol_api import *
 
 
 class Node:
@@ -22,14 +23,23 @@ class Node:
         Use: communicate with client
         param: conn: socket for communication
         """
+        # TODO: add client exit msg
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(1024)
-                print(f"[CLIENT]{addr}: {data}")
+                # update current player data
+                print(self.entities)
 
-                self.server_sock.sendto(b"[SERVER]: hello from server", addr)
-            except:
-                ...
+                update_msg = gen_server_msg(self.entities)
+
+                # send message to client only if there is something to update
+                if update_msg:
+                    self.server_sock.sendto(update_msg, addr)
+
+                self.entities[addr] = parse(CLIENT_FORMAT, data)
+
+            except Exception as e:
+                print(e)
 
     def run(self):
         """
