@@ -82,7 +82,7 @@ class Game:
         Use: prints the other clients by the given info about them
         """
         for client_pos in client_locations:
-            print(client_pos)
+            self.render_client(*client_pos)
 
     def create_map(self):
         for row_index, row in enumerate(WORLD_MAP):
@@ -98,7 +98,6 @@ class Game:
         self.display_surface.fill("black")
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
-        self.render_client(150, 150)
         self.draw_health_bar()
         self.catch_up_with_server()
 
