@@ -1,0 +1,3 @@
+CLIENT_FORMAT = '<ll'
+SERVER_FORMAT = 'll'
+LONG_INT_SIZE = 4

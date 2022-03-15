@@ -1,10 +1,13 @@
-import sys, logging, socket, threading
+import logging
+import socket
+import sys
+import threading
+
+from backend_consts import *
+from common.protocol_api import *
 
 # to import from a dir
 sys.path.append('../')
-from database import SqlDatabase
-from backend_consts import *
-from common.protocol_api import *
 
 
 class Node:
@@ -13,7 +16,7 @@ class Node:
         self.address = (ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # timeout of 0.5 seconds
-        self.server_sock.settimeout(0.5)
+        # self.server_sock.settimeout(0.5)
         self.entities = {}
         # Starts the node
         self.run()
@@ -21,16 +24,12 @@ class Node:
     def handle_clients(self):
         """
         Use: communicate with client
-        param: conn: socket for communication
         """
-        # TODO: add client exit msg
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(1024)
                 # update current player data
-                print(self.entities)
-
-                update_msg = gen_server_msg(self.entities)
+                update_msg = encode_entity_locations(self.entities)
 
                 # send message to client only if there is something to update
                 if update_msg:
@@ -53,7 +52,6 @@ class Node:
                 # starts thread per client
                 client_thread = threading.Thread(target=self.handle_clients)
                 client_thread.start()
-
 
         except Exception as e:
             logging.error(f"[SERVER Error]: {e}")
