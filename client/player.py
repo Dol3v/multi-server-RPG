@@ -1,7 +1,7 @@
 import pygame
 import os
 
-from consts import SPEED
+from consts import *
 
 
 class Player(pygame.sprite.Sprite):
@@ -58,6 +58,12 @@ class Player(pygame.sprite.Sprite):
                         self.rect.bottom = sprite.rect.top
                     if self.direction.y < 0:  # moving up
                         self.rect.top = sprite.rect.bottom
+
+    def get_screen_location(self):
+        half_width = WIDTH / 2
+        half_height = HEIGHT / 2
+        return [self.rect.centerx - half_width, self.rect.centery - half_height]
+
 
     def update(self):
         self.input()

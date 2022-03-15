@@ -3,9 +3,8 @@ import sys
 
 import pygame
 
-from level import Level
+from map import Map
 from consts import *
-
 
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple):
@@ -20,27 +19,12 @@ class Game:
         # pygame globals
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("MMORPG Game")
-        pygame.display.set_icon(pygame.image.load('idle_down.png'))
+        pygame.display.set_caption(GAME_NAME)
+        pygame.display.set_icon(pygame.image.load(PLAYER_IMG))
         self.clock = pygame.time.Clock()
 
         # logic
-        self.level = Level()
-
-    def server_handler(self):
-        """
-        Use: communicate with the server over UDP.
-        """
-        try:
-            # sending location and actions
-            self.conn.sendto(b"location", self.server_addr)
-
-            # receive server update
-            data, addr = self.conn.recvfrom(1024)
-            print(f"Data: {data}\nFrom: {addr}")
-        except TimeoutError:
-            print("Timeout")
-        
+        self.level = Map(self)
 
     def run(self):
 
@@ -54,9 +38,8 @@ class Game:
             # run level
             self.screen.fill('black')
             self.level.run()
-            pygame.display.update()
+            pygame.display.flip()
             self.clock.tick(FPS)
 
-            # server synchronization 
-            self.server_handler()
+
 
