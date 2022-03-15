@@ -16,5 +16,5 @@ CHAT_TABLE = "chat"
 
 # Server configurations
 SERVER_IP = "127.0.0.1"
-SERVER_PORT = 9001
+SERVER_PORT = 42069
 THREADS_COUNT = 2

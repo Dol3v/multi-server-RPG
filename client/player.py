@@ -7,14 +7,13 @@ from consts import *
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, obstacle_sprites):
         super().__init__(*groups)
-        source_file_dir = os.path.dirname(os.path.abspath(__file__))
-        fond_img_path = os.path.join(source_file_dir, 'idle_down.png')
-        self.image = pygame.image.load(fond_img_path).convert_alpha()
+        self.image = pygame.image.load(PLAYER_IMG).convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
 
         self.direction = pygame.math.Vector2()
         self.speed = SPEED
-
+        self.max_health = 100
+        self.current_health = self.max_health
         self.obstacle_sprites = obstacle_sprites
 
     def input(self):

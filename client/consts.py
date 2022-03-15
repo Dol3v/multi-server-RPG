@@ -1,10 +1,11 @@
+
 WIDTH = 1280
 HEIGHT = 720
 FPS = 60
 TILE_SIZE = 64
 SPEED = 5
 GAME_NAME = "MMORPG Game"
-PLAYER_IMG = "idle_down.png"
+PLAYER_IMG = "assets/idle_down.png"
 
 WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
@@ -30,5 +31,5 @@ WORLD_MAP = [
 ]
 
 # Server configurations
-SERVER_PORT = 9001
+SERVER_PORT = 42069
 SERVER_IP = "127.0.0.1"
