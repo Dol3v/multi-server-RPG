@@ -12,7 +12,8 @@ class Player(pygame.sprite.Sprite):
 
         self.direction = pygame.math.Vector2()
         self.speed = SPEED
-
+        self.max_health = 100
+        self.current_health = self.max_health
         self.obstacle_sprites = obstacle_sprites
 
     def input(self):

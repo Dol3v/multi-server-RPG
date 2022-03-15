@@ -1,20 +1,35 @@
 import pygame
-
+import socket
 from player import Player
 from consts import *
 from tile import Tile
 
 
 class Game:
-    def __init__(self, window):
+    def __init__(self, conn: socket.socket, server_addr: tuple):
         self.player = None  # FIXME: where do u update self.player lol (temp to create new commit, will be removed)
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = FollowingCameraGroup()
         self.obstacles_sprites = pygame.sprite.Group()
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.create_map()
-        self.conn = window.conn
-        self.server_addr = window.server_addr
+
+        self.conn = conn
+        print(self.conn)
+
+        # communication
+        # timeout of 0.5 seconds
+        self.conn.settimeout(0.5)
+
+        self.server_addr = server_addr
+
+        self.health_background = pygame.image.load("assets/health/health_background.png")
+        self.health_background = pygame.transform.scale(self.health_background, (self.health_background.get_width() * 4,
+                                                                                 self.health_background.get_height() * 4))
+
+        self.health_bar = pygame.image.load("assets/health/health_bar.png")
+        self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
+                                                                   self.health_bar.get_height() * 4))
 
     def server_handler(self):
         """
@@ -22,6 +37,7 @@ class Game:
         """
         try:
             # sending location and actions
+            print(self.conn)
             self.conn.sendto(b"location", self.server_addr)
 
             # receive server update
@@ -64,7 +80,15 @@ class Game:
         self.visible_sprites.custom_draw(self.player)
         self.visible_sprites.update()
         self.render_client(150, 150)
+        self.draw_health_bar()
         self.server_handler()
+
+    def draw_health_bar(self):
+        self.display_surface.blit(self.health_background, (WIDTH * 0, HEIGHT * 0.895))
+
+        width = (self.player.current_health / self.player.max_health) * self.health_bar.get_width() # Health Percentage
+        new_bar = pygame.transform.scale(self.health_bar, (width, self.health_bar.get_height()))
+        self.display_surface.blit(new_bar, (WIDTH * 0.06, HEIGHT * 0.94))
 
 
 class FollowingCameraGroup(pygame.sprite.Group):

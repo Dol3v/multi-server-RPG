@@ -31,5 +31,5 @@ WORLD_MAP = [
 ]
 
 # Server configurations
-SERVER_PORT = 9001
+SERVER_PORT = 42069
 SERVER_IP = "127.0.0.1"
