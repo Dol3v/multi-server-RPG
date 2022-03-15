@@ -1,7 +1,7 @@
 import random
 
 import pygame
-from settings import *
+from consts import *
 from level import Level
 
 

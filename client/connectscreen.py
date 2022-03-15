@@ -1,7 +1,7 @@
 import pygame.transform
 
 from py_utils import *
-from settings import *
+from consts import *
 
 
 class ConnectScreen:

@@ -2,7 +2,7 @@ import pygame
 import sys
 
 from level import Level
-from settings import *
+from consts import *
 from connectscreen import ConnectScreen
 
 

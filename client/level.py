@@ -1,5 +1,5 @@
 import pygame
-from settings import *
+from consts import *
 from tile import Tile
 from player import Player
 
