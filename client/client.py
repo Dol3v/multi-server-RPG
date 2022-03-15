@@ -2,7 +2,7 @@ import socket
 import sys
 
 # to import from a dir
-sys.path.append('../')
+
 from game import Game
 from consts import SERVER_PORT, SERVER_IP
 
