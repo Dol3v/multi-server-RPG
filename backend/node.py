@@ -5,7 +5,7 @@ import sys
 import threading
 
 from backend_consts import *
-from common.protocol_api import *
+from common.utils import *
 
 # to import from a dir
 sys.path.append('../')
@@ -22,6 +22,28 @@ class Node:
         # Starts the node
         self.run()
 
+    @staticmethod
+    def parse_client_message(contents: bytes) -> tuple | None:
+        try:
+            return struct.unpack(CLIENT_FORMAT, contents)
+        except struct.error:
+            return None
+
+    @staticmethod
+    def encode_entity_locations_for_player(entities: dict, player_pos: Tuple[int, int]) -> bytes | None:
+        """
+        Use: generate the client message bytes by this format.
+        Format: [entities in range + HP + invalid operation]
+        """
+        msg_format = "l" + "ll" * len(entities)
+        # converts list of tuples into a list
+        entities_pos = [item for t in filter(lambda val: entities.get(val) != player_pos, entities.values()) for item in
+                        t]
+        try:
+            return struct.pack(msg_format, len(entities), *entities_pos)
+        except Exception:
+            return None
+
     def handle_clients(self):
         """
         Use: communicate with client
@@ -30,14 +52,12 @@ class Node:
             try:
                 data, addr = self.server_sock.recvfrom(1024)
                 # update current player data
-                player_pos = struct.unpack(">ll", data)
-                update_msg = encode_entity_locations_for_player(self.entities, player_pos=player_pos)
-
-                # send message to client only if there is something to update
-                if update_msg:
-                    self.server_sock.sendto(update_msg, addr)
-
-                self.entities[addr] = parse(CLIENT_FORMAT, data)
+                player_pos = self.parse_client_message(data)
+                if not player_pos:
+                    break
+                update_msg = self.encode_entity_locations_for_player(self.entities, player_pos=player_pos)
+                self.server_sock.sendto(update_msg, addr)
+                self.entities[addr] = player_pos
 
             except Exception as e:
                 print(e)
