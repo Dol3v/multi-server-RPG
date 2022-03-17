@@ -1,16 +1,22 @@
-import socket
-import sys
-
-# to import from a dir
-
-from window import Window
-from consts import SERVER_PORT, SERVER_IP
+from connectscreen import ConnectScreen
+from game import Game
+import pygame
+from consts import *
 
 
-def run():
-    window = Window()
-    window.run()
+class App:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        self.fullscreen = False
+        pygame.display.set_caption(GAME_NAME)
+        pygame.display.set_icon(pygame.image.load(PLAYER_IMG))
+        stage = ConnectScreen(self.screen)
+        stage.run()
+
+        stage = Game(stage.sock, stage.addr, stage.full_screen)
+        stage.run()
 
 
 if __name__ == "__main__":
-    run()
+    App()

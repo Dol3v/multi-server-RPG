@@ -7,10 +7,11 @@ from consts import *
 from tile import Tile
 from weapon import Weapon
 import math
+import sys
 
 
 class Game:
-    def __init__(self, conn: socket.socket, server_addr: tuple):
+    def __init__(self, conn: socket.socket, server_addr: tuple, full_screen):
         self.player = None  # FIXME: where do u update self.player lol (temp to create new commit, will be removed)
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = FollowingCameraGroup()
@@ -19,7 +20,10 @@ class Game:
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.create_map()
 
+        self.full_screen = full_screen
         self.conn = conn
+        self.running = False
+        self.clock = pygame.time.Clock()
 
         # communication
         # timeout of 0.5 seconds
@@ -88,7 +92,7 @@ class Game:
         vec_x = (mouse_pos[0] - center_x)
         vec_y = (mouse_pos[1] - center_y)
 
-        vec = self.normalize(vec_x,vec_y)
+        vec = self.normalize(vec_x, vec_y)
 
         self.attack_sprite = Weapon(self.player, [self.visible_sprites], vec)
 
@@ -97,18 +101,34 @@ class Game:
             self.attack_sprite.kill()
         self.attack_sprite = None
 
-    def normalize(self,x, y) -> Tuple[float, float]:
+    def normalize(self, x, y) -> Tuple[float, float]:
         factor = math.sqrt(x ** 2 + y ** 2)
         return x / factor, y / factor
 
+    def run(self):
+        self.running = True
 
-    def run(self, event_list):
-        self.display_surface.fill("black")
-        self.visible_sprites.custom_draw(self.player)
-        self.visible_sprites.update()
-        self.render_client(150, 150)
-        self.draw_health_bar()
-        self.server_handler()
+        while self.running:
+            event_list = pygame.event.get()
+            for event in event_list:
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN and pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                        if self.full_screen:
+                            pygame.display.set_mode((WIDTH, HEIGHT))
+                        else:
+                            pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+                        self.full_screen = not self.full_screen
+            self.display_surface.fill("black")
+            self.visible_sprites.custom_draw(self.player)
+            self.visible_sprites.update()
+            self.render_client(150, 150)
+            self.draw_health_bar()
+            pygame.display.update()
+            self.clock.tick(FPS)
+            self.server_handler()
 
     def draw_health_bar(self):
         self.display_surface.blit(self.health_background, (WIDTH * 0, HEIGHT * 0.895))

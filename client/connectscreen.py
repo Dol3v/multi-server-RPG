@@ -1,15 +1,20 @@
 import pygame.transform
-
+import sys
 from py_utils import *
 from consts import *
 
 
 class ConnectScreen:
-    def __init__(self, window):
+    def __init__(self, screen):
         self.width = WIDTH
         self.height = HEIGHT
-        self.screen = window.screen
+        self.screen = screen
         self.background = pygame.transform.scale(pygame.image.load("assets/background.jpg"), (WIDTH, HEIGHT))
+        self.running = False
+        self.full_screen = False
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addr = None
+        self.clock = pygame.time.Clock()
 
         server_ip = Text(0, HEIGHT * 0.20, "Enter Server's IP", pygame.font.SysFont("arial", 25))
         server_ip.position_center()
@@ -29,7 +34,7 @@ class ConnectScreen:
         password_input = LimitedTextBox(0, HEIGHT * 0.55, 250, pygame.font.SysFont("arial", 35), 15)
         password_input.position_center()
 
-        connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, "assets/connect_btn.png", window)
+        connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, "assets/connect_btn.png", self)
         connect_btn.position_center()
 
         self.tip_box = TipBox(0, HEIGHT * 0.8, pygame.font.SysFont("arial", 30), 5)
@@ -43,18 +48,38 @@ class ConnectScreen:
         self.loading_animation = Animation(anim, 40)
         self.is_loading_animation = False
 
-    def run(self, event_list):
-        self.screen.blit(self.background, self.background.get_rect())
-        self.group.update(event_list)
-        if not self.is_loading_animation:
-            self.group.draw(self.screen)
-        else:
-            self.run_loading_animation()
-            text = Text(0, HEIGHT * 0.75, "Some Useful Tips:", pygame.font.SysFont("arial", 30))
-            text.position_center()
-            new_group = pygame.sprite.Group(self.tip_box, text)
-            new_group.update(event_list)
-            new_group.draw(self.screen)
+    def run(self):
+        self.running = True
+
+        while self.running:
+
+            event_list = pygame.event.get()
+            for event in event_list:
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN and pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                        if self.full_screen:
+                            self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+                        else:
+                            self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+                        self.full_screen = not self.full_screen
+
+            self.screen.blit(self.background, self.background.get_rect())
+            self.group.update(event_list)
+            if not self.is_loading_animation:
+                self.group.draw(self.screen)
+            else:
+                self.run_loading_animation()
+                text = Text(0, HEIGHT * 0.75, "Some Useful Tips:", pygame.font.SysFont("arial", 30))
+                text.position_center()
+                new_group = pygame.sprite.Group(self.tip_box, text)
+                new_group.update(event_list)
+                new_group.draw(self.screen)
+
+            pygame.display.update()
+            self.clock.tick(FPS)
 
     def run_loading_animation(self):
         if self.is_loading_animation:
@@ -69,3 +94,25 @@ class ConnectScreen:
             if index == position:
                 return spr
         return False
+
+    def connect_to_server(self, ip, username, password):
+        self.running = False
+        self.addr = (ip, SERVER_PORT)
+
+
+class ConnectButton(Button):
+    def __init__(self, x, y, width, height, image_path, connect_screen):
+        super().__init__(x, y, width, height, image_path)
+        self.connect_screen = connect_screen
+
+    def update(self, event_list):
+        self.render_button()
+        for event in event_list:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if self.rect.collidepoint(event.pos):
+                    print("Clicked")
+                    self.connect_screen.is_loading_animation = True
+                    ip = self.connect_screen.get_sprite_by_position(1).text
+                    username = self.connect_screen.get_sprite_by_position(3).text
+                    password = self.connect_screen.get_sprite_by_position(5).text
+                    self.connect_screen.connect_to_server(ip, username, password)
