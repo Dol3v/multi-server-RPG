@@ -1,7 +1,12 @@
-from typing import Tuple
+import socket
+import struct
+import sys
+from typing import Tuple, List
 
 import pygame
 import socket
+from common.consts import *
+from common.utils import parse
 from player import Player
 from consts import *
 from tile import Tile
@@ -39,17 +44,40 @@ class Game:
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
 
-    def server_handler(self):
+    @staticmethod
+    def generate_client_message(x: int, y: int) -> bytes:
+        """
+        Use: generate the client message bytes by this format
+        Format: [ pos(x, y) + (new_msg || attack || attack_directiton || pick_up || equipped_id) ]
+        """
+        return struct.pack(CLIENT_FORMAT, x, y)
+
+    def catch_up_with_server(self):
         """
         Use: communicate with the server over UDP.
         """
         try:
             # sending location and actions
-            self.conn.sendto(b"location", self.server_addr)
+            x = self.player.rect.centerx
+            y = self.player.rect.centery
+
+            self.conn.sendto(self.generate_client_message(x, y), self.server_addr)
 
             # receive server update
-            data, addr = self.conn.recvfrom(1024)
-            # print(f"Data: {data}\nFrom: {addr}")
+            packet, addr = self.conn.recvfrom(1024)
+            if addr != self.server_addr:
+                return
+            num_of_entities = struct.unpack("<l", packet[:INT_TO_BYTES])[0]
+            if num_of_entities == 0:
+                return
+            print(num_of_entities)
+            entity_locations_raw = parse("<" + SERVER_FORMAT * num_of_entities, packet[INT_TO_BYTES: INT_TO_BYTES + num_of_entities * 2 * INT_TO_BYTES])
+            if entity_locations_raw:
+                entity_locations = [(entity_locations_raw[i], entity_locations_raw[i + 1])
+                                    for i in range(0, len(entity_locations_raw), 2)]
+                print(entity_locations)
+                self.render_clients(entity_locations)
+
         except TimeoutError:
             print("Timeout")
 
@@ -63,12 +91,12 @@ class Game:
         new_y = y - screen_location[1]  # Returns relative location y to the screen
         self.display_surface.blit(self.player_img, self.player_img.get_rect(center=(new_x, new_y)))
 
-    def render_clients(self, clients_info: list):
+    def render_clients(self, client_locations: List[Tuple[int, int]]):
         """
         Use: prints the other clients by the given info about them
         """
-        for client in clients_info:
-            self.render_client(client[0][1])
+        for client_pos in client_locations:
+            self.render_client(*client_pos)
 
     # ------------------------------------------------------------------
 
@@ -124,11 +152,10 @@ class Game:
             self.display_surface.fill("black")
             self.visible_sprites.custom_draw(self.player)
             self.visible_sprites.update()
-            self.render_client(150, 150)
             self.draw_health_bar()
+            self.catch_up_with_server()
             pygame.display.update()
             self.clock.tick(FPS)
-            self.server_handler()
 
     def draw_health_bar(self):
         self.display_surface.blit(self.health_background, (WIDTH * 0, HEIGHT * 0.895))

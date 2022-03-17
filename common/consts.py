@@ -1,0 +1,3 @@
+CLIENT_FORMAT = '<ll'
+SERVER_FORMAT = 'll'
+INT_TO_BYTES = 4
