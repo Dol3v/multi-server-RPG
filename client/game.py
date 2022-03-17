@@ -6,7 +6,7 @@ from typing import Tuple, List
 import pygame
 
 from common.consts import *
-from common.protocol_api import generate_client_message, parse
+from common.utils import parse
 from consts import *
 from player import Player
 from tile import Tile
@@ -40,6 +40,14 @@ class Game:
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
 
+    @staticmethod
+    def generate_client_message(x: int, y: int) -> bytes:
+        """
+        Use: generate the client message bytes by this format
+        Format: [ pos(x, y) + (new_msg || attack || attack_directiton || pick_up || equipped_id) ]
+        """
+        return struct.pack(CLIENT_FORMAT, x, y)
+
     def catch_up_with_server(self):
         """
         Use: communicate with the server over UDP.
@@ -49,16 +57,17 @@ class Game:
             x = self.player.rect.centerx
             y = self.player.rect.centery
 
-            self.conn.sendto(generate_client_message(x, y), self.server_addr)
+            self.conn.sendto(self.generate_client_message(x, y), self.server_addr)
 
             # receive server update
             packet, addr = self.conn.recvfrom(1024)
             if addr != self.server_addr:
                 return
-            num_of_entities = struct.unpack("<l", packet[:LONG_INT_SIZE])[0]
+            num_of_entities = struct.unpack("<l", packet[:INT_TO_BYTES])[0]
             if num_of_entities == 0:
                 return
-            entity_locations_raw = parse("<" + SERVER_FORMAT * num_of_entities, packet[LONG_INT_SIZE: LONG_INT_SIZE + num_of_entities * 2 * LONG_INT_SIZE + 1])
+            print(num_of_entities)
+            entity_locations_raw = parse("<" + SERVER_FORMAT * num_of_entities, packet[INT_TO_BYTES: INT_TO_BYTES + num_of_entities * 2 * INT_TO_BYTES])
             if entity_locations_raw:
                 entity_locations = [(entity_locations_raw[i], entity_locations_raw[i + 1])
                                     for i in range(0, len(entity_locations_raw), 2)]
