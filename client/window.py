@@ -1,16 +1,13 @@
-import socket
 import sys
 
 import pygame
 
-from game import Game
 from consts import *
-from connectscreen import ConnectScreen
+from connect_screen import ConnectScreen
 
 
 class Window:
     def __init__(self):
-
         # pygame globals
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -27,10 +24,6 @@ class Window:
             event_list = pygame.event.get()
             for event in event_list:
                 if event.type == pygame.QUIT:
-                    try:
-                        self.current_screen.conn.close()
-                    except:
-                        pass
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.KEYDOWN:
