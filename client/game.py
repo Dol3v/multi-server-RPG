@@ -12,6 +12,7 @@ from common.protocol import generate_client_message, parse_server_message
 from consts import *
 from player import Player
 from tile import Tile
+from player_entity import PlayerEntity
 from weapon import Weapon
 
 
@@ -46,6 +47,7 @@ class Game:
         self.health_bar = pygame.image.load(HEALTH_BAR_IMG)
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
+        self.entities = {}
 
     def server_update(self):
         """
@@ -82,8 +84,17 @@ class Game:
         """
         Use: prints the other clients by the given info about them
         """
-        for client_pos in client_locations:
-            self.render_client(*client_pos)
+
+        for entity_id, pos in enumerate(client_locations):
+            if entity_id in self.entities:
+                self.entities.get(entity_id).move_to(*pos)
+            else:
+                self.entities[entity_id] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos)
+
+
+
+        #for client_pos in client_locations:
+            #self.render_client(*client_pos)
 
     # ------------------------------------------------------------------
 
