@@ -1,7 +1,8 @@
-import pygame.transform
 import sys
+
+import pygame.transform
+
 from py_utils import *
-from consts import *
 
 
 class ConnectScreen:
@@ -97,7 +98,7 @@ class ConnectScreen:
 
     def connect_to_server(self, ip, username, password):
         self.running = False
-        self.addr = (ip, SERVER_PORT)
+        self.addr = (ip, SERVER_PORT)  # TODO: complete
 
 
 class ConnectButton(Button):

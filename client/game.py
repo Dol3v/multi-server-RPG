@@ -1,18 +1,17 @@
+import math
 import socket
 import struct
 import sys
 from typing import Tuple, List
 
 import pygame
-import socket
+
 from common.consts import *
 from common.utils import parse
-from player import Player
 from consts import *
+from player import Player
 from tile import Tile
 from weapon import Weapon
-import math
-import sys
 
 
 class Game:
@@ -70,12 +69,11 @@ class Game:
             num_of_entities = struct.unpack("<l", packet[:INT_TO_BYTES])[0]
             if num_of_entities == 0:
                 return
-            print(num_of_entities)
-            entity_locations_raw = parse("<" + SERVER_FORMAT * num_of_entities, packet[INT_TO_BYTES: INT_TO_BYTES + num_of_entities * 2 * INT_TO_BYTES])
+            entity_locations_raw = parse("<" + SERVER_FORMAT * num_of_entities,
+                                         packet[INT_TO_BYTES: INT_TO_BYTES + num_of_entities * 2 * INT_TO_BYTES])
             if entity_locations_raw:
                 entity_locations = [(entity_locations_raw[i], entity_locations_raw[i + 1])
                                     for i in range(0, len(entity_locations_raw), 2)]
-                print(entity_locations)
                 self.render_clients(entity_locations)
 
         except TimeoutError:
@@ -129,7 +127,8 @@ class Game:
             self.attack_sprite.kill()
         self.attack_sprite = None
 
-    def normalize(self, x, y) -> Tuple[float, float]:
+    @staticmethod
+    def normalize(x, y) -> Tuple[float, float]:
         factor = math.sqrt(x ** 2 + y ** 2)
         return x / factor, y / factor
 
@@ -178,7 +177,6 @@ class FollowingCameraGroup(pygame.sprite.Group):
         # getting the offset
         self.offset.x = player.rect.centerx - self.half_width
         self.offset.y = player.rect.centery - self.half_height
-        # print(f"X: {player.rect.centerx}\nY: {player.rect.centery}")
 
         # for spr in self.sprites():
         for sprite in sorted(self.sprites(), key=lambda spr: spr.rect.centery):

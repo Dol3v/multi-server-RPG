@@ -1,11 +1,16 @@
 
+# Game data
+GAME_NAME = "MMORPG Game"
+PLAYER_IMG = "assets/idle_down.png"
 WIDTH = 1280
 HEIGHT = 720
 FPS = 60
 TILE_SIZE = 64
+
+# General player data
 SPEED = 5
-GAME_NAME = "MMORPG Game"
-PLAYER_IMG = "assets/idle_down.png"
+ATTACK_COOLDOWN = 250
+MAX_HEALTH = 100
 
 weapon_data = {
     'sword': {'cooldown': 100, 'damage': 15, 'graphics': "assets/weapons/sword/full.png"},

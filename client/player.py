@@ -1,5 +1,4 @@
 import pygame
-import os
 
 from consts import *
 
@@ -12,7 +11,7 @@ class Player(pygame.sprite.Sprite):
 
         self.direction = pygame.math.Vector2()
         self.speed = SPEED
-        self.max_health = 100
+        self.max_health = MAX_HEALTH
         self.current_health = self.max_health
         self.obstacle_sprites = obstacle_sprites
 
@@ -22,7 +21,6 @@ class Player(pygame.sprite.Sprite):
         self.attacking = False
 
     def input(self):
-
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
             if pygame.time.get_ticks() < self.attack_cooldown:
@@ -58,7 +56,7 @@ class Player(pygame.sprite.Sprite):
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.create_attack()
                     self.attacking = True
-                    self.attack_cooldown = pygame.time.get_ticks() + 600
+                    self.attack_cooldown = pygame.time.get_ticks() + ATTACK_COOLDOWN
         else:
             self.attacking = False
 
