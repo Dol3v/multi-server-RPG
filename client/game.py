@@ -39,10 +39,10 @@ class Game:
         self.server_addr = server_addr
 
         # Health bar init
-        self.health_background = pygame.image.load(HEALTH_BACKGROUND)
+        self.health_background = pygame.image.load(HEALTH_BACKGROUND_IMG)
         self.health_background = pygame.transform.scale(self.health_background, (self.health_background.get_width() * 4,
                                                                                  self.health_background.get_height() * 4))
-        self.health_bar = pygame.image.load(HEALTH_BAR)
+        self.health_bar = pygame.image.load(HEALTH_BAR_IMG)
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
 
@@ -64,7 +64,6 @@ class Game:
             if addr == self.server_addr:
 
                 entity_locations = parse_server_message(packet)
-                print(entity_locations)
                 self.render_clients(entity_locations)
 
         except TimeoutError:

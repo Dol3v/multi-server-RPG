@@ -1,5 +1,6 @@
 from typing import Tuple
 
+# Format 
 MESSAGE_ENDIANESS = "<"
 POSITION_FORMAT = 'll'
 CLIENT_FORMAT = MESSAGE_ENDIANESS + POSITION_FORMAT
@@ -9,5 +10,13 @@ INT_SIZE = 4
 # Useful graphics consts
 CLIENT_HEIGHT = 64
 CLIENT_WIDTH = 64
+
 # Types
 Pos = Tuple[int, int]
+
+
+# Server configurations
+SERVER_PORT = 42069
+SERVER_IP = "127.0.0.1"
+RECV_CHUNCK = 1024
+THREADS_COUNT = 1

@@ -1,11 +1,12 @@
 import pygame
 import numpy as np
 
+from consts import *
 
 class Weapon(pygame.sprite.Sprite):
     def __init__(self, player, groups, vec):
         super().__init__(groups)
-        self.sword = pygame.image.load("assets/weapons/sword/full.png")
+        self.sword = pygame.image.load(SWORD_IMG)
         self.image = pygame.Surface((self.sword.get_width(), self.sword.get_height()), pygame.SRCALPHA)
 
         angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))

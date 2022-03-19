@@ -1,8 +1,11 @@
 import sys
-
 import pygame.transform
 
+# to import from a dir
+sys.path.append('../')
+
 from graphics import *
+from common.consts import SERVER_PORT
 
 
 class ConnectScreen:
@@ -10,7 +13,7 @@ class ConnectScreen:
         self.width = WIDTH
         self.height = HEIGHT
         self.screen = screen
-        self.background = pygame.transform.scale(pygame.image.load("assets/background.jpg"), (WIDTH, HEIGHT))
+        self.background = pygame.transform.scale(pygame.image.load(CONNECTION_SCREEN_IMG), (WIDTH, HEIGHT))
         self.running = False
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -35,7 +38,7 @@ class ConnectScreen:
         password_input = LimitedTextBox(0, HEIGHT * 0.55, 250, pygame.font.SysFont("arial", 35), 15)
         password_input.position_center()
 
-        connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, "assets/connect_btn.png", self)
+        connect_btn = ConnectButton(0, HEIGHT * 0.70, 200, 50, CONNECT_BUTTON_IMG, self)
         connect_btn.position_center()
 
         self.tip_box = TipBox(0, HEIGHT * 0.8, pygame.font.SysFont("arial", 30), 5)

@@ -1,7 +1,6 @@
 """Utils for checking collision between players."""
-from consts import Pos
 from typing import Iterable
-from common.consts import CLIENT_WIDTH, CLIENT_HEIGHT
+from common.consts import CLIENT_WIDTH, CLIENT_HEIGHT, Pos
 
 
 def players_are_colliding(player_center: Pos, other_center: Pos) -> bool:

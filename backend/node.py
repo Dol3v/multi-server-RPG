@@ -6,7 +6,7 @@ sys.path.append('../')
 from collision import *
 from consts import *
 from client.consts import WIDTH, HEIGHT
-from common.consts import CLIENT_FORMAT, CLIENT_WIDTH, CLIENT_HEIGHT, MESSAGE_ENDIANESS
+from common.consts import *
 from common.utils import *
 from common.protocol import parse_client_message, generate_server_message
 
@@ -42,7 +42,7 @@ class Node:
         """
         while True:
             try:
-                data, addr = self.server_sock.recvfrom(1024)
+                data, addr = self.server_sock.recvfrom(RECV_CHUNCK)
                 # update current player data
                 player_pos = parse_client_message(data)
                 if not player_pos:

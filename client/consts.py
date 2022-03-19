@@ -1,9 +1,16 @@
 
+# Images
+PLAYER_IMG = "assets/idle_down.png"
+HEALTH_BACKGROUND_IMG = "assets/health/health_background.png"
+HEALTH_BAR_IMG = "assets/health/health_bar.png"
+CONNECTION_SCREEN_IMG = "assets/BG.png"
+CONNECT_BUTTON_IMG = "assets/connect_btn.png"
+TREE_IMG = "assets/tree.png"
+SWORD_IMG = "assets/weapons/sword/full.png"
+
 # Game data
 GAME_NAME = "MMORPG Game"
-PLAYER_IMG = "assets/idle_down.png"
-HEALTH_BACKGROUND = "assets/health/health_background.png"
-HEALTH_BAR = "assets/health/health_bar.png"
+
 WIDTH = 1280
 HEIGHT = 720
 FPS = 60
@@ -43,7 +50,3 @@ WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
 ]
 
-# Server configurations
-SERVER_PORT = 42069
-SERVER_IP = "127.0.0.1"
-ENTITIES_HEADER_LEN = 4
