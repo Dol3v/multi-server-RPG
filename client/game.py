@@ -64,11 +64,12 @@ class Game:
             packet, addr = self.conn.recvfrom(1024)
             if addr != self.server_addr:
                 return
-            num_of_entities = struct.unpack("<l", packet[:INT_TO_BYTES])[0]
+            num_of_entities = struct.unpack("<l", packet[:INT_SIZE])[0]
             if num_of_entities == 0:
                 return
-            entity_locations_raw = parse("<" + SERVER_FORMAT * num_of_entities,
-                                         packet[INT_TO_BYTES: INT_TO_BYTES + num_of_entities * 2 * INT_TO_BYTES])
+            entity_locations_raw = parse("<" + POSITION_FORMAT * num_of_entities,
+
+                                         packet[INT_SIZE: INT_SIZE + num_of_entities * 2 * INT_SIZE])
             if entity_locations_raw:
                 entity_locations = [(entity_locations_raw[i], entity_locations_raw[i + 1])
                                     for i in range(0, len(entity_locations_raw), 2)]
