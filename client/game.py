@@ -14,6 +14,7 @@ from player import Player
 from tile import Tile
 from weapon import Weapon
 
+
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple, full_screen):
         # init sprites
@@ -23,7 +24,7 @@ class Game:
         self.attack_sprite = None
 
         # player init
-        self.player = None  
+        self.player = None
         self.player_img = pygame.image.load(PLAYER_IMG)
 
         # generate map
@@ -46,7 +47,6 @@ class Game:
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
 
-
     def server_update(self):
         """
         Use: communicate with the server over UDP.
@@ -62,7 +62,6 @@ class Game:
             packet, addr = self.conn.recvfrom(1024)
 
             if addr == self.server_addr:
-
                 entity_locations = parse_server_message(packet)
                 self.render_clients(entity_locations)
 
@@ -96,31 +95,7 @@ class Game:
                 if col == 'x':
                     Tile((x, y), [self.visible_sprites, self.obstacles_sprites])
                 if col == 'p':
-                    self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites,
-                                         self.create_attack, self.destroy_attack)
-
-    def create_attack(self):
-        center_x = WIDTH // 2
-        center_y = HEIGHT // 2
-
-        mouse_pos = pygame.mouse.get_pos()
-
-        vec_x = (mouse_pos[0] - center_x)
-        vec_y = (mouse_pos[1] - center_y)
-
-        vec = self.normalize(vec_x, vec_y)
-
-        self.attack_sprite = Weapon(self.player, [self.visible_sprites], vec)
-
-    def destroy_attack(self):
-        if self.attack_sprite:
-            self.attack_sprite.kill()
-        self.attack_sprite = None
-
-    @staticmethod
-    def normalize(x, y) -> Tuple[float, float]:
-        factor = math.sqrt(x ** 2 + y ** 2)
-        return x / factor, y / factor
+                    self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites)
 
     def run(self):
         self.running = True
