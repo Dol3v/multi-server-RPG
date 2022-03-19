@@ -1,7 +1,5 @@
-import random
+import random, pygame, socket 
 
-import pygame
-import socket
 from consts import *
 from game import Game
 

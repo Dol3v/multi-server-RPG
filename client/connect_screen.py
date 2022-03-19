@@ -2,7 +2,7 @@ import sys
 
 import pygame.transform
 
-from py_utils import *
+from graphics import *
 
 
 class ConnectScreen:
