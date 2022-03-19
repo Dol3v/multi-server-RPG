@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     screen = init_pygame()
 
-    stage = ConnectScreen(screen)
-    stage.run()
+    connection_screen = ConnectScreen(screen)
+    connection_screen.run()
 
-    stage = Game(stage.sock, stage.addr, stage.full_screen)
-    stage.run()
+    game = Game(connection_screen.sock, connection_screen.addr, connection_screen.full_screen)
+    game.run()
