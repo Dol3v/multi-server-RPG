@@ -119,4 +119,6 @@ class ConnectButton(Button):
                     ip = self.connect_screen.get_sprite_by_position(1).text
                     username = self.connect_screen.get_sprite_by_position(3).text
                     password = self.connect_screen.get_sprite_by_position(5).text
+                    if ip == "":
+                        ip = '127.0.0.1'
                     self.connect_screen.connect_to_server(ip, username, password)
