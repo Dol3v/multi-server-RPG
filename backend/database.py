@@ -11,7 +11,6 @@ class SqlDatabase:
     def __init__(self, db_hostname: str, user_password: str):
         """
         Use: connect to the DB server through ssl by a given hostname
-
         :param db_hostname: ip address to connect to
         :param user_password: DB_USERNAME@"$db_hostname"'s password
         """
