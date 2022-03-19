@@ -1,3 +1,7 @@
+# removes pygame import welcom
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
 import pygame
 
 from connect_screen import ConnectScreen
@@ -5,11 +9,13 @@ from game import Game
 from consts import *
 
 
+
 def init_pygame() -> pygame.Surface:
 
     """
     Use: starts pygame with and return the new screen
     """
+    PYGAME_HIDE_SUPPORT_PROMPT = 1
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(GAME_NAME)

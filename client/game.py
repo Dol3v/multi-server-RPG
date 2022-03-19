@@ -1,11 +1,13 @@
-import math, pygame, socket, struct, sys
+import pygame
+import socket
+import math
+import sys
 from typing import Tuple, List
 
 # to import from a dir
 sys.path.append('../')
 
-from common.consts import *
-from common.utils import parse
+from common.protocol import generate_client_message, parse_server_message
 
 from consts import *
 from player import Player
@@ -14,42 +16,38 @@ from weapon import Weapon
 
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple, full_screen):
-        self.player = None  # FIXME: where do u update self.player lol (temp to create new commit, will be removed)
+        # init sprites
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = FollowingCameraGroup()
         self.obstacles_sprites = pygame.sprite.Group()
         self.attack_sprite = None
+
+        # player init
+        self.player = None  
         self.player_img = pygame.image.load(PLAYER_IMG)
+
+        # generate map
         self.create_map()
 
         self.full_screen = full_screen
-        self.conn = conn
         self.running = False
         self.clock = pygame.time.Clock()
 
         # communication
-        # timeout of 0.5 seconds
+        self.conn = conn
         self.conn.settimeout(0.5)
-
         self.server_addr = server_addr
 
-        self.health_background = pygame.image.load("assets/health/health_background.png")
+        # Health bar init
+        self.health_background = pygame.image.load(HEALTH_BACKGROUND)
         self.health_background = pygame.transform.scale(self.health_background, (self.health_background.get_width() * 4,
                                                                                  self.health_background.get_height() * 4))
-
-        self.health_bar = pygame.image.load("assets/health/health_bar.png")
+        self.health_bar = pygame.image.load(HEALTH_BAR)
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
 
-    @staticmethod
-    def generate_client_message(x: int, y: int) -> bytes:
-        """
-        Use: generate the client message bytes by this format
-        Format: [ pos(x, y) + (new_msg || attack || attack_directiton || pick_up || equipped_id) ]
-        """
-        return struct.pack(CLIENT_FORMAT, x, y)
 
-    def catch_up_with_server(self):
+    def server_update(self):
         """
         Use: communicate with the server over UDP.
         """
@@ -58,21 +56,15 @@ class Game:
             x = self.player.rect.centerx
             y = self.player.rect.centery
 
-            self.conn.sendto(self.generate_client_message(x, y), self.server_addr)
+            self.conn.sendto(generate_client_message(x, y), self.server_addr)
 
             # receive server update
             packet, addr = self.conn.recvfrom(1024)
-            if addr != self.server_addr:
-                return
-            num_of_entities = struct.unpack("<l", packet[:INT_SIZE])[0]
-            if num_of_entities == 0:
-                return
-            entity_locations_raw = parse("<" + POSITION_FORMAT * num_of_entities,
 
-                                         packet[INT_SIZE: INT_SIZE + num_of_entities * 2 * INT_SIZE])
-            if entity_locations_raw:
-                entity_locations = [(entity_locations_raw[i], entity_locations_raw[i + 1])
-                                    for i in range(0, len(entity_locations_raw), 2)]
+            if addr == self.server_addr:
+
+                entity_locations = parse_server_message(packet)
+                print(entity_locations)
                 self.render_clients(entity_locations)
 
         except TimeoutError:
@@ -151,7 +143,7 @@ class Game:
             self.visible_sprites.custom_draw(self.player)
             self.visible_sprites.update()
             self.draw_health_bar()
-            self.catch_up_with_server()
+            self.server_update()
             pygame.display.update()
             self.clock.tick(FPS)
 

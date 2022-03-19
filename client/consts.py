@@ -2,6 +2,8 @@
 # Game data
 GAME_NAME = "MMORPG Game"
 PLAYER_IMG = "assets/idle_down.png"
+HEALTH_BACKGROUND = "assets/health/health_background.png"
+HEALTH_BAR = "assets/health/health_bar.png"
 WIDTH = 1280
 HEIGHT = 720
 FPS = 60
