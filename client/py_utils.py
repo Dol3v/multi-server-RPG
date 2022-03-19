@@ -1,8 +1,7 @@
 import random
-import socket
 
 import pygame
-
+import socket
 from consts import *
 from game import Game
 
@@ -136,25 +135,7 @@ class Button(pygame.sprite.Sprite):
         self.rect = surface.get_rect(topleft=self.pos)
 
 
-class ConnectButton(Button):
-    def __init__(self, x, y, width, height, image_path, window):
-        super().__init__(x, y, width, height, image_path)
-        self.window = window
 
-    def update(self, event_list):
-        self.render_button()
-        for event in event_list:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if self.rect.collidepoint(event.pos):
-                    print("Clicked")
-                    self.window.current_screen.is_loading_animation = True
-                    connect_screen = self.window.current_screen
-                    ip = connect_screen.get_sprite_by_position(1).text
-                    username = connect_screen.get_sprite_by_position(3).text
-                    password = connect_screen.get_sprite_by_position(5).text
-                    print(ip)
-                    self.window.current_screen = Game(socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
-                                                      (ip, SERVER_PORT))
 
 
 class Animation:
