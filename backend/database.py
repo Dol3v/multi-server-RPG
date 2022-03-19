@@ -1,9 +1,7 @@
-import ssl
+import ssl, sqlalchemy
 
-import sqlalchemy
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR
-
-from backend_consts import *
+from consts import *
 
 
 class SqlDatabase:

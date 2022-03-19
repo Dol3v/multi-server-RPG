@@ -1,18 +1,16 @@
-import math
-import socket
-import struct
-import sys
+import math, pygame, socket, struct, sys
 from typing import Tuple, List
 
-import pygame
+# to import from a dir
+sys.path.append('../')
 
 from common.consts import *
 from common.utils import parse
+
 from consts import *
 from player import Player
 from tile import Tile
 from weapon import Weapon
-
 
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple, full_screen):

@@ -1,15 +1,13 @@
-import logging
-import socket
-import sys
-import threading
+import logging, socket, sys, threading
 from typing import Tuple
-
-from backend_consts import *
-from common.consts import CLIENT_FORMAT, INT_TO_BYTES
-from common.utils import *
 
 # to import from a dir
 sys.path.append('../')
+
+from consts import *
+from common.consts import CLIENT_FORMAT, INT_TO_BYTES
+from common.utils import *
+
 
 
 class Node:
@@ -30,8 +28,10 @@ class Node:
     def encode_entity_locations_for_player(self, player_pos: Tuple[int, int]) -> bytes | None:
         # converts list of tuples into a list
         entities_pos = flatten(filter(lambda pos: pos != player_pos, self.entities.values()))
-        msg_format = "l" + "l" * len(entities_pos)
+        msg_format = "<l" + "l" * len(entities_pos)
+
         print(entities_pos, player_pos, entities_pos == player_pos)
+
         try:
             return struct.pack(msg_format, len(entities_pos) // 2, *entities_pos)
         except Exception:
