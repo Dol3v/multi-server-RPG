@@ -83,6 +83,11 @@ class Game:
     def render_clients(self, client_locations: List[Tuple[int, int]]):
         """
         Use: prints the other clients by the given info about them
+
+        #TODO: Remove entities that died (or left if player)
+        #TODO: (For server, add "died" flag)
+            [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
+            [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
 
         for entity_id, pos in enumerate(client_locations):
@@ -91,10 +96,6 @@ class Game:
             else:
                 self.entities[entity_id] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos)
 
-
-
-        #for client_pos in client_locations:
-            #self.render_client(*client_pos)
 
     # ------------------------------------------------------------------
 
