@@ -47,6 +47,11 @@ class Game:
         self.health_bar = pygame.image.load(HEALTH_BAR_IMG)
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
+
+        self.hot_bar = pygame.image.load("assets/hot_bar.png")
+        self.hot_bar = pygame.transform.scale(self.hot_bar,
+                                              (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
+
         self.entities = {}
 
     def server_update(self):
@@ -96,7 +101,6 @@ class Game:
             else:
                 self.entities[entity_id] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos)
 
-
     # ------------------------------------------------------------------
 
     def create_map(self):
@@ -129,6 +133,7 @@ class Game:
             self.visible_sprites.custom_draw(self.player)
             self.visible_sprites.update()
             self.draw_health_bar()
+            self.draw_hot_bar()
             self.server_update()
             pygame.display.update()
             self.clock.tick(FPS)
@@ -139,6 +144,10 @@ class Game:
         width = (self.player.current_health / self.player.max_health) * self.health_bar.get_width()  # Health Percentage
         new_bar = pygame.transform.scale(self.health_bar, (width, self.health_bar.get_height()))
         self.display_surface.blit(new_bar, (WIDTH * 0.06, HEIGHT * 0.94))
+
+    def draw_hot_bar(self):
+        width = (WIDTH - self.hot_bar.get_width()) / 2
+        self.display_surface.blit(self.hot_bar,(width,HEIGHT * 0.9))
 
 
 class FollowingCameraGroup(pygame.sprite.Group):
