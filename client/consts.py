@@ -17,7 +17,7 @@ TILE_SIZE = 64
 
 # General player data
 SPEED = 5
-ATTACK_COOLDOWN = 250
+ATTACK_COOLDOWN = 500
 MAX_HEALTH = 100
 
 weapon_data = {

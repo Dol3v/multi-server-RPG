@@ -102,7 +102,7 @@ class Projectile(pygame.sprite.Sprite):
 
     def check_collision(self):
         for sprite in self.groups[1]:
-            if sprite != self and sprite.rect.colliderect(self.rect):
+            if sprite != self and sprite.rect.colliderect(self.rect) and not isinstance(sprite, Projectile):
                 self.kill()
 
     def move_projectile(self):
