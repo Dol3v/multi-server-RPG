@@ -1,19 +1,18 @@
-import pygame
 import socket
-import math
 import sys
 from typing import Tuple, List
 
+import pygame
+
 # to import from a dir
-sys.path.append('../')
-
-from common.protocol import generate_client_message, parse_server_message
-
+from networking import generate_client_message, parse_server_message
+from common.consts import RECV_CHUNK
 from consts import *
 from player import Player
-from tile import Tile
 from player_entity import PlayerEntity
-from weapon import Weapon
+from tile import Tile
+
+# sys.path.append('../')
 
 
 class Game:
@@ -48,6 +47,7 @@ class Game:
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
         self.entities = {}
+        self.seqn = 0
 
     def server_update(self):
         """
@@ -58,10 +58,11 @@ class Game:
             x = self.player.rect.centerx
             y = self.player.rect.centery
 
-            self.conn.sendto(generate_client_message(x, y), self.server_addr)
+            self.conn.sendto(generate_client_message(self.seqn, x, y), self.server_addr)
+            self.seqn += 1
 
             # receive server update
-            packet, addr = self.conn.recvfrom(1024)
+            packet, addr = self.conn.recvfrom(RECV_CHUNK)
 
             if addr == self.server_addr:
                 entity_locations = parse_server_message(packet)
@@ -96,10 +97,8 @@ class Game:
             else:
                 self.entities[entity_id] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos)
 
-
-
-        #for client_pos in client_locations:
-            #self.render_client(*client_pos)
+        # for client_pos in client_locations:
+        # self.render_client(*client_pos)
 
     # ------------------------------------------------------------------
 

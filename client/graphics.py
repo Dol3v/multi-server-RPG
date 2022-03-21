@@ -1,7 +1,7 @@
-import random, pygame, socket 
+import pygame
+import random
 
 from consts import *
-from game import Game
 
 
 class TextInputBox(pygame.sprite.Sprite):
@@ -131,9 +131,6 @@ class Button(pygame.sprite.Sprite):
         surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         surface.blit(self.image, self.image.get_rect())
         self.rect = surface.get_rect(topleft=self.pos)
-
-
-
 
 
 class Animation:

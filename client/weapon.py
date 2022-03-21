@@ -33,8 +33,6 @@ class Weapon(pygame.sprite.Sprite):
         vec_y = (mouse_pos[1] - center_y)
 
         vec = self.normalize_vec(vec_x, vec_y)
-        print(vec)
-
         angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
 
         self.texture = pygame.transform.rotate(self.original_texture, angle)
