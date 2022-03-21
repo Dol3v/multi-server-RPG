@@ -114,7 +114,7 @@ class ConnectButton(Button):
         for event in event_list:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if self.rect.collidepoint(event.pos):
-                    print("Clicked")
+
                     self.connect_screen.is_loading_animation = True
                     ip = self.connect_screen.get_sprite_by_position(1).text
                     username = self.connect_screen.get_sprite_by_position(3).text
