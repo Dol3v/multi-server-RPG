@@ -90,9 +90,9 @@ class Game:
         Use: prints the other clients by the given info about them
 
         #TODO: Remove entities that died (or left if player)
-        #TODO: (For server, add "died" flag)
-            [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
-            [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
+                (For server, add "died" flag)
+                [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
+                [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
 
         for entity_id, pos in enumerate(client_locations):
