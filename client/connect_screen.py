@@ -11,7 +11,8 @@ from common.consts import SERVER_PORT
 
 
 class ConnectScreen:
-    def __init__(self, screen):
+    def __init__(self, screen, port: int):
+        """Remove port later, currently stays for debugging before login"""
         self.width = WIDTH
         self.height = HEIGHT
         self.screen = screen
@@ -19,6 +20,8 @@ class ConnectScreen:
         self.running = False
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # remove when login is added server-side
+        self.sock.bind(("127.0.0.1", port))
         self.addr = None
         self.clock = pygame.time.Clock()
 

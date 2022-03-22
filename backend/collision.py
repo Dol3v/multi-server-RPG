@@ -16,3 +16,7 @@ def get_colliding_entities(player_pos: Pos, *, entities_to_check: Iterable[Pos])
     # future
     # TODO: optimize the sh*t out of this routine
     return filter(lambda pos: players_are_colliding(pos, player_pos), entities_to_check)
+
+
+def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
+    return abs(new[0] - prev[0]) + abs(new[1] - prev[1]) <= seqn_delta
