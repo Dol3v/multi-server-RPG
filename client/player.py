@@ -1,5 +1,6 @@
 import pygame
 
+from common.consts import SPEED
 from weapon import Weapon
 from consts import *
 

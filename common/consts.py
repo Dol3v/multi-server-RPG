@@ -23,3 +23,6 @@ SERVER_PORT = 42069
 SERVER_IP = "127.0.0.1"
 RECV_CHUNK = 1024
 THREADS_COUNT = 1
+
+# Useful player information
+SPEED = 5

@@ -17,7 +17,6 @@ FPS = 60
 TILE_SIZE = 64
 
 # General player data
-SPEED = 5
 ATTACK_COOLDOWN = 250
 MAX_HEALTH = 100
 

@@ -8,6 +8,8 @@ import threading
 from collections import defaultdict
 from typing import List
 
+from numpy import sqrt
+
 sys.path.append('../')
 
 from client.consts import WIDTH, HEIGHT
@@ -47,7 +49,12 @@ def get_colliding_entities_with(entity: Entity, *, entities_to_check: Iterable[E
 
 
 def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
-    return abs(new[0] - prev[0]) + abs(new[1] - prev[1]) <= seqn_delta
+    bound = 0
+    if diff1 := abs(new[0] - prev[0]) != 0:
+        bound += SPEED
+    if diff2 := abs(new[1] - prev[1]) != 0:
+        bound += SPEED
+    return diff1 + diff2 <= bound * seqn_delta
 
 
 class Node:
@@ -87,6 +94,10 @@ class Node:
 
                 logging.debug(f"Received position {player_pos} from {addr=}")
                 entity = self.entities[addr]
+                if entity.last_updated != -1 and not moved_reasonable_distance(
+                        player_pos, entity.pos, seqn - entity.last_updated):
+                    print("Teleported")
+
                 entity.update(player_pos, CLIENT_WIDTH, CLIENT_HEIGHT, False, seqn)
                 in_range = self.entities_in_range(entity)
 
