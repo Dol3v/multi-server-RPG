@@ -1,6 +1,6 @@
 import pygame
 
-from common.consts import SPEED
+from common.consts import SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
 from weapon import Weapon
 from consts import *
 
@@ -90,8 +90,8 @@ class Player(pygame.sprite.Sprite):
                         self.rect.top = sprite.rect.bottom
 
     def get_screen_location(self):
-        half_width = WIDTH / 2
-        half_height = HEIGHT / 2
+        half_width = SCREEN_WIDTH / 2
+        half_height = SCREEN_HEIGHT / 2
         return [self.rect.centerx - half_width, self.rect.centery - half_height]
 
     def draw_main_weapon(self):

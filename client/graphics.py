@@ -1,7 +1,8 @@
-import pygame
 import random
 
-from consts import *
+import pygame
+
+from common.consts import SCREEN_WIDTH
 
 
 class TextInputBox(pygame.sprite.Sprite):
@@ -20,7 +21,7 @@ class TextInputBox(pygame.sprite.Sprite):
         self.render_text()
 
     def position_center(self):
-        self.pos = ((WIDTH - self.width) / 2, self.y)
+        self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
         self.render_text()
 
     def render_text(self):
@@ -33,7 +34,7 @@ class TextInputBox(pygame.sprite.Sprite):
                                     pygame.SRCALPHA)
 
         self.width = self.image.get_width()
-        self.pos = ((WIDTH - self.width) / 2, self.y)
+        self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
 
         background = pygame.image.load("assets/text-box.png")
         background = pygame.transform.scale(background,
@@ -97,7 +98,7 @@ class Text(pygame.sprite.Sprite):
         self.render_text()
 
     def position_center(self):
-        self.pos = ((WIDTH - self.width) / 2, self.y)
+        self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
         self.render_text()
 
     def render_text(self):
@@ -124,7 +125,7 @@ class Button(pygame.sprite.Sprite):
         self.render_button()
 
     def position_center(self):
-        self.pos = ((WIDTH - self.width) / 2, self.y)
+        self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
         self.render_button()
 
     def render_button(self):
@@ -198,7 +199,7 @@ class TipBox(pygame.sprite.Sprite):
     def render_text(self):
         t_surf = self.font.render(self.tip, True, (0, 0, 0), None)
         self.width = t_surf.get_width()
-        self.pos = ((WIDTH - self.width) / 2, self.y)
+        self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
 
         self.image = pygame.Surface((t_surf.get_width(), t_surf.get_height()),
                                     pygame.SRCALPHA)

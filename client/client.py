@@ -1,5 +1,7 @@
 import os
 
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 import pygame
@@ -14,7 +16,7 @@ def init_pygame() -> pygame.Surface:
     Use: starts pygame with and return the new screen
     """
     pygame.init()
-    screen = pygame.display.set_mode((consts.WIDTH, consts.HEIGHT))
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption(consts.GAME_NAME)
     pygame.display.set_icon(pygame.image.load(consts.PLAYER_IMG))
 

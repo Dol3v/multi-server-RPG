@@ -8,11 +8,10 @@ import threading
 from collections import defaultdict
 from typing import List
 
-from numpy import sqrt
+import pyqtree as pyqtree
 
 sys.path.append('../')
 
-from client.consts import WIDTH, HEIGHT
 from common.consts import *
 from common.utils import *
 from backend.networking import generate_server_message, parse_client_message
@@ -63,7 +62,7 @@ class Node:
         self.address = (ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.entities = defaultdict(lambda: Entity((-1, -1), -1, -1, False, -1))
-        self.sequences = defaultdict(lambda: -1)
+        # self.spindex = pyqtree.Index()
         # Starts the node
         self.run()
 
@@ -73,8 +72,8 @@ class Node:
         """
 
         def entity_in_range(pos1: Pos, pos2: Pos) -> bool:
-            return (0 <= abs(pos1[0] - pos2[0]) < WIDTH // 2 + entity.width) and \
-                   (0 <= abs(pos1[1] - pos2[1]) < HEIGHT // 2 + entity.height)
+            return (0 <= abs(pos1[0] - pos2[0]) < SCREEN_WIDTH // 2 + entity.width) and \
+                   (0 <= abs(pos1[1] - pos2[1]) < SCREEN_HEIGHT // 2 + entity.height)
 
         return list(filter(lambda other: entity_in_range(entity.pos, other.pos) and other.pos != entity.pos,
                            self.entities.values()))

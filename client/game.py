@@ -4,13 +4,14 @@ from typing import Tuple, List
 
 import pygame
 
+from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT
+from consts import *
 # to import from a dir
 from networking import generate_client_message, parse_server_message
-from common.consts import RECV_CHUNK
-from consts import *
 from player import Player
 from player_entity import PlayerEntity
 from tile import Tile
+
 
 # sys.path.append('../')
 
@@ -124,9 +125,9 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN and pygame.key.get_mods() & pygame.KMOD_SHIFT:
                         if self.full_screen:
-                            pygame.display.set_mode((WIDTH, HEIGHT))
+                            pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
                         else:
-                            pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+                            pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
                         self.full_screen = not self.full_screen
             self.display_surface.fill("black")
             self.visible_sprites.custom_draw(self.player)
@@ -137,11 +138,11 @@ class Game:
             self.clock.tick(FPS)
 
     def draw_health_bar(self):
-        self.display_surface.blit(self.health_background, (WIDTH * 0, HEIGHT * 0.895))
+        self.display_surface.blit(self.health_background, (SCREEN_WIDTH * 0, SCREEN_HEIGHT * 0.895))
 
         width = (self.player.current_health / self.player.max_health) * self.health_bar.get_width()  # Health Percentage
         new_bar = pygame.transform.scale(self.health_bar, (width, self.health_bar.get_height()))
-        self.display_surface.blit(new_bar, (WIDTH * 0.06, HEIGHT * 0.94))
+        self.display_surface.blit(new_bar, (SCREEN_WIDTH * 0.06, SCREEN_HEIGHT * 0.94))
 
 
 class FollowingCameraGroup(pygame.sprite.Group):
@@ -149,8 +150,8 @@ class FollowingCameraGroup(pygame.sprite.Group):
         # general setup
         super().__init__()
         self.display_surface = pygame.display.get_surface()
-        self.half_width = WIDTH / 2
-        self.half_height = HEIGHT / 2
+        self.half_width = SCREEN_WIDTH / 2
+        self.half_height = SCREEN_HEIGHT / 2
         self.offset = pygame.math.Vector2()
 
     def custom_draw(self, player):
