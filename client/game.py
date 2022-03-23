@@ -1,6 +1,8 @@
+import queue
 import socket
 import sys
 from typing import Tuple, List
+import threading
 
 import pygame
 
@@ -37,7 +39,6 @@ class Game:
 
         # communication
         self.conn = conn
-        self.conn.settimeout(0.5)
         self.server_addr = server_addr
 
         # Health bar init
@@ -48,7 +49,12 @@ class Game:
         self.health_bar = pygame.transform.scale(self.health_bar, (self.health_bar.get_width() * 4,
                                                                    self.health_bar.get_height() * 4))
         self.entities = {}
+        self.recv_queue = queue.Queue()
         self.seqn = 0
+
+    def receiver(self):
+        while True:
+            self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
     def server_update(self):
         """
@@ -63,10 +69,14 @@ class Game:
             self.seqn += 1
 
             # receive server update
-            packet, addr = self.conn.recvfrom(RECV_CHUNK)
+            try:
+                packet, addr = self.recv_queue.get(block=False)
+            except queue.Empty:
+                return
 
             if addr == self.server_addr:
                 entity_locations = parse_server_message(packet)
+                print(entity_locations)
                 self.render_clients(entity_locations)
 
         except TimeoutError:
@@ -113,7 +123,7 @@ class Game:
                 if col == 'p':
                     self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites)
 
-    def run(self):
+    def run_game_loop(self):
         self.running = True
 
         while self.running:
@@ -136,6 +146,11 @@ class Game:
             self.server_update()
             pygame.display.update()
             self.clock.tick(FPS)
+
+    def run(self):
+        recv_thread = threading.Thread(target=self.receiver)
+        recv_thread.start()
+        self.run_game_loop()
 
     def draw_health_bar(self):
         self.display_surface.blit(self.health_background, (SCREEN_WIDTH * 0, SCREEN_HEIGHT * 0.895))

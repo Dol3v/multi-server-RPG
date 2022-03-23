@@ -3,6 +3,7 @@ import logging
 import socket
 import sys
 import threading
+import uuid
 
 # to import from a dir
 from collections import defaultdict
@@ -24,6 +25,7 @@ class Entity:
     height: int
     is_attacking: bool
     last_updated: int  # latest sequence number basically
+    id: uuid.UUID = uuid.uuid4()
 
     def update(self, pos: Pos, width: int, height: int, is_attacking: bool, last_updated: int):
         self.pos = pos
@@ -62,7 +64,7 @@ class Node:
         self.address = (ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.entities = defaultdict(lambda: Entity((-1, -1), -1, -1, False, -1))
-        # self.spindex = pyqtree.Index()
+        self.spindex = pyqtree.Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         # Starts the node
         self.run()
 
