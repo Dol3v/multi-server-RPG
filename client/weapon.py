@@ -4,7 +4,8 @@ from typing import Tuple
 import pygame
 import abc
 import numpy as np
-from consts import *
+
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
 
 
 def normalize_vec(x, y) -> Tuple[float, float]:
@@ -32,8 +33,8 @@ class Weapon(pygame.sprite.Sprite):
         # self.image = pygame.transform.rotate(self.image, angle)
 
     def draw_weapon(self, player):
-        center_x = WIDTH // 2
-        center_y = HEIGHT // 2
+        center_x = SCREEN_WIDTH // 2
+        center_y = SCREEN_HEIGHT // 2
 
         mouse_pos = pygame.mouse.get_pos()
 

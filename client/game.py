@@ -1,19 +1,21 @@
-import pygame
+import queue
 import socket
-import math
 import sys
 from typing import Tuple, List
+import threading
 
-# to import from a dir
-sys.path.append('../')
+import pygame
 
-from common.protocol import generate_client_message, parse_server_message
-
+from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT
 from consts import *
+# to import from a dir
+from networking import generate_client_message, parse_server_message
 from player import Player
-from tile import Tile
 from player_entity import PlayerEntity
-from weapon import Weapon
+from tile import Tile
+
+
+# sys.path.append('../')
 
 
 class Game:
@@ -37,7 +39,6 @@ class Game:
 
         # communication
         self.conn = conn
-        self.conn.settimeout(0.5)
         self.server_addr = server_addr
 
         # Health bar init
@@ -53,29 +54,35 @@ class Game:
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
         self.entities = {}
+        self.recv_queue = queue.Queue()
+        self.seqn = 0
+
+    def receiver(self):
+        while True:
+            self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
     def server_update(self):
         """
         Use: communicate with the server over UDP.
         """
+        # sending location and actions
+        x = self.player.rect.centerx
+        y = self.player.rect.centery
+
+        self.conn.sendto(generate_client_message(self.seqn, x, y), self.server_addr)
+        self.seqn += 1
+
+        # receive server update
         try:
-            # sending location and actions
-            x = self.player.rect.centerx
-            y = self.player.rect.centery
+            packet, addr = self.recv_queue.get(block=False)
+        except queue.Empty:
+            return
 
-            self.conn.sendto(generate_client_message(x, y), self.server_addr)
+        if addr == self.server_addr:
+            entity_locations = parse_server_message(packet)
+            print(entity_locations)
+            self.render_clients(entity_locations)
 
-            # receive server update
-            packet, addr = self.conn.recvfrom(1024)
-
-            if addr == self.server_addr:
-                entity_locations = parse_server_message(packet)
-                self.render_clients(entity_locations)
-
-        except TimeoutError:
-            print("Timeout")
-
-    # ------------------------------------------------------------------
     def render_client(self, x: int, y: int):
         """
         Use: print client by the given x and y (Global locations)
@@ -113,7 +120,7 @@ class Game:
                 if col == 'p':
                     self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites)
 
-    def run(self):
+    def run_game_loop(self):
         self.running = True
 
         while self.running:
@@ -125,9 +132,9 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN and pygame.key.get_mods() & pygame.KMOD_SHIFT:
                         if self.full_screen:
-                            pygame.display.set_mode((WIDTH, HEIGHT))
+                            pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
                         else:
-                            pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+                            pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
                         self.full_screen = not self.full_screen
             self.display_surface.fill("black")
             self.visible_sprites.custom_draw(self.player)
@@ -138,12 +145,17 @@ class Game:
             pygame.display.update()
             self.clock.tick(FPS)
 
+    def run(self):
+        recv_thread = threading.Thread(target=self.receiver)
+        recv_thread.start()
+        self.run_game_loop()
+
     def draw_health_bar(self):
-        self.display_surface.blit(self.health_background, (WIDTH * 0, HEIGHT * 0.895))
+        self.display_surface.blit(self.health_background, (SCREEN_WIDTH * 0, SCREEN_HEIGHT * 0.895))
 
         width = (self.player.current_health / self.player.max_health) * self.health_bar.get_width()  # Health Percentage
         new_bar = pygame.transform.scale(self.health_bar, (width, self.health_bar.get_height()))
-        self.display_surface.blit(new_bar, (WIDTH * 0.06, HEIGHT * 0.94))
+        self.display_surface.blit(new_bar, (SCREEN_WIDTH * 0.06, SCREEN_HEIGHT * 0.94))
 
     def draw_hot_bar(self):
         width = (WIDTH - self.hot_bar.get_width()) / 2
@@ -155,8 +167,8 @@ class FollowingCameraGroup(pygame.sprite.Group):
         # general setup
         super().__init__()
         self.display_surface = pygame.display.get_surface()
-        self.half_width = WIDTH / 2
-        self.half_height = HEIGHT / 2
+        self.half_width = SCREEN_WIDTH / 2
+        self.half_height = SCREEN_HEIGHT / 2
         self.offset = pygame.math.Vector2()
 
     def custom_draw(self, player):

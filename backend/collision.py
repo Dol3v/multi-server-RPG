@@ -1,12 +1,14 @@
 """Utils for checking collision between players."""
 from typing import Iterable
+
 from common.consts import CLIENT_WIDTH, CLIENT_HEIGHT, Pos
 
 
 def players_are_colliding(player_center: Pos, other_center: Pos) -> bool:
     """Checks if two players are colliding with each other."""
-    return (0 <= abs(player_center[0] - other_center[0]) <= CLIENT_WIDTH) and\
+    return (0 <= abs(player_center[0] - other_center[0]) <= CLIENT_WIDTH) and \
            (0 <= abs(player_center[1] - other_center[1]) <= CLIENT_HEIGHT)
+
 
 def get_colliding_entities(player_pos: Pos, *, entities_to_check: Iterable[Pos]):
     """Returns all entities that collided with a given player."""
@@ -14,3 +16,7 @@ def get_colliding_entities(player_pos: Pos, *, entities_to_check: Iterable[Pos])
     # future
     # TODO: optimize the sh*t out of this routine
     return filter(lambda pos: players_are_colliding(pos, player_pos), entities_to_check)
+
+
+def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
+    return abs(new[0] - prev[0]) + abs(new[1] - prev[1]) <= seqn_delta

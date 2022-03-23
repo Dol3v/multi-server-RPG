@@ -26,7 +26,7 @@ def init_pygame() -> pygame.Surface:
 if __name__ == "__main__":
     screen = init_pygame()
 
-    connection_screen = connect_screen.ConnectScreen(screen, 9000)
+    connection_screen = connect_screen.ConnectScreen(screen, 9001)
     connection_screen.run()
 
     my_game = game.Game(connection_screen.sock, connection_screen.addr, connection_screen.full_screen)

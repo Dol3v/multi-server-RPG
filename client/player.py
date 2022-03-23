@@ -1,6 +1,7 @@
 import pygame
 
-from weapon import *
+from common.consts import SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
+from weapon import Weapon
 from consts import *
 
 
@@ -19,7 +20,7 @@ class Player(pygame.sprite.Sprite):
         self.attacking = False
 
         self.hotbar = [None] * 6
-        self.hotbar[0] = RangeWeapon([groups], obstacle_sprites, "bow", "rare")
+        self.hotbar[0] = Weapon(groups, "axe", "rare")
         self.current_slot = 0
 
     def input(self):
@@ -58,7 +59,6 @@ class Player(pygame.sprite.Sprite):
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.attacking = True
                     self.attack_cooldown = pygame.time.get_ticks() + ATTACK_COOLDOWN
-                    self.hotbar[self.current_slot].attack(self)
         else:
             self.attacking = False
 
@@ -76,10 +76,6 @@ class Player(pygame.sprite.Sprite):
         if direction == 'horizontal':
             for sprite in self.obstacle_sprites:
                 if sprite.rect.colliderect(self.rect):
-                    if isinstance(sprite, Projectile):  # TODO deal damage if collide with projectile
-                        print("Killed projectile!")
-                        sprite.kill()
-
                     if self.direction.x > 0:  # moving right
                         self.rect.right = sprite.rect.left
                     if self.direction.x < 0:  # moving left
@@ -88,18 +84,14 @@ class Player(pygame.sprite.Sprite):
         if direction == 'vertical':
             for sprite in self.obstacle_sprites:
                 if sprite.rect.colliderect(self.rect):
-                    if isinstance(sprite, Projectile):  # TODO deal damage if collide with projectile
-                        print("Killed projectile!")
-                        sprite.kill()
-
                     if self.direction.y > 0:  # moving down
                         self.rect.bottom = sprite.rect.top
                     if self.direction.y < 0:  # moving up
                         self.rect.top = sprite.rect.bottom
 
     def get_screen_location(self):
-        half_width = WIDTH / 2
-        half_height = HEIGHT / 2
+        half_width = SCREEN_WIDTH / 2
+        half_height = SCREEN_HEIGHT / 2
         return [self.rect.centerx - half_width, self.rect.centery - half_height]
 
     def draw_main_weapon(self):
