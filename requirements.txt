@@ -2,3 +2,4 @@ mysqlclient
 sqlalchemy
 pygame
 numpy
+pyqtree
