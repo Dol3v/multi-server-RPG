@@ -60,29 +60,24 @@ class Game:
         """
         Use: communicate with the server over UDP.
         """
+        # sending location and actions
+        x = self.player.rect.centerx
+        y = self.player.rect.centery
+
+        self.conn.sendto(generate_client_message(self.seqn, x, y), self.server_addr)
+        self.seqn += 1
+
+        # receive server update
         try:
-            # sending location and actions
-            x = self.player.rect.centerx
-            y = self.player.rect.centery
+            packet, addr = self.recv_queue.get(block=False)
+        except queue.Empty:
+            return
 
-            self.conn.sendto(generate_client_message(self.seqn, x, y), self.server_addr)
-            self.seqn += 1
+        if addr == self.server_addr:
+            entity_locations = parse_server_message(packet)
+            print(entity_locations)
+            self.render_clients(entity_locations)
 
-            # receive server update
-            try:
-                packet, addr = self.recv_queue.get(block=False)
-            except queue.Empty:
-                return
-
-            if addr == self.server_addr:
-                entity_locations = parse_server_message(packet)
-                print(entity_locations)
-                self.render_clients(entity_locations)
-
-        except TimeoutError:
-            print("Timeout")
-
-    # ------------------------------------------------------------------
     def render_client(self, x: int, y: int):
         """
         Use: print client by the given x and y (Global locations)
