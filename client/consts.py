@@ -11,10 +11,13 @@ SWORD_IMG = "assets/weapons/sword/full.png"
 # Game data
 GAME_NAME = "MMORPG Game"
 
+WIDTH = 1280
+HEIGHT = 720
 FPS = 60
 TILE_SIZE = 64
 
 # General player data
+SPEED = 5
 ATTACK_COOLDOWN = 250
 MAX_HEALTH = 100
 
