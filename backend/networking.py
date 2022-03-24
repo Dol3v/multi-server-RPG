@@ -6,7 +6,6 @@ def parse_client_message(packet: bytes) -> tuple | None:
     """
     Use: convert the packets bytes to a list of fields
     """
-    print("Server received: ", parse(CLIENT_FORMAT, packet))
     return parse(CLIENT_FORMAT, packet)
 
 

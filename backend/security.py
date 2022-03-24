@@ -27,3 +27,20 @@ def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
     if diff2 := abs(new[1] - prev[1]) != 0:
         bound += SPEED
     return diff1 + diff2 <= bound * seqn_delta
+
+def invalid_movement(entity: Entity, player_pos: Pos, seqn: int) -> bool:
+    """
+    Use: check if a given player movement is valid
+    TODO: Dolev here check if path is free
+    """
+    
+    return entity.last_updated != -1 and not moved_reasonable_distance(
+            player_pos, entity.pos, seqn - entity.last_updated)
+
+   #in_range = self.entities_in_range(entity)
+
+   ## collision
+   #colliding_players = list(get_colliding_entities_with(entity, entities_to_check=in_range))
+
+   #if len(colliding_players) == 1:
+   #    print("Collision")

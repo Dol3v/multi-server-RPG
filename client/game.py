@@ -108,7 +108,9 @@ class Game:
         print(self.actions[CHAT])
         self.actions[ATTACK] = self.player.attacking
         # BUG: This may cause some problems
+        # TODO: change to ff in the format
         self.actions[ATTACK_DIR] = 0.0#self.player.direction.rotate()
+
         self.actions[EQUIPPED_ID] = equipped_id
 
 

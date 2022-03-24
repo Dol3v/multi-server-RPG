@@ -3,16 +3,16 @@ import socket
 import sys
 import threading
 
-# to import from a dir
-from collections import defaultdict
 from typing import List
+from collections import defaultdict
 
+# to import from a dir
 sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
 from backend.entity import Entity
-from backend.collision import *
+from backend.security import *
 from backend.networking import generate_server_message, parse_client_message
 
 
@@ -41,48 +41,50 @@ class Node:
         return list(filter(lambda other: entity_in_range(entity.pos, other.pos) and other.pos != entity.pos,
                            self.entities.values()))
 
+    def update_entity(self) -> Tuple[Addr, Pos]:
+        """
+        Use: receive client message from the server
+        """
+        data, addr = self.server_sock.recvfrom(RECV_CHUNK)
+        seqn, x, y, chat, attacked, attack_dir, equipped_id = parse_client_message(data)  
+        # postions
+        player_pos = (x, y)
+        secure_pos = VALID_POS
+
+        # if the received packet is dated then update entity
+        if self.entities[addr].last_updated < seqn:
+            entity = self.entities[addr]
+
+            if invalid_movement(entity, player_pos, seqn):
+                secure_pos = self.entities[addr].pos
+                
+            entity.update(player_pos, CLIENT_WIDTH, CLIENT_HEIGHT, attacked, seqn, health_change=-1)
+
+        return addr, secure_pos
+
+
+    def update_client(self, addr: Addr, secure_pos: Pos) -> None:
+        """
+        Use: sends server message to the client
+        """
+        entity = self.entities[addr]
+        entities_array = flatten(map(lambda e: e.pos, self.entities_in_range(entity)))
+
+        # generate and send message
+        update_msg = generate_server_message(entity.tools, secure_pos, entity.health, entities_array)
+        self.server_sock.sendto(update_msg, addr)
+
     def handle_client(self):
         """
         Use: communicate with client
         """
         while True:
+
             try:
-                last_valid_pos = (-1, -1) 
-                data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-                # update current player data
-                seqn, x, y, *actions = parse_client_message(data) # action_array
-                player_pos = x, y
-                if self.entities[addr].last_updated >= seqn:
-                    continue
+                client_addr, secure_pos = self.update_entity()
 
-                logging.debug(f"Received position {player_pos} from {addr=}")
-                entity = self.entities[addr]
+                self.update_client(client_addr, secure_pos)
 
-                # TODO: Dolev here check if path is free
-                if entity.last_updated != -1 and not moved_reasonable_distance(
-                        player_pos, entity.pos, seqn - entity.last_updated):
-
-                    # Is this conventional?
-                    player_pos = last_valid_pos = self.entities[addr].pos
-                    print("Teleported")
-                    
-
-                # Update current entity
-                entity.update(player_pos, CLIENT_WIDTH, CLIENT_HEIGHT, False, seqn, health_change=-1)
-                in_range = self.entities_in_range(entity)
-
-                # collision
-                colliding_players = list(get_colliding_entities_with(entity, entities_to_check=in_range))
-
-                if len(colliding_players) == 1:
-                    print("Collision")
-
-                # send relevant entities
-                entities_array = flatten(map(lambda e: e.pos, in_range))
-                update_msg = generate_server_message(entity.tools, last_valid_pos, entity.health, entities_array)
-                self.server_sock.sendto(update_msg, addr)
-
-                logging.debug(f"Sent positions {list(in_range)} to {addr=}")
             except Exception as e:
                 logging.exception(e)
 
