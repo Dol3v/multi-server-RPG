@@ -4,7 +4,8 @@ from typing import Tuple
 MESSAGE_ENDIANESS = "<"
 SEQUENCE_FORMAT = 'l'
 POSITION_FORMAT = 'll'
-ACTIONS_FORMAT = 's?fi?'
+# [chat msg, attack, attack dir, equipped id]
+ACTIONS_FORMAT = 's?fi'
 CLIENT_FORMAT = MESSAGE_ENDIANESS + SEQUENCE_FORMAT + POSITION_FORMAT + ACTIONS_FORMAT
 
 NUMBER_OF_POSITIONS_FORMAT = 'l'

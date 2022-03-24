@@ -57,8 +57,8 @@ class Game:
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
-        # [msg, attack, attack_dir, equipped_id, pick_up]
-        self.actions = [b'', False, 0.0, 0, False] 
+        # [msg, attack, attack_dir, equipped_id]
+        self.actions = [b'', False, 0.0, 0] 
 
     def receiver(self):
         while True:
