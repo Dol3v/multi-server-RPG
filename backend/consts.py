@@ -1,4 +1,3 @@
-from typing import Tuple
 
 # SqlDatabase configurations
 SQL_TYPE = "mysql"
@@ -14,4 +13,5 @@ MAX_SIZE = 0xff
 USERS_CREDENTIALS_TABLE = "users_creds"
 PLAYER_STATS_TABLE = "players_stats"
 CHAT_TABLE = "chat"
+
 

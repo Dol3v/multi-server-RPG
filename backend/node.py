@@ -2,76 +2,26 @@ import logging
 import socket
 import sys
 import threading
-import uuid
 
 # to import from a dir
 from collections import defaultdict
-from dataclasses import dataclass, field
 from typing import List
-
-import pyqtree as pyqtree
 
 sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
+from backend.entity import Entity
+from backend.collision import *
 from backend.networking import generate_server_message, parse_client_message
 
 
-@dataclass
-class Entity:
-    pos: Pos = (-1, -1)
-    width: int = -1
-    height: int = -1
-    is_attacking: bool = False
-    last_updated: int  = -1# latest sequence number basically
-    health: int = MAX_HEALTH
-    """
-    [IDs]
-        sword = 1
-        axe = 2
-        arrow = 3
-    tools: [default, tool2, tool3]
-    """
-    tools: List = field(default_factory=lambda: [1, 0, 0])
-
-
-    def update(self, pos, width, height, is_attacking, last_updated, health_change=0):
-        self.pos = pos
-        self.width = width
-        self.height = height
-        self.is_attacking = is_attacking
-        self.last_updated = last_updated
-        self.health += health_change # if health goes under 0 include then send server quit message.
-
-
-def entities_are_colliding(entity: Entity, other: Entity) -> bool:
-    """Checks if two players are colliding with each other. Assumes the entity's position is its center."""
-    return (0 <= abs(entity.pos[0] - other.pos[0]) <= 0.5 * (entity.width + other.width)) and \
-           (0 <= abs(entity.pos[1] - other.pos[1]) <= 0.5 * (entity.height + other.height))
-
-
-def get_colliding_entities_with(entity: Entity, *, entities_to_check: Iterable[Entity]):
-    """Returns all entities that collided with a given player."""
-    # would have refactored players_are_colliding into an inner function, but it'll prob be more complicated in the
-    # future
-    # TODO: optimize the sh*t out of this routine
-    return filter(lambda other: entities_are_colliding(entity, other), entities_to_check)
-
-
-def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
-    bound = 0
-    if diff1 := abs(new[0] - prev[0]) != 0:
-        bound += SPEED
-    if diff2 := abs(new[1] - prev[1]) != 0:
-        bound += SPEED
-    return diff1 + diff2 <= bound * seqn_delta
 
 
 class Node:
 
-    def __init__(self, port):
-        self.node_ip = SERVER_IP#socket.gethostbyname(socket.gethostname())
+    def __init__(self, port) -> None:
+        self.node_ip = SERVER_IP #socket.gethostbyname(socket.gethostname())
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -112,7 +62,8 @@ class Node:
                 if entity.last_updated != -1 and not moved_reasonable_distance(
                         player_pos, entity.pos, seqn - entity.last_updated):
 
-                    last_valid_pos = self.entities[addr].pos
+                    # Is this conventional?
+                    player_pos = last_valid_pos = self.entities[addr].pos
                     print("Teleported")
                     
 
@@ -135,7 +86,8 @@ class Node:
             except Exception as e:
                 logging.exception(e)
 
-    def run(self):
+
+    def run(self) -> None:
         """
         Use: starts node threads
         """

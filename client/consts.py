@@ -50,3 +50,7 @@ WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
 ]
 
+CHAT = 0
+ATTACK = 1
+ATTACK_DIR = 2
+EQUIPPED_ID = 3

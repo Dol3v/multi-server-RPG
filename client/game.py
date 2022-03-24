@@ -71,7 +71,7 @@ class Game:
         # sending location and actions
         x = self.player.rect.centerx
         y = self.player.rect.centery
-
+        self.update_player_actions("Sup everyone", 1)
         self.conn.sendto(generate_client_message(self.seqn, x, y, self.actions), self.server_addr)
         self.seqn += 1
 
@@ -99,6 +99,18 @@ class Game:
             self.player.rect.centery = data[4]
 
         self.player.current_health = data[-1]
+
+    def update_player_actions(self, chat: str, equipped_id: int) -> None:
+        """
+        Use: update player actions to send
+        """
+        self.actions[CHAT] = chat.encode()
+        print(self.actions[CHAT])
+        self.actions[ATTACK] = self.player.attacking
+        # BUG: This may cause some problems
+        self.actions[ATTACK_DIR] = 0.0#self.player.direction.rotate()
+        self.actions[EQUIPPED_ID] = equipped_id
+
 
     def render_client(self, x: int, y: int) -> None:
         """
