@@ -8,8 +8,11 @@ def create_packet(packet_format: str, data: list) -> bytes | None:
     Return value: the new packet bytes, or None
     """
     try:
+        print(data)
         return struct.pack(packet_format, *data)
-    except struct.error:
+
+    except struct.error as error:
+        print(error)
         return None
 
 
@@ -19,7 +22,8 @@ def parse(parse_format: str, data: bytes) -> tuple | None:
     """
     try:
         return struct.unpack(parse_format, data)
-    except struct.error:
+    except struct.error as error:
+        print(error)
         return None
 
 

@@ -25,13 +25,20 @@ class Entity:
     height: int
     is_attacking: bool
     last_updated: int  # latest sequence number basically
+    health: int
 
-    def update(self, pos: Pos, width: int, height: int, is_attacking: bool, last_updated: int):
+    # for solving "missing 6 required positional arguments"
+    def __init__(self):
+        self.health = MAX_HEALTH
+        self.update()
+
+    def update(self, pos=(-1, -1), width=-1, height=-1, is_attacking=False, last_updated=-1, health_change=MAX_HEALTH):
         self.pos = pos
         self.width = width
         self.height = height
         self.is_attacking = is_attacking
         self.last_updated = last_updated
+        self.health += health_change # if health goes under 0 include then send server quit message.
 
 
 def entities_are_colliding(entity: Entity, other: Entity) -> bool:
@@ -64,7 +71,7 @@ class Node:
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        self.entities = defaultdict(lambda: Entity((-1, -1), -1, -1, False, -1))
+        self.entities = defaultdict(lambda: Entity())
         # Starts the node
         self.run()
 
@@ -88,13 +95,16 @@ class Node:
             try:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
                 # update current player data
-                seqn, x, y = parse_client_message(data)
+                seqn, x, y, *actions = parse_client_message(data) # action_array
+                print(actions)
                 player_pos = x, y
                 if self.entities[addr].last_updated >= seqn:
                     continue
 
                 logging.debug(f"Received position {player_pos} from {addr=}")
+                # NOTE: this should not add new entities only the signup option should do that 
                 entity = self.entities[addr]
+
                 if entity.last_updated != -1 and not moved_reasonable_distance(
                         player_pos, entity.pos, seqn - entity.last_updated):
                     print("Teleported")

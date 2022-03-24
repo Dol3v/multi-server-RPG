@@ -57,6 +57,8 @@ class Game:
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
+        # [msg, attack, attack_dir, equipped_id, pick_up]
+        self.actions = [b'', False, 0.0, 0, False] 
 
     def receiver(self):
         while True:
@@ -70,7 +72,8 @@ class Game:
         x = self.player.rect.centerx
         y = self.player.rect.centery
 
-        self.conn.sendto(generate_client_message(self.seqn, x, y), self.server_addr)
+        print(self.actions)
+        self.conn.sendto(generate_client_message(self.seqn, x, y, self.actions), self.server_addr)
         self.seqn += 1
 
         # receive server update

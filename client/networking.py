@@ -20,9 +20,9 @@ def parse_server_message(packet: bytes) -> list | None:
         return entity_locations
 
 
-def generate_client_message(seqn: int, x: int, y: int) -> bytes | None:
+def generate_client_message(seqn: int, x: int, y: int, actions: list) -> bytes | None:
     """
     Use: generate the client message bytes by this format
-    Format: [pos(x, y) + (new_msg || attack || attack_directiton || pick_up || equipped_id)]
+    Format: [pos(x, y) + (new_msg || attack || attack_directiton || equipped_id || pick_up )]
     """
-    return create_packet(common.consts.CLIENT_FORMAT, [seqn, x, y])
+    return create_packet(common.consts.CLIENT_FORMAT, [seqn, x, y, *actions])
