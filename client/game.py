@@ -84,8 +84,23 @@ class Game:
         if addr == self.server_addr:
             data, entity_locations = parse_server_message(packet)
             self.render_clients(entity_locations)
+            self.update_player_status(data)
 
-    def render_client(self, x: int, y: int):
+    def update_player_status(self, data: list) -> None:
+        """
+        Use: update player status by the server message
+        """
+        # self.player.hotbar
+        tools = data[:3]
+
+        # update client position only when the server says so
+        if (data[3] != -1 and data[4] != -1):
+            self.player.rect.centerx = data[3]
+            self.player.rect.centery = data[4]
+
+        self.player.current_health = data[-1]
+
+    def render_client(self, x: int, y: int) -> None:
         """
         Use: print client by the given x and y (Global locations)
         """
@@ -94,7 +109,7 @@ class Game:
         new_y = y - screen_location[1]  # Returns relative location y to the screen
         self.display_surface.blit(self.player_img, self.player_img.get_rect(center=(new_x, new_y)))
 
-    def render_clients(self, client_locations: List[Tuple[int, int]]):
+    def render_clients(self, client_locations: List[Tuple[int, int]]) -> None:
         """
         Use: prints the other clients by the given info about them
 

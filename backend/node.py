@@ -97,6 +97,7 @@ class Node:
         """
         while True:
             try:
+                last_valid_pos = (-1, -1) 
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
                 # update current player data
                 seqn, x, y, *actions = parse_client_message(data) # action_array
@@ -107,12 +108,16 @@ class Node:
                 logging.debug(f"Received position {player_pos} from {addr=}")
                 entity = self.entities[addr]
 
+                # TODO: Dolev here check if path is free
                 if entity.last_updated != -1 and not moved_reasonable_distance(
                         player_pos, entity.pos, seqn - entity.last_updated):
+
+                    last_valid_pos = self.entities[addr].pos
                     print("Teleported")
+                    
 
                 # Update current entity
-                entity.update(player_pos, CLIENT_WIDTH, CLIENT_HEIGHT, False, seqn)
+                entity.update(player_pos, CLIENT_WIDTH, CLIENT_HEIGHT, False, seqn, health_change=-1)
                 in_range = self.entities_in_range(entity)
 
                 # collision
@@ -123,7 +128,7 @@ class Node:
 
                 # send relevant entities
                 entities_array = flatten(map(lambda e: e.pos, in_range))
-                update_msg = generate_server_message(entity.tools, entity.pos, entity.health, entities_array)
+                update_msg = generate_server_message(entity.tools, last_valid_pos, entity.health, entities_array)
                 self.server_sock.sendto(update_msg, addr)
 
                 logging.debug(f"Sent positions {list(in_range)} to {addr=}")
