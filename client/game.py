@@ -6,16 +6,17 @@ import threading
 
 import pygame
 
+sys.path.append('../')
+
 from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT
 from consts import *
 # to import from a dir
 from networking import generate_client_message, parse_server_message
 from player import Player
-from player_entity import PlayerEntity
+from entity import Entity
 from tile import Tile
 
 
-# sys.path.append('../')
 
 
 class Game:
@@ -106,7 +107,7 @@ class Game:
             if entity_id in self.entities:
                 self.entities.get(entity_id).move_to(*pos)
             else:
-                self.entities[entity_id] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos)
+                self.entities[entity_id] = Entity([self.obstacles_sprites, self.visible_sprites], *pos)
 
     # ------------------------------------------------------------------
 

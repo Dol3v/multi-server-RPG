@@ -59,9 +59,11 @@ def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
 
 class Node:
 
-    def __init__(self, ip, port):
-        self.address = (ip, port)
+    def __init__(self, port):
+        self.node_ip = SERVER_IP#socket.gethostbyname(socket.gethostname())
+        self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
         self.entities = defaultdict(lambda: Entity((-1, -1), -1, -1, False, -1))
         # Starts the node
         self.run()
@@ -120,6 +122,8 @@ class Node:
         """
 
         self.server_sock.bind(self.address)
+        print(f"Node address: {self.address}")
+
         try:
             for i in range(THREADS_COUNT):
                 # starts handlers threads
@@ -132,4 +136,4 @@ class Node:
 
 if __name__ == "__main__":
     logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
-    Node(SERVER_IP, SERVER_PORT)
+    Node(SERVER_PORT)
