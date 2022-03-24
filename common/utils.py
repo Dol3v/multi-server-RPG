@@ -8,7 +8,6 @@ def create_packet(packet_format: str, data: list) -> bytes | None:
     Return value: the new packet bytes, or None
     """
     try:
-        print(data)
         return struct.pack(packet_format, *data)
 
     except struct.error as error:

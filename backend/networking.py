@@ -1,4 +1,4 @@
-from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT
+from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos
 from common.utils import create_packet, parse
 
 
@@ -9,13 +9,18 @@ def parse_client_message(packet: bytes) -> tuple | None:
     return parse(CLIENT_FORMAT, packet)
 
 
-def generate_server_message(entities_in_range: list) -> bytes | None:
+def generate_server_message(tools: list, last_valid_pos: Pos, health: int, entities_in_range: list) -> bytes | None:
     """
     Use: creates the server update message
-    Format: [(pickup id || ack equipped || collision data) + HP + entities in range]
+    Format: [tools + last valid pos + HP + entities in range]
+    NOTE: the first tool inside the tools will be the equipped one. 
     """
-    # converts list of tuples into a list
-    data = [len(entities_in_range) // 2]
+    data = []
+    # create data array
+    data += tools
+    data += [*last_valid_pos]
+    data.append(health)
+    data.append(len(entities_in_range) // 2)
     # packet data
     data += entities_in_range
 

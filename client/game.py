@@ -72,7 +72,6 @@ class Game:
         x = self.player.rect.centerx
         y = self.player.rect.centery
 
-        print(self.actions)
         self.conn.sendto(generate_client_message(self.seqn, x, y, self.actions), self.server_addr)
         self.seqn += 1
 
@@ -83,8 +82,7 @@ class Game:
             return
 
         if addr == self.server_addr:
-            entity_locations = parse_server_message(packet)
-            print(entity_locations)
+            data, entity_locations = parse_server_message(packet)
             self.render_clients(entity_locations)
 
     def render_client(self, x: int, y: int):

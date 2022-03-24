@@ -1,4 +1,3 @@
-import dataclasses
 import logging
 import socket
 import sys
@@ -7,6 +6,7 @@ import uuid
 
 # to import from a dir
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import List
 
 import pyqtree as pyqtree
@@ -18,21 +18,25 @@ from common.utils import *
 from backend.networking import generate_server_message, parse_client_message
 
 
-@dataclasses.dataclass
+@dataclass
 class Entity:
-    pos: Pos
-    width: int
-    height: int
-    is_attacking: bool
-    last_updated: int  # latest sequence number basically
-    health: int
+    pos: Pos = (-1, -1)
+    width: int = -1
+    height: int = -1
+    is_attacking: bool = False
+    last_updated: int  = -1# latest sequence number basically
+    health: int = MAX_HEALTH
+    """
+    [IDs]
+        sword = 1
+        axe = 2
+        arrow = 3
+    tools: [default, tool2, tool3]
+    """
+    tools: List = field(default_factory=lambda: [1, 0, 0])
 
-    # for solving "missing 6 required positional arguments"
-    def __init__(self):
-        self.health = MAX_HEALTH
-        self.update()
 
-    def update(self, pos=(-1, -1), width=-1, height=-1, is_attacking=False, last_updated=-1, health_change=MAX_HEALTH):
+    def update(self, pos, width, height, is_attacking, last_updated, health_change=0):
         self.pos = pos
         self.width = width
         self.height = height
@@ -96,19 +100,18 @@ class Node:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
                 # update current player data
                 seqn, x, y, *actions = parse_client_message(data) # action_array
-                print(actions)
                 player_pos = x, y
                 if self.entities[addr].last_updated >= seqn:
                     continue
 
                 logging.debug(f"Received position {player_pos} from {addr=}")
-                # NOTE: this should not add new entities only the signup option should do that 
                 entity = self.entities[addr]
 
                 if entity.last_updated != -1 and not moved_reasonable_distance(
                         player_pos, entity.pos, seqn - entity.last_updated):
                     print("Teleported")
 
+                # Update current entity
                 entity.update(player_pos, CLIENT_WIDTH, CLIENT_HEIGHT, False, seqn)
                 in_range = self.entities_in_range(entity)
 
@@ -119,7 +122,8 @@ class Node:
                     print("Collision")
 
                 # send relevant entities
-                update_msg = generate_server_message(flatten(map(lambda e: e.pos, in_range)))
+                entities_array = flatten(map(lambda e: e.pos, in_range))
+                update_msg = generate_server_message(entity.tools, entity.pos, entity.health, entities_array)
                 self.server_sock.sendto(update_msg, addr)
 
                 logging.debug(f"Sent positions {list(in_range)} to {addr=}")
