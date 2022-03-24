@@ -2,7 +2,7 @@
 import pygame
 
 from common.consts import SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
-from weapon import Weapon
+from sprites import Weapon
 from consts import *
 
 

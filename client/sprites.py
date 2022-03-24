@@ -3,7 +3,6 @@
 TODO: merge the weapon classes with the Entity class
 """
 import pygame
-import math
 import numpy as np
 import abc
 
@@ -11,6 +10,7 @@ from typing import Tuple
 
 from consts import *
 from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+from common.utils import normalize_vec
 
 
 class Tile(pygame.sprite.Sprite):
@@ -76,13 +76,6 @@ class Weapon(pygame.sprite.Sprite):
         self.image.blit(self.texture, (0, 0))
         self.rect = self.image.get_rect(
             center=player.rect.center + pygame.math.Vector2(60 * vec[0], (60 * vec[1] + 3)))
-
-    @staticmethod
-    def normalize_vec(x, y) -> Tuple[float, float]:
-        factor = math.sqrt(x ** 2 + y ** 2)
-        if factor == 0:
-            return 0, -0.1
-        return x / factor, y / factor
 
     @abc.abstractmethod
     def attack(self, player):

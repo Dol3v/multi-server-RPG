@@ -3,7 +3,7 @@ import struct
 
 from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, MESSAGE_ENDIANESS, POSITION_FORMAT, INT_SIZE, CLIENT_FORMAT
 from typing import Tuple
-from common.utils import parse, create_packet
+from common.utils import parse
 
 
 

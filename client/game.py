@@ -13,8 +13,7 @@ from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT
 from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
-from entity import Entity
-from tile import Tile
+from sprites import Entity, Tile, FollowingCameraGroup
 
 
 
@@ -69,10 +68,8 @@ class Game:
         Use: communicate with the server over UDP.
         """
         # sending location and actions
-        x = self.player.rect.centerx
-        y = self.player.rect.centery
         self.update_player_actions("Sup everyone", 1)
-        self.conn.sendto(generate_client_message(self.seqn, x, y, self.actions), self.server_addr)
+        self.conn.sendto(generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery, self.actions), self.server_addr)
         self.seqn += 1
 
         # receive server update
