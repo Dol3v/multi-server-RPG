@@ -1,3 +1,4 @@
+"""General Common consts"""
 from typing import Tuple
 
 INT_SIZE = 4

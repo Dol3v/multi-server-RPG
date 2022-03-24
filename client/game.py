@@ -1,16 +1,16 @@
+"""Game loop and communication with the server"""
 import queue
 import socket
 import sys
-from typing import Tuple, List
 import threading
-
 import pygame
+from typing import Tuple, List
 
+# to import from a dir
 sys.path.append('../')
 
 from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT
 from consts import *
-# to import from a dir
 from networking import generate_client_message, parse_server_message
 from player import Player
 from entity import Entity
@@ -114,15 +114,6 @@ class Game:
         self.actions[EQUIPPED_ID] = equipped_id
 
 
-    def render_client(self, x: int, y: int) -> None:
-        """
-        Use: print client by the given x and y (Global locations)
-        """
-        screen_location = self.player.get_screen_location()
-        new_x = x - screen_location[0]  # Returns relative location x to the screen
-        new_y = y - screen_location[1]  # Returns relative location y to the screen
-        self.display_surface.blit(self.player_img, self.player_img.get_rect(center=(new_x, new_y)))
-
     def render_clients(self, client_locations: List[Tuple[int, int]]) -> None:
         """
         Use: prints the other clients by the given info about them
@@ -139,9 +130,11 @@ class Game:
             else:
                 self.entities[entity_id] = Entity([self.obstacles_sprites, self.visible_sprites], *pos)
 
-    # ------------------------------------------------------------------
 
-    def create_map(self):
+    def create_map(self) -> None:
+        """
+        Use:
+        """
         for row_index, row in enumerate(WORLD_MAP):
             for col_index, col in enumerate(row):
                 x = col_index * TILE_SIZE
@@ -151,9 +144,16 @@ class Game:
                 if col == 'p':
                     self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites)
 
-    def run_game_loop(self):
+    def run(self) -> None:
+        """
+        Use: game loop
+        """
         self.running = True
+        # starts the receiving thread 
+        recv_thread = threading.Thread(target=self.receiver)
+        recv_thread.start()
 
+        # Game loop
         while self.running:
             event_list = pygame.event.get()
             for event in event_list:
@@ -167,6 +167,8 @@ class Game:
                         else:
                             pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
                         self.full_screen = not self.full_screen
+
+            # sprite update
             self.display_surface.fill("black")
             self.visible_sprites.custom_draw(self.player)
             self.visible_sprites.update()
@@ -176,12 +178,11 @@ class Game:
             pygame.display.update()
             self.clock.tick(FPS)
 
-    def run(self):
-        recv_thread = threading.Thread(target=self.receiver)
-        recv_thread.start()
-        self.run_game_loop()
 
     def draw_health_bar(self):
+        """
+        Use: draw health bar by self.player.current_health
+        """
         self.display_surface.blit(self.health_background, (SCREEN_WIDTH * 0, SCREEN_HEIGHT * 0.895))
 
         width = (self.player.current_health / self.player.max_health) * self.health_bar.get_width()  # Health Percentage
@@ -189,25 +190,10 @@ class Game:
         self.display_surface.blit(new_bar, (SCREEN_WIDTH * 0.06, SCREEN_HEIGHT * 0.94))
 
     def draw_hot_bar(self):
+        """
+        Use: draw the tool's menu by the tools received from the server
+        """
         width = (WIDTH - self.hot_bar.get_width()) / 2
         self.display_surface.blit(self.hot_bar,(width,HEIGHT * 0.9))
 
 
-class FollowingCameraGroup(pygame.sprite.Group):
-    def __init__(self):
-        # general setup
-        super().__init__()
-        self.display_surface = pygame.display.get_surface()
-        self.half_width = SCREEN_WIDTH / 2
-        self.half_height = SCREEN_HEIGHT / 2
-        self.offset = pygame.math.Vector2()
-
-    def custom_draw(self, player):
-        # getting the offset
-        self.offset.x = player.rect.centerx - self.half_width
-        self.offset.y = player.rect.centery - self.half_height
-
-        # for spr in self.sprites():
-        for sprite in sorted(self.sprites(), key=lambda spr: spr.rect.centery):
-            offset_pos = sprite.rect.topleft - self.offset
-            self.display_surface.blit(sprite.image, offset_pos)

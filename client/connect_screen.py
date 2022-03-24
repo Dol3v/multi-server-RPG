@@ -1,3 +1,4 @@
+"""Connection screen login and signup"""
 import socket
 import sys
 

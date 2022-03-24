@@ -3,3 +3,4 @@ sqlalchemy
 pygame
 numpy
 pyqtree
+dataclasses

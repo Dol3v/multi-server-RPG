@@ -1,3 +1,4 @@
+import struct
 from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos
 from common.utils import create_packet, parse
 
@@ -26,4 +27,4 @@ def generate_server_message(tools: list, last_valid_pos: Pos, health: int, entit
 
     packet_format = SERVER_HEADER_FORMAT + "l" * len(entities_in_range)
 
-    return create_packet(packet_format, data)
+    return struct.pack(packet_format, *data)

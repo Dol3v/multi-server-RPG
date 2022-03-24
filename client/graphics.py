@@ -1,5 +1,5 @@
+"""Grphics utils for login screen and more"""
 import random
-
 import pygame
 
 from common.consts import SCREEN_WIDTH

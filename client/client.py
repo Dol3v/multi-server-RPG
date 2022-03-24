@@ -1,3 +1,4 @@
+"""Runs the client stages"""
 import os
 import sys
 
@@ -7,7 +8,6 @@ from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, SERVER_PORT
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 import pygame
-
 import game
 import connect_screen
 import consts

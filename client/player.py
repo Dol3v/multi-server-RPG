@@ -1,3 +1,4 @@
+"""Player class..."""
 import pygame
 
 from common.consts import SPEED, SCREEN_WIDTH, SCREEN_HEIGHT

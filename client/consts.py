@@ -1,4 +1,4 @@
-
+"""General consts for client side"""
 # Images
 PLAYER_IMG = "assets/idle_down.png"
 HEALTH_BACKGROUND_IMG = "assets/health/health_background.png"
