@@ -58,6 +58,7 @@ class Game:
         self.seqn = 0
         # [msg, attack, attack_dir, equipped_id]
         self.actions = [b'', False, 0.0, 0] 
+        self.chat_msg = ""
 
     def receiver(self):
         while True:
@@ -67,8 +68,8 @@ class Game:
         """
         Use: communicate with the server over UDP.
         """
-        # sending location and actions
-        self.update_player_actions("Sup everyone", 1)
+        # update server
+        self.update_player_actions()
         self.conn.sendto(generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery, self.actions), self.server_addr)
         self.seqn += 1
 
@@ -97,18 +98,17 @@ class Game:
 
         self.player.current_health = data[-1]
 
-    def update_player_actions(self, chat: str, equipped_id: int) -> None:
+    def update_player_actions(self) -> None:
         """
         Use: update player actions to send
         """
-        self.actions[CHAT] = chat.encode()
-        print(self.actions[CHAT])
+        self.actions[CHAT] = self.chat_msg.encode()
         self.actions[ATTACK] = self.player.attacking
         # BUG: This may cause some problems
         # TODO: change to ff in the format
         self.actions[ATTACK_DIR] = 0.0#self.player.direction.rotate()
 
-        self.actions[EQUIPPED_ID] = equipped_id
+        self.actions[EQUIPPED_ID] = 1 # equipped_id
 
 
     def render_clients(self, client_locations: List[Tuple[int, int]]) -> None:

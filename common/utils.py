@@ -1,6 +1,7 @@
 """Some useful common utils"""
 import struct
-from typing import Iterable
+import math
+from typing import Iterable, Tuple
 
 def parse(parse_format: str, data: bytes) -> tuple | None:
     """
@@ -21,3 +22,10 @@ def flatten(iterable: Iterable) -> list:
     :param iterable: iterable to flatten
     """
     return list(sum(iterable, ()))
+
+
+def normalize_vec(x, y) -> Tuple[float, float]:
+    factor = math.sqrt(x ** 2 + y ** 2)
+    if factor == 0:
+        return 0, -0.1
+    return x / factor, y / factor

@@ -1,6 +1,6 @@
 import struct
 from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos
-from common.utils import create_packet, parse
+from common.utils import parse
 
 
 def parse_client_message(packet: bytes) -> tuple | None:
