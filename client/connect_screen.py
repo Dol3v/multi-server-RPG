@@ -4,7 +4,7 @@ import sys
 import pygame.transform
 
 # to import from a dir
-# sys.path.append('../')
+sys.path.append('../')
 from consts import CONNECTION_SCREEN_IMG, CONNECT_BUTTON_IMG, FPS
 from common.consts import SERVER_PORT, SCREEN_HEIGHT
 from graphics import *
@@ -21,8 +21,6 @@ class ConnectScreen:
         self.running = False
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # remove when login is added server-side
-        self.sock.bind(("127.0.0.1", port))
         self.addr = None
         self.clock = pygame.time.Clock()
 

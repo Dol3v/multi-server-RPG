@@ -2,7 +2,7 @@ import pygame
 from consts import *
 
 
-class PlayerEntity(pygame.sprite.Sprite):
+class Entity(pygame.sprite.Sprite):
     def __init__(self, groups, x, y):
         super().__init__(*groups)
         self.x = x
