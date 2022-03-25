@@ -7,28 +7,30 @@ from common.utils import parse
 
 
 
-def parse_server_message(packet: bytes) -> Tuple[list, list]:
+def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
     """
     Use: convert the packets bytes to a list of fields
     """
     # tools, valid pos, health, entities
-    data = [*parse(SERVER_HEADER_FORMAT, packet[:SERVER_HEADER_SIZE])]
+    player_status = parse(SERVER_HEADER_FORMAT, packet[:SERVER_HEADER_SIZE])
 
 
     # entities
-    #print("client received ", data)
-    num_of_entities = data[-1]
+    num_of_entities = player_status[-1]
+    player_status = player_status[:-1]
+
     if num_of_entities == 0:
-        return data, []
+        return player_status, []
 
     entity_locations_raw = parse(MESSAGE_ENDIANESS + POSITION_FORMAT * num_of_entities,
                                  packet[SERVER_HEADER_SIZE: SERVER_HEADER_SIZE + num_of_entities * 2 * INT_SIZE])
 
     if entity_locations_raw:
-        entity_locations = [(entity_locations_raw[i], entity_locations_raw[i + 1])
+        entities = [(entity_locations_raw[i], entity_locations_raw[i + 1])
                             for i in range(0, len(entity_locations_raw), 2)]
 
-        return data, entity_locations
+    
+        return player_status, entities
 
 
 def generate_client_message(seqn: int, x: int, y: int, actions: list) -> bytes | None:

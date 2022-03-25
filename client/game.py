@@ -9,11 +9,11 @@ from typing import Tuple, List
 # to import from a dir
 sys.path.append('../')
 
-from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT
+from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT, VALID_POS, Pos, MIN_HEALTH
 from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
-from sprites import Entity, Tile, FollowingCameraGroup
+from sprites import Entity, FollowingCameraGroup, Tile
 
 
 
@@ -57,7 +57,7 @@ class Game:
         self.recv_queue = queue.Queue()
         self.seqn = 0
         # [msg, attack, attack_dir, equipped_id]
-        self.actions = [b'', False, 0.0, 0] 
+        self.actions = [b'', False, 0.0, 0.0, 0] 
         self.chat_msg = ""
 
     def receiver(self):
@@ -80,23 +80,24 @@ class Game:
             return
 
         if addr == self.server_addr:
-            data, entity_locations = parse_server_message(packet)
-            self.render_clients(entity_locations)
-            self.update_player_status(data)
+            (*tools, x, y, health), entities = parse_server_message(packet)
+            # update graphics and status
+            self.render_clients(entities)
+            self.update_player_status(tools, (x, y), health)
 
-    def update_player_status(self, data: list) -> None:
+    def update_player_status(self, tools: list, valid_pos: Pos, health: int) -> None:
         """
         Use: update player status by the server message
         """
         # self.player.hotbar
-        tools = data[:3]
 
         # update client position only when the server says so
-        if (data[3] != -1 and data[4] != -1):
-            self.player.rect.centerx = data[3]
-            self.player.rect.centery = data[4]
+        if (valid_pos != VALID_POS):
+            self.player.rect.centerx = valid_pos[0]
+            self.player.rect.centery = valid_pos[1]
 
-        self.player.current_health = data[-1]
+        if health >= MIN_HEALTH:
+            self.player.current_health = health
 
     def update_player_actions(self) -> None:
         """
@@ -190,7 +191,7 @@ class Game:
         """
         Use: draw the tool's menu by the tools received from the server
         """
-        width = (WIDTH - self.hot_bar.get_width()) / 2
-        self.display_surface.blit(self.hot_bar,(width,HEIGHT * 0.9))
+        width = (SCREEN_WIDTH - self.hot_bar.get_width()) / 2
+        self.display_surface.blit(self.hot_bar,(width, SCREEN_HEIGHT * 0.9))
 
 

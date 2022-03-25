@@ -7,7 +7,7 @@ MESSAGE_ENDIANESS = "<"
 SEQUENCE_FORMAT = 'q'
 POSITION_FORMAT = 'll'
 # [chat msg, attack, attack dir, equipped id]
-ACTIONS_FORMAT = '255s?fi'
+ACTIONS_FORMAT = '255s?ffi'
 CLIENT_FORMAT = MESSAGE_ENDIANESS + SEQUENCE_FORMAT + POSITION_FORMAT + ACTIONS_FORMAT
 
 NUMBER_OF_POSITIONS_FORMAT = 'l'
@@ -24,6 +24,7 @@ WORLD_HEIGHT = 20 * 64
 WORLD_WIDTH = 20 * 64
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
+
 # Types
 Pos = Tuple[int, int]
 Addr = Tuple[str, int]
@@ -34,9 +35,16 @@ SERVER_PORT = 42069
 SERVER_IP = "127.0.0.1"
 RECV_CHUNK = 1024
 THREADS_COUNT = 1
+
 # Networking conventions
 VALID_POS = (-1, -1)
+DEFAULT_DIR = (0.0, 0.0)
+
 # Useful player information
 SPEED = 5
 MAX_HEALTH = 100
 MIN_HEALTH = 0
+# Tools 
+SWORD = 1
+AXE = 2
+BOW = 3

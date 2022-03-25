@@ -12,7 +12,7 @@ sys.path.append('../')
 from common.consts import *
 from common.utils import *
 from backend.entity import Entity
-from backend.security import *
+from backend.collision import *
 from backend.networking import generate_server_message, parse_client_message
 
 
@@ -46,7 +46,7 @@ class Node:
         Use: receive client message from the server
         """
         data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-        seqn, x, y, chat, attacked, attack_dir, equipped_id = parse_client_message(data)  
+        seqn, x, y, chat, attacked, *attack_dir, equipped_id = parse_client_message(data)  
         # postions
         player_pos = (x, y)
         secure_pos = VALID_POS
@@ -105,6 +105,24 @@ class Node:
 
         except Exception as e:
             logging.exception(f"{e}")
+
+
+def invalid_movement(entity: Entity, player_pos: Pos, seqn: int) -> bool:
+    """
+    Use: check if a given player movement is valid
+    TODO: Dolev here check if path is free
+    """
+    
+    return entity.last_updated != -1 and not moved_reasonable_distance(
+            player_pos, entity.pos, seqn - entity.last_updated)
+
+   #in_range = self.entities_in_range(entity)
+
+   ## collision
+   #colliding_players = list(get_colliding_entities_with(entity, entities_to_check=in_range))
+
+   #if len(colliding_players) == 1:
+   #    print("Collision")
 
 
 if __name__ == "__main__":
