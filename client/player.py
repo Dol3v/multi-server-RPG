@@ -22,7 +22,6 @@ class Player(pygame.sprite.Sprite):
         self.is_typing = False
 
         self.hotbar = [None] * 6
-        self.hotbar[0] = Weapon(groups, "axe", "rare")
         self.current_slot = 0
 
     def input(self):
@@ -105,6 +104,17 @@ class Player(pygame.sprite.Sprite):
         weapon = self.hotbar[self.current_slot]
         if weapon:
             weapon.draw_weapon(self)
+
+    def set_weapon_in_slot(self, slot, weapon: Weapon):
+        self.hotbar[slot] = weapon
+
+    def get_weapon_in_slot(self, slot) -> Weapon:
+        return self.hotbar[slot]
+
+    def remove_weapon_in_slot(self, slot):
+        if self.hotbar[slot]:
+            self.hotbar[slot].remove()
+            self.hotbar[slot] = None
 
     def update(self):
         self.input()

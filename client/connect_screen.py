@@ -23,6 +23,7 @@ class ConnectScreen:
         self.running = False
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(("0.0.0.0", 10000))
         self.addr = None
         self.clock = pygame.time.Clock()
 
