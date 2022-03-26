@@ -9,7 +9,7 @@ Server update message
 ```
 [tools, new_chat_msg, last_valid_pos, HP, entities in range]
 entity
-[enitity_id, pos, dir]
+[enitity_id, pos, dir_vector]
 ```
 
 # Potential hacks
