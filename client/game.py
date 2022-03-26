@@ -161,20 +161,34 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+
+                if event.type == pygame.MOUSEBUTTONDOWN and self.is_showing_chat:
+                    self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
+
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN and pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                        if self.full_screen:
-                            pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-                        else:
-                            pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
-                        self.full_screen = not self.full_screen
-                    if event.key == pygame.K_t:
-                        self.player.is_typing = not self.player.is_typing
-                    if event.key == pygame.K_TAB:
-                        self.is_showing_chat = not self.is_showing_chat
+                    if self.player.is_typing:
+                        if event.key == pygame.K_TAB:  # Check if closes the chat
+                            self.player.is_typing = not self.player.is_typing
+                            self.is_showing_chat = not self.is_showing_chat
+
+                        elif event.key == pygame.K_RETURN:  # Check if enter is clicked and sends the message
+                            self.chat.add_message(self.chat_msg)
+                            self.chat_msg = ""
+                            self.player.is_typing = not self.player.is_typing
+
+                        else:  # Check if typing a key
+                            self.chat_msg += event.unicode
+                    else:
+                        if event.key == pygame.K_RETURN and pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                            if self.full_screen:
+                                pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+                            else:
+                                pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+                            self.full_screen = not self.full_screen
+                        if event.key == pygame.K_TAB:
+                            self.is_showing_chat = not self.is_showing_chat
 
             # sprite update
-            print(self.chat.at_bottom)
             self.display_surface.fill("black")
             self.visible_sprites.custom_draw(self.player)
             self.visible_sprites.update()

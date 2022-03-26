@@ -235,11 +235,14 @@ class ChatBox(pygame.sprite.Sprite):
         self.background_color = (82, 82, 82, 100)
         self.text_color = text_color
         self.history = []
+        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         self.message_surface = pygame.Surface((0, 0), pygame.SRCALPHA)
         self.load_message_surface()
         self.at_bottom = True
 
     def add_message(self, message: str):
+        if message == "":
+            return
         self.history.append(message)
         self.message_surface = self.combine_surfaces(self.message_surface, self.generate_surface(message))
         if self.at_bottom:
@@ -250,8 +253,6 @@ class ChatBox(pygame.sprite.Sprite):
             self.message_surface = self.combine_surfaces(self.message_surface, self.generate_surface(msg))
 
     def render_chat(self, surface):
-        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-
         self.image.fill(self.background_color)
         self.image.blit(self.message_surface, (0, self.scroll_height))
 
@@ -261,7 +262,6 @@ class ChatBox(pygame.sprite.Sprite):
         keys = pygame.key.get_pressed()
         if self.message_surface.get_height() > self.image.get_height():
             if keys[pygame.K_UP]:
-                print(self.scroll_height)
                 if self.scroll_height < 0:
                     if pygame.key.get_mods() & pygame.KMOD_SHIFT:
                         self.scroll_height += 4
@@ -307,6 +307,9 @@ class ChatBox(pygame.sprite.Sprite):
             return surface
         else:
             return full_surface
+
+    def has_collision(self, x, y) -> bool:
+        return self.image.get_rect(topleft=(self.x, self.y)).collidepoint(x, y)
 
     def combine_surfaces(self, f_surf, s_surf):
         # Create a surface and pass the sum of the widths.
