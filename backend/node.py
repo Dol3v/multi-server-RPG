@@ -67,12 +67,16 @@ class Node:
         """
         Use: sends server message to the client
         """
+        new_chat = ""
         entity = self.entities[addr]
-        entities_array = flatten(map(lambda e: e.pos, self.entities_in_range(entity)))
+
+        
+        entities_array = flatten(map(lambda e: (e.ID, *e.pos, *e.direction), self.entities_in_range(entity)))
+        print(entities_array)
 
         # generate and send message
-        update_msg = generate_server_message(entity.tools, secure_pos, entity.health, entities_array)
-        self.server_sock.sendto(update_msg, addr)
+        update_packet = generate_server_message(entity.tools, new_chat, secure_pos, entity.health, entities_array)
+        self.server_sock.sendto(update_packet, addr)
 
     def handle_client(self):
         """

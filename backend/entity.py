@@ -4,6 +4,7 @@ from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, VALID_PO
 
 @dataclass
 class Entity:
+    ID: int = 0
     pos: Pos = VALID_POS
     width: int = -1
     height: int = -1

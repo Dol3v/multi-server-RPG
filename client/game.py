@@ -56,8 +56,8 @@ class Game:
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
-        # [msg, attack, attack_dir, equipped_id]
-        self.actions = [b'', False, 0.0, 0.0, 0] 
+        # [msg, dir_bit, attack, attack_dir, equipped_id]
+        self.actions = [b'', 0, False, 0.0, 0.0, 0] 
         self.chat_msg = ""
 
     def receiver(self):
@@ -70,7 +70,8 @@ class Game:
         """
         # update server
         self.update_player_actions()
-        self.conn.sendto(generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery, self.actions), self.server_addr)
+        update_packet = generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery, self.actions)
+        self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
 
         # receive server update
@@ -112,7 +113,7 @@ class Game:
         self.actions[EQUIPPED_ID] = 1 # equipped_id
 
 
-    def render_clients(self, client_locations: List[Tuple[int, int]]) -> None:
+    def render_clients(self, entities: List[Tuple[int, int]]) -> None:
         """
         Use: prints the other clients by the given info about them
 
@@ -122,7 +123,10 @@ class Game:
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
 
-        for entity_id, pos in enumerate(client_locations):
+        for entity_id,  entity_info in enumerate(entities):
+
+            entity_type, pos, entity_dir = entity_info
+
             if entity_id in self.entities:
                 self.entities.get(entity_id).move_to(*pos)
             else:
