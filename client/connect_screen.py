@@ -64,7 +64,7 @@ class ConnectScreen:
                                                password, password_input, connect_btn, move_to_register_btn, login_text)
 
         self.register_group = pygame.sprite.Group(
-            Text(0, SCREEN_HEIGHT * 0.1, "Register To Screen", big_font).position_center(),
+            Text(0, SCREEN_HEIGHT * 0.1, "Register To Server", big_font).position_center(),
 
             Text(0, SCREEN_HEIGHT * 0.20, "Enter Server's IP", pygame.font.SysFont("arial", 25)).position_center(),
             LimitedTextBox(0, SCREEN_HEIGHT * 0.25, 250, pygame.font.SysFont("arial", 35), 15).position_center(),
@@ -170,7 +170,7 @@ class ConnectButton(Button):
                     password = self.connect_screen.get_sprite_by_position(5).text
                     if ip == "":
                         ip = '127.0.0.1'
-                    self.connect_screen.connect_to_server(ip, username, password)
+                    self.connect_screen.connect_to_server(ip, username, password)  # Login player to the server
 
 
 class RegisterButton(Button):
@@ -190,6 +190,7 @@ class RegisterButton(Button):
                     password = self.connect_screen.get_sprite_by_position(5).text
                     if ip == "":
                         ip = '127.0.0.1'
+                    # Send register packet to the server and wait for response
                     # TODO: Dolev or reem do the register stuff lmao
                     self.connect_screen.is_login_screen = not self.connect_screen.is_login_screen
 
