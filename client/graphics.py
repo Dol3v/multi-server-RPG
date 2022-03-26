@@ -1,6 +1,7 @@
 """Grphics utils for login screen and more"""
 import random
 import pygame
+import math
 
 from common.consts import SCREEN_WIDTH
 
@@ -214,10 +215,105 @@ class TipBox(pygame.sprite.Sprite):
             self.timer = pygame.time.get_ticks()
 
         if self.now - self.timer > 1000 * self.seconds_per_tip:
-            print("Changed!")
 
             random_tip = self.tip
             while self.tip == random_tip:
                 self.tip = random.choice(self.tips)
             self.timer = self.now
         self.render_text()
+
+
+class ChatBox(pygame.sprite.Sprite):
+    def __init__(self, x, y, width, height, font, text_color=(255, 255, 255)):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.scroll_height = 0
+        self.width = width
+        self.height = height
+        self.font = font
+        self.background_color = (82, 82, 82, 100)
+        self.text_color = text_color
+        self.history = []
+        self.message_surface = pygame.Surface((0, 0), pygame.SRCALPHA)
+        self.load_message_surface()
+        self.at_bottom = True
+
+    def add_message(self, message: str):
+        self.history.append(message)
+        self.message_surface = self.combine_surfaces(self.message_surface, self.generate_surface(message))
+        if self.at_bottom:
+            self.jump_to_new_message()
+
+    def load_message_surface(self):
+        for msg in self.history:
+            self.message_surface = self.combine_surfaces(self.message_surface, self.generate_surface(msg))
+
+    def render_chat(self, surface):
+        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+
+        self.image.fill(self.background_color)
+        self.image.blit(self.message_surface, (0, self.scroll_height))
+
+        surface.blit(self.image, (self.x, self.y))
+
+    def update(self, event_list):
+        keys = pygame.key.get_pressed()
+        if self.message_surface.get_height() > self.image.get_height():
+            if keys[pygame.K_UP]:
+                print(self.scroll_height)
+                if self.scroll_height < 0:
+                    if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                        self.scroll_height += 4
+                    else:
+                        self.scroll_height += 2
+                    self.at_bottom = False
+
+            if keys[pygame.K_DOWN]:
+                if self.image.get_height() + abs(self.scroll_height) < self.message_surface.get_height():
+                    if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                        self.scroll_height -= 4
+                    else:
+                        self.scroll_height -= 2
+                else:
+                    self.at_bottom = True
+
+    def jump_to_new_message(self):
+        if self.message_surface.get_height() > self.height:
+            self.scroll_height = self.image.get_height() - self.message_surface.get_height()
+            self.at_bottom = True
+
+    def generate_surface(self, message: str):
+        full_surface = self.font.render(message, True, self.text_color, None)
+
+        if full_surface.get_width() > self.width:
+            surface = pygame.Surface((0, 0), pygame.SRCALPHA)
+            loops_amount = math.ceil(full_surface.get_width() / self.width)
+
+            # t_surf = self.font.render(self.tip, True, (0, 0, 0), None)
+            index = 0
+            characters = list(message)
+            for i in range(loops_amount):
+                current_msg = ""
+                rendered_text = self.font.render(current_msg, True, self.text_color, None)
+                while index < len(characters) and rendered_text.get_width() < self.width:
+                    current_msg += characters[index]
+                    index += 1
+                    rendered_text = self.font.render(current_msg, True, self.text_color, None)
+
+                index -= 1
+                current_msg = current_msg[:-1]
+                surface = self.combine_surfaces(surface, self.font.render(current_msg, True, self.text_color, None))
+            return surface
+        else:
+            return full_surface
+
+    def combine_surfaces(self, f_surf, s_surf):
+        # Create a surface and pass the sum of the widths.
+        # Also, pass pg.SRCALPHA to make the surface transparent.
+        result = pygame.Surface((self.width, f_surf.get_height() + s_surf.get_height()), pygame.SRCALPHA)
+
+        # Blit the first two surfaces onto the third.
+        result.blit(f_surf, (0, 0))
+        result.blit(s_surf, (0, f_surf.get_height()))
+        return result

@@ -1,5 +1,6 @@
 """Game loop and communication with the server"""
 import queue
+import random
 import socket
 import sys
 import threading
@@ -9,13 +10,12 @@ from typing import Tuple, List
 # to import from a dir
 sys.path.append('../')
 
+from graphics import ChatBox
 from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT, VALID_POS, Pos, MIN_HEALTH
 from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
 from sprites import Entity, FollowingCameraGroup, Tile
-
-
 
 
 class Game:
@@ -57,8 +57,11 @@ class Game:
         self.recv_queue = queue.Queue()
         self.seqn = 0
         # [msg, attack, attack_dir, equipped_id]
-        self.actions = [b'', False, 0.0, 0.0, 0] 
+        self.actions = [b'', False, 0.0, 0.0, 0]
         self.chat_msg = ""
+
+        self.is_showing_chat = False
+        self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
 
     def receiver(self):
         while True:
@@ -70,7 +73,9 @@ class Game:
         """
         # update server
         self.update_player_actions()
-        self.conn.sendto(generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery, self.actions), self.server_addr)
+        self.conn.sendto(
+            generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery, self.actions),
+            self.server_addr)
         self.seqn += 1
 
         # receive server update
@@ -107,10 +112,9 @@ class Game:
         self.actions[ATTACK] = self.player.attacking
         # BUG: This may cause some problems
         # TODO: change to ff in the format
-        self.actions[ATTACK_DIR] = 0.0#self.player.direction.rotate()
+        self.actions[ATTACK_DIR] = 0.0  # self.player.direction.rotate()
 
-        self.actions[EQUIPPED_ID] = 1 # equipped_id
-
+        self.actions[EQUIPPED_ID] = 1  # equipped_id
 
     def render_clients(self, client_locations: List[Tuple[int, int]]) -> None:
         """
@@ -127,7 +131,6 @@ class Game:
                 self.entities.get(entity_id).move_to(*pos)
             else:
                 self.entities[entity_id] = Entity([self.obstacles_sprites, self.visible_sprites], *pos)
-
 
     def create_map(self) -> None:
         """
@@ -165,17 +168,27 @@ class Game:
                         else:
                             pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
                         self.full_screen = not self.full_screen
+                    if event.key == pygame.K_t:
+                        self.player.is_typing = not self.player.is_typing
+                    if event.key == pygame.K_TAB:
+                        self.is_showing_chat = not self.is_showing_chat
 
             # sprite update
+            print(self.chat.at_bottom)
             self.display_surface.fill("black")
             self.visible_sprites.custom_draw(self.player)
             self.visible_sprites.update()
             self.draw_health_bar()
             self.draw_hot_bar()
+            self.draw_chat(event_list)
             self.server_update()
             pygame.display.update()
             self.clock.tick(FPS)
 
+    def draw_chat(self, event_list):
+        if self.is_showing_chat:
+            self.chat.render_chat(self.display_surface)
+            self.chat.update(event_list)
 
     def draw_health_bar(self):
         """
@@ -192,6 +205,4 @@ class Game:
         Use: draw the tool's menu by the tools received from the server
         """
         width = (SCREEN_WIDTH - self.hot_bar.get_width()) / 2
-        self.display_surface.blit(self.hot_bar,(width, SCREEN_HEIGHT * 0.9))
-
-
+        self.display_surface.blit(self.hot_bar, (width, SCREEN_HEIGHT * 0.9))

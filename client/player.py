@@ -19,12 +19,18 @@ class Player(pygame.sprite.Sprite):
         self.obstacle_sprites = obstacle_sprites
         self.attack_cooldown = pygame.time.get_ticks()
         self.attacking = False
+        self.is_typing = False
 
         self.hotbar = [None] * 6
         self.hotbar[0] = Weapon(groups, "axe", "rare")
         self.current_slot = 0
 
     def input(self):
+        if self.is_typing:
+            self.direction.x = 0
+            self.direction.y = 0
+            return
+
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
             if pygame.time.get_ticks() < self.attack_cooldown:
