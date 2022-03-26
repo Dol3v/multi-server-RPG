@@ -253,13 +253,16 @@ class ChatBox(pygame.sprite.Sprite):
             self.message_surface = self.combine_surfaces(self.message_surface, self.generate_surface(msg))
 
     def render_chat(self, surface, current_message):
+
         self.image.fill(self.background_color)
         self.image.blit(self.message_surface, (0, self.scroll_height))
 
         current_message_surf = self.font.render(current_message, True, self.text_color, None)
 
-
-        surface.blit(self.image, (self.x, self.y))
+        text_surface = pygame.Surface((self.width, current_message_surf.get_height()), pygame.SRCALPHA)
+        text_surface.fill((255, 255, 255, 150))
+        text_surface.blit(current_message_surf, (0, 0))
+        surface.blit(self.combine_surfaces(self.image, text_surface), (self.x, self.y))
 
     def update(self, event_list):
         keys = pygame.key.get_pressed()

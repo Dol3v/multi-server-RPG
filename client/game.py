@@ -176,6 +176,10 @@ class Game:
                             self.chat_msg = ""
                             self.player.is_typing = not self.player.is_typing
 
+                        elif event.key == pygame.K_BACKSPACE:
+                            if len(self.chat_msg) > 0:
+                                self.chat_msg = self.chat_msg[:-1]
+
                         else:  # Check if typing a key
                             self.chat_msg += event.unicode
                     else:
@@ -201,7 +205,7 @@ class Game:
 
     def draw_chat(self, event_list):
         if self.is_showing_chat:
-            self.chat.render_chat(self.display_surface)
+            self.chat.render_chat(self.display_surface, self.chat_msg)
             self.chat.update(event_list)
 
     def draw_health_bar(self):
