@@ -23,6 +23,7 @@ class TextInputBox(pygame.sprite.Sprite):
     def position_center(self):
         self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
         self.render_text()
+        return self
 
     def render_text(self):
         t_surf = self.font.render(self.text, True, self.color, self.backcolor)
@@ -85,7 +86,7 @@ class LimitedTextBox(TextInputBox):
 
 
 class Text(pygame.sprite.Sprite):
-    def __init__(self, x, y, text, font, color=(0, 0, 0), backcolor=None):
+    def __init__(self, x, y, text, font, color=(255, 255, 255), backcolor=None):
         super().__init__()
         self.x = x
         self.y = y
@@ -100,12 +101,14 @@ class Text(pygame.sprite.Sprite):
     def position_center(self):
         self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
         self.render_text()
+        return self
 
     def render_text(self):
         t_surf = self.font.render(self.text, True, self.color, self.backcolor)
         self.image = pygame.Surface((t_surf.get_width(), t_surf.get_height()),
                                     pygame.SRCALPHA)
         self.width = t_surf.get_width()
+        self.image.fill((0, 0, 0, 100))
         self.image.blit(t_surf, (0, 0))
         self.rect = self.image.get_rect(topleft=self.pos)
 
@@ -127,6 +130,7 @@ class Button(pygame.sprite.Sprite):
     def position_center(self):
         self.pos = ((SCREEN_WIDTH - self.width) / 2, self.y)
         self.render_button()
+        return self
 
     def render_button(self):
         surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
