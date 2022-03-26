@@ -252,9 +252,12 @@ class ChatBox(pygame.sprite.Sprite):
         for msg in self.history:
             self.message_surface = self.combine_surfaces(self.message_surface, self.generate_surface(msg))
 
-    def render_chat(self, surface):
+    def render_chat(self, surface, current_message):
         self.image.fill(self.background_color)
         self.image.blit(self.message_surface, (0, self.scroll_height))
+
+        current_message_surf = self.font.render(current_message, True, self.text_color, None)
+
 
         surface.blit(self.image, (self.x, self.y))
 
