@@ -3,7 +3,7 @@ Advance multi server system, with RPG client
 ## Packet structure
 Client update message
 ```
-[pos(x, y), new_chat_msg, dir_bit, attacked, attack_dir, equipped_id]
+[pos(x, y), new_chat_msg, dir_bit, attacked, attack_dir, slot_index]
 ```
 Server update message
 ```
