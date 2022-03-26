@@ -7,7 +7,7 @@ Client update message
 ```
 Server update message
 ```
-[tools, last_valid_pos, HP, entities in range]
+[tools, new_chat_msg, last_valid_pos, HP, entities in range]
 entity
 [enitity_id, pos, dir]
 ```
