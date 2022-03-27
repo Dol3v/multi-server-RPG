@@ -2,26 +2,22 @@ import logging
 import socket
 import sys
 import threading
-
-from typing import List
 from collections import defaultdict
+from typing import List
 
 # to import from a dir
 sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
-from backend.entity import Entity
 from backend.collision import *
 from backend.networking import generate_server_message, parse_client_message
-
-
 
 
 class Node:
 
     def __init__(self, port) -> None:
-        self.node_ip = SERVER_IP #socket.gethostbyname(socket.gethostname())
+        self.node_ip = SERVER_IP  # socket.gethostbyname(socket.gethostname())
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -49,7 +45,7 @@ class Node:
         client_msg = parse_client_message(data)
         if not client_msg:
             return
-        seqn, x, y, chat, attacked, *attack_dir, equipped_id = parse_client_message(data)  
+        seqn, x, y, chat, attacked, *attack_dir, equipped_id = parse_client_message(data)
         # postions
         player_pos = (x, y)
         secure_pos = VALID_POS
@@ -60,11 +56,10 @@ class Node:
 
             if invalid_movement(entity, player_pos, seqn):
                 secure_pos = self.entities[addr].pos
-                
+
             entity.update(player_pos, CLIENT_WIDTH, CLIENT_HEIGHT, attacked, seqn, health_change=-1)
 
         return addr, secure_pos
-
 
     def update_client(self, addr: Addr, secure_pos: Pos) -> None:
         """
@@ -73,10 +68,7 @@ class Node:
         new_chat = ""
         entity = self.entities[addr]
 
-        
         entities_array = flatten(map(lambda e: (e.ID, *e.pos, *e.direction), self.entities_in_range(entity)))
-        print(entities_array)
-
         # generate and send message
         update_packet = generate_server_message(entity.tools, new_chat, secure_pos, entity.health, entities_array)
         self.server_sock.sendto(update_packet, addr)
@@ -95,14 +87,13 @@ class Node:
             except Exception as e:
                 logging.exception(e)
 
-
     def run(self) -> None:
         """
         Use: starts node threads
         """
 
         self.server_sock.bind(self.address)
-        print(f"Node address: {self.address}")
+        logging.info(f"Binded to address {self.address}")
 
         try:
             for i in range(THREADS_COUNT):
@@ -119,17 +110,9 @@ def invalid_movement(entity: Entity, player_pos: Pos, seqn: int) -> bool:
     Use: check if a given player movement is valid
     TODO: Dolev here check if path is free
     """
-    
+
     return entity.last_updated != -1 and not moved_reasonable_distance(
-            player_pos, entity.pos, seqn - entity.last_updated)
-
-   #in_range = self.entities_in_range(entity)
-
-   ## collision
-   #colliding_players = list(get_colliding_entities_with(entity, entities_to_check=in_range))
-
-   #if len(colliding_players) == 1:
-   #    print("Collision")
+        player_pos, entity.pos, seqn - entity.last_updated)
 
 
 if __name__ == "__main__":

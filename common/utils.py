@@ -1,7 +1,19 @@
 """Some useful common utils"""
-import struct
+import base64
 import math
+import re
+import socket
+import struct
 from typing import Iterable, Tuple
+
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, generate_private_key, \
+    EllipticCurvePublicKey, ECDH
+from cryptography.hazmat.primitives.hashes import SHA256
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE
+
 
 def parse(parse_format: str, data: bytes) -> tuple | None:
     """
@@ -29,3 +41,40 @@ def normalize_vec(x, y) -> Tuple[float, float]:
     if factor == 0:
         return 0, -0.1
     return x / factor, y / factor
+
+
+def base64_encode(raw: bytes, str_encoding="utf-8") -> str:
+    """Encodes raw byte data to str using base64 format."""
+    base64_bytes = base64.b64encode(raw)
+    return base64_bytes.decode(str_encoding)
+
+
+def base64_decode(data: str, str_encoding="utf-8") -> bytes:
+    base64_bytes = data.encode(str_encoding)
+    return base64.b64decode(base64_bytes)
+
+
+def is_valid_ip(ip: str) -> bool:
+    return bool(re.match(r"^((\d|\d\d|1\d\d|2[0-5]{2})\.){3}(\d|\d\d|1\d\d|2[0-5]{2})$", ip))
+
+
+def send_public_key(conn: socket.socket) -> EllipticCurvePrivateKey:
+    """Generates a private key, sends its matching public key
+     and returns the generated private key, together with any other data the server had sent.
+
+     :param conn: TCP connection
+    """
+    private_key = generate_private_key(ELLIPTIC_CURVE)
+    conn.send(private_key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint))
+    return private_key
+
+
+def deserialize_public_key(key_material: bytes) -> EllipticCurvePublicKey:
+    return EllipticCurvePublicKey.from_encoded_point(
+        curve=ELLIPTIC_CURVE, data=key_material)
+
+
+def get_shared_key(private_key: EllipticCurvePrivateKey, peer_public_key: EllipticCurvePublicKey) -> bytes:
+    """Returns shared, derived key from the private key and the peer's public key."""
+    shared = private_key.exchange(ECDH(), peer_public_key)
+    return HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data").derive(shared)
