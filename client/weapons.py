@@ -35,15 +35,7 @@ class Weapon(pygame.sprite.Sprite):
         # self.image = pygame.transform.rotate(self.image, angle)
 
     def draw_weapon(self, player):
-        center_x = SCREEN_WIDTH // 2
-        center_y = SCREEN_HEIGHT // 2
-
-        mouse_pos = pygame.mouse.get_pos()
-
-        vec_x = (mouse_pos[0] - center_x)
-        vec_y = (mouse_pos[1] - center_y)
-
-        vec = normalize_vec(vec_x, vec_y)
+        vec = player.get_direction_vec()
 
         angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
 
@@ -70,18 +62,8 @@ class RangeWeapon(Weapon):
         self.obstacle_sprites = obstacle_sprites
 
     def attack(self, player):
-        center_x = SCREEN_WIDTH // 2
-        center_y = SCREEN_HEIGHT // 2
-
-        mouse_pos = pygame.mouse.get_pos()
-
-        vec_x = (mouse_pos[0] - center_x)
-        vec_y = (mouse_pos[1] - center_y)
-
-        vec = normalize_vec(vec_x, vec_y)
-
         Projectile([*self.groups, self.obstacle_sprites], player.rect.centerx, player.rect.centery,
-                   self.projectile_texture, 4, vec, 200)
+                   self.projectile_texture, 4, player.get_direction_vec(), 200)
         pass
 
 
