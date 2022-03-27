@@ -4,6 +4,18 @@ import abc
 from common.consts import SCREEN_HEIGHT, SCREEN_WIDTH
 from common.utils import normalize_vec
 
+
+def get_weapon_type(tool_id: int) -> str:
+    if tool_id == 0:
+        return None
+    if tool_id == 1:
+        return "sword"
+    if tool_id == 2:
+        return "axe"
+    if tool_id == 3:
+        return "bow"
+
+
 class Weapon(pygame.sprite.Sprite):
     def __init__(self, groups, weapon_type, rarity):
         super().__init__(*groups)
@@ -11,9 +23,10 @@ class Weapon(pygame.sprite.Sprite):
         self.rarity = rarity
         self.texture = pygame.image.load(f"assets/weapons/{weapon_type}/full.png")
 
+        self.icon = pygame.transform.scale(self.texture, (32, 32))
+
         self.original_texture = pygame.image.load(f"assets/weapons/{weapon_type}/full.png")
         self.original_image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
-
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         # angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
@@ -40,6 +53,10 @@ class Weapon(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(
             center=player.rect.center + pygame.math.Vector2(60 * vec[0], (60 * vec[1] + 3)))
 
+    def hide(self):
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+
     @abc.abstractmethod
     def attack(self, player):
         return
@@ -47,14 +64,14 @@ class Weapon(pygame.sprite.Sprite):
 
 class RangeWeapon(Weapon):
     def __init__(self, groups, obstacle_sprites, weapon_type, rarity):
-        super().__init__(*groups, weapon_type, rarity)
+        super().__init__(groups, weapon_type, rarity)
         self.groups = groups
         self.projectile_texture = pygame.image.load(f"assets/weapons/{weapon_type}/projectile.png")
         self.obstacle_sprites = obstacle_sprites
 
     def attack(self, player):
-        center_x = WIDTH // 2
-        center_y = HEIGHT // 2
+        center_x = SCREEN_WIDTH // 2
+        center_y = SCREEN_HEIGHT // 2
 
         mouse_pos = pygame.mouse.get_pos()
 
@@ -106,4 +123,3 @@ class Projectile(pygame.sprite.Sprite):
         self.move_projectile()
         self.draw_projectile()
         self.loops += 1
-

@@ -19,7 +19,7 @@ class Entity:
         arrow = 3
     tools: [default, tool2, tool3]
     """
-    tools: List = field(default_factory=lambda: [SWORD, 0, 0])
+    tools: List = field(default_factory=lambda: [SWORD, AXE, BOW])
 
 
     def update(self, pos: Pos, width: int, height: int, is_attacking: bool, last_updated: int, health_change=0) -> None:

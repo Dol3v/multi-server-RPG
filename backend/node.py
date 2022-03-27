@@ -46,6 +46,9 @@ class Node:
         Use: receive client message from the server
         """
         data, addr = self.server_sock.recvfrom(RECV_CHUNK)
+        client_msg = parse_client_message(data)
+        if not client_msg:
+            return
         seqn, x, y, chat, attacked, *attack_dir, equipped_id = parse_client_message(data)  
         # postions
         player_pos = (x, y)

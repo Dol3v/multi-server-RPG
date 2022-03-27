@@ -5,7 +5,9 @@ import socket
 import sys
 import threading
 import pygame
+import weapons
 from typing import Tuple, List
+import gc
 
 # to import from a dir
 sys.path.append('../')
@@ -16,6 +18,7 @@ from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
 from sprites import Entity, FollowingCameraGroup, Tile
+from weapons import *
 
 
 class Game:
@@ -57,7 +60,7 @@ class Game:
         self.recv_queue = queue.Queue()
         self.seqn = 0
         # [msg, dir_bit, attack, attack_dir, equipped_id]
-        self.actions = [b'', 0, False, 0.0, 0.0, 0] 
+        self.actions = [b'', 0, False, 0.0, 0.0, 0]
         self.chat_msg = ""
 
         self.is_showing_chat = False
@@ -73,7 +76,8 @@ class Game:
         """
         # update server
         self.update_player_actions()
-        update_packet = generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery, self.actions)
+        update_packet = generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery,
+                                                self.actions)
         self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
 
@@ -84,7 +88,36 @@ class Game:
             return
 
         if addr == self.server_addr:
-            (*tools, x, y, health), entities = parse_server_message(packet)
+            (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
+
+            for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
+                weapon_type = weapons.get_weapon_type(tool_id)
+
+                if weapon_type:
+                    player_weapon = self.player.get_weapon_in_slot(i)
+
+                    if player_weapon:
+                        if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
+
+                            weapon = Weapon([self.visible_sprites], weapon_type, "rare")
+                            if weapon_type == "bow":
+                                weapon.kill()
+                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
+                                                     weapon_type, "rare")
+
+                            self.player.remove_weapon_in_slot(i)
+                            self.player.set_weapon_in_slot(i, weapon)
+                    else:
+                        weapon = Weapon([self.visible_sprites], weapon_type, "rare")
+                        if weapon_type == "bow":
+                            weapon.kill()
+                            weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
+                                                 weapon_type, "rare")
+
+                        self.player.set_weapon_in_slot(i, weapon)
+                else:
+                    self.player.set_weapon_in_slot(i, None)
+
             # update graphics and status
             self.render_clients(entities)
             self.update_player_status(tools, (x, y), health)
@@ -125,7 +158,7 @@ class Game:
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
 
-        for entity_id,  entity_info in enumerate(entities):
+        for entity_id, entity_info in enumerate(entities):
 
             entity_type, pos, entity_dir = entity_info
 
@@ -160,6 +193,13 @@ class Game:
         while self.running:
             event_list = pygame.event.get()
             for event in event_list:
+
+                if event.type == pygame.MOUSEWHEEL:
+                    if event.y > 0:
+                        self.player.previous_slot()
+                    elif event.y < 0:
+                        self.player.next_slot()
+
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -225,4 +265,18 @@ class Game:
         Use: draw the tool's menu by the tools received from the server
         """
         width = (SCREEN_WIDTH - self.hot_bar.get_width()) / 2
-        self.display_surface.blit(self.hot_bar, (width, SCREEN_HEIGHT * 0.9))
+        hot_bar = self.hot_bar.copy()
+
+        for i, weapon in enumerate(self.player.hotbar):
+
+            surface = pygame.Surface((32, 32), pygame.SRCALPHA)
+            if i == self.player.current_slot:
+                surface.fill((0, 0, 0, 100))
+
+            if weapon:
+                surface.blit(weapon.icon, (0, 0))
+
+            hot_bar.blit(surface, (16 + 36 * i, 18))
+            # (16 + 36 * i, 18)
+
+        self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))
