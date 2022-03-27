@@ -188,13 +188,13 @@ class RegisterButton(Button):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if self.rect.collidepoint(event.pos):
                     self.connect_screen.is_loading_animation = True
-                    ip = self.connect_screen.get_sprite_by_position(1).text
-                    username = self.connect_screen.get_sprite_by_position(3).text
-                    password = self.connect_screen.get_sprite_by_position(5).text
+                    ip = self.connect_screen.get_sprite_by_position(2).text
+                    username = self.connect_screen.get_sprite_by_position(4).text
+                    password = self.connect_screen.get_sprite_by_position(6).text
                     if ip == "":
                         ip = '127.0.0.1'
                     # Send register packet to the server and wait for response
-                    # TODO: Dolev or reem do the register stuff lmao
+                    self.connect_screen.connect_to_server(ip, username, password, is_login=False)
 
 
 class MoveScreenButton(Button):  # Button to change between loading and registration screen
