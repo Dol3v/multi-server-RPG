@@ -32,37 +32,23 @@ class ConnectScreen:
         big_font = pygame.font.SysFont("arial", 45)
         big_font.set_bold(True)
 
-        login_text = Text(0, SCREEN_HEIGHT * 0.1, "Login to server!", big_font)
-        login_text.position_center()
-
-        server_ip = Text(0, SCREEN_HEIGHT * 0.20, "Enter Server's IP", pygame.font.SysFont("arial", 25))
-        server_ip.position_center()
-
-        input_box = LimitedTextBox(0, SCREEN_HEIGHT * 0.25, 250, pygame.font.SysFont("arial", 35), 15)
-        input_box.position_center()
-
-        username = Text(0, SCREEN_HEIGHT * 0.35, "Enter Username", pygame.font.SysFont("arial", 25))
-        username.position_center()
-
-        username_input = LimitedTextBox(0, SCREEN_HEIGHT * 0.40, 250, pygame.font.SysFont("arial", 35), 15)
-        username_input.position_center()
-
-        password = Text(0, SCREEN_HEIGHT * 0.50, "Enter Password", pygame.font.SysFont("arial", 25))
-        password.position_center()
-
-        password_input = LimitedTextBox(0, SCREEN_HEIGHT * 0.55, 250, pygame.font.SysFont("arial", 35), 15)
-        password_input.position_center()
-
-        connect_btn = ConnectButton(0, SCREEN_HEIGHT * 0.70, 200, 50, CONNECT_BUTTON_IMG, self)
-        connect_btn.position_center()
-
-        move_to_register_btn = MoveScreenButton(0, SCREEN_HEIGHT * 0.8, 150, 40, REGISTER_BUTTON_IMG, self)
-        move_to_register_btn.position_center()
-
         self.tip_box = TipBox(0, SCREEN_HEIGHT * 0.8, pygame.font.SysFont("arial", 30), 5)
 
-        self.login_group = pygame.sprite.Group(server_ip, input_box, username, username_input,
-                                               password, password_input, connect_btn, move_to_register_btn, login_text)
+        self.login_group = pygame.sprite.Group(
+            Text(0, SCREEN_HEIGHT * 0.1, "Login to server!", big_font).position_center(),
+
+            Text(0, SCREEN_HEIGHT * 0.20, "Enter Server's IP", pygame.font.SysFont("arial", 25)).position_center(),
+            LimitedTextBox(0, SCREEN_HEIGHT * 0.25, 250, pygame.font.SysFont("arial", 35), 15).position_center(),
+
+            Text(0, SCREEN_HEIGHT * 0.35, "Enter Username", pygame.font.SysFont("arial", 25)).position_center(),
+            LimitedTextBox(0, SCREEN_HEIGHT * 0.40, 250, pygame.font.SysFont("arial", 35), 15).position_center(),
+
+            Text(0, SCREEN_HEIGHT * 0.50, "Enter Password", pygame.font.SysFont("arial", 25)).position_center(),
+            LimitedTextBox(0, SCREEN_HEIGHT * 0.55, 250, pygame.font.SysFont("arial", 35), 15).position_center(),
+
+            ConnectButton(0, SCREEN_HEIGHT * 0.70, 200, 50, CONNECT_BUTTON_IMG, self).position_center(),
+            MoveScreenButton(0, SCREEN_HEIGHT * 0.8, 150, 40, REGISTER_BUTTON_IMG, self).position_center()
+        )
 
         self.register_group = pygame.sprite.Group(
             Text(0, SCREEN_HEIGHT * 0.1, "Register To Server", big_font).position_center(),
@@ -111,20 +97,20 @@ class ConnectScreen:
 
             self.screen.blit(bg, bg.get_rect())
 
-            if self.is_login_screen:  # Loads the login screen
-                self.login_group.update(event_list)
-                if not self.is_loading_animation:
-                    self.login_group.draw(self.screen)
-                else:
-                    self.run_loading_animation()
-                    text = Text(0, SCREEN_HEIGHT * 0.75, "Some Useful Tips:", pygame.font.SysFont("arial", 30))
-                    text.position_center()
-                    new_group = pygame.sprite.Group(self.tip_box, text)
-                    new_group.update(event_list)
-                    new_group.draw(self.screen)
-            else:  # Loads Register Screen
-                self.register_group.update(event_list)
-                self.register_group.draw(self.screen)
+            group = self.login_group
+            if not self.is_login_screen:
+                group = self.register_group
+
+            group.update(event_list)
+            if not self.is_loading_animation:
+                group.draw(self.screen)
+            else:
+                self.run_loading_animation()
+                text = Text(0, SCREEN_HEIGHT * 0.75, "Some Useful Tips:", pygame.font.SysFont("arial", 30))
+                text.position_center()
+                new_group = pygame.sprite.Group(self.tip_box, text)
+                new_group.update(event_list)
+                new_group.draw(self.screen)
 
             pygame.display.update()
             self.clock.tick(FPS)
@@ -166,9 +152,9 @@ class ConnectButton(Button):
                 if self.rect.collidepoint(event.pos):
 
                     self.connect_screen.is_loading_animation = True
-                    ip = self.connect_screen.get_sprite_by_position(1).text
-                    username = self.connect_screen.get_sprite_by_position(3).text
-                    password = self.connect_screen.get_sprite_by_position(5).text
+                    ip = self.connect_screen.get_sprite_by_position(2).text
+                    username = self.connect_screen.get_sprite_by_position(4).text
+                    password = self.connect_screen.get_sprite_by_position(6).text
                     if ip == "":
                         ip = '127.0.0.1'
                     self.connect_screen.connect_to_server(ip, username, password)  # Login player to the server
@@ -184,7 +170,7 @@ class RegisterButton(Button):
         for event in event_list:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if self.rect.collidepoint(event.pos):
-
+                    print("Registered lmao")
                     self.connect_screen.is_loading_animation = True
                     ip = self.connect_screen.get_sprite_by_position(1).text
                     username = self.connect_screen.get_sprite_by_position(3).text
@@ -193,7 +179,6 @@ class RegisterButton(Button):
                         ip = '127.0.0.1'
                     # Send register packet to the server and wait for response
                     # TODO: Dolev or reem do the register stuff lmao
-                    self.connect_screen.is_login_screen = not self.connect_screen.is_login_screen
 
 
 class MoveScreenButton(Button):  # Button to change between loading and registration screen
