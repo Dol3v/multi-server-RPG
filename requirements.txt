@@ -4,3 +4,4 @@ pygame
 numpy
 pyqtree
 dataclasses
+cryptography

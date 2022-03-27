@@ -1,6 +1,20 @@
+import socket
 import struct
-from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos, ENTITY_FORMAT, ENTITY_FIELD_NUM
-from common.utils import parse
+
+from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos, ENTITY_FORMAT, ENTITY_FIELD_NUM, RECV_CHUNK
+from common.utils import parse, send_public_key, get_shared_key, deserialize_public_key
+
+
+def do_ecdh(conn: socket.socket) -> None | bytes:
+    """Does the server part of ECDH, and returns the shared key."""
+    client_key = conn.recv(RECV_CHUNK)
+    try:
+        client_public_key = deserialize_public_key(client_key)
+        print(client_public_key)
+    except ValueError:
+        return None
+    private_key = send_public_key(conn)
+    return get_shared_key(private_key, client_public_key)
 
 
 def parse_client_message(packet: bytes) -> tuple | None:
@@ -10,7 +24,8 @@ def parse_client_message(packet: bytes) -> tuple | None:
     return parse(CLIENT_FORMAT, packet)
 
 
-def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, health: int, entities_in_range: list) -> bytes | None:
+def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, health: int,
+                            entities_in_range: list) -> bytes | None:
     """
     Use: creates the server update message
     Format: [tools + new_msg + last valid pos + HP + entities in range]
@@ -26,9 +41,6 @@ def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, heal
     data.append(entities_count)
     # packet data
     data += entities_in_range
-
     packet_format = SERVER_HEADER_FORMAT + ENTITY_FORMAT * entities_count
     print(data)
-    print(packet_format)
-
     return struct.pack(packet_format, *data)
