@@ -7,6 +7,7 @@ import threading
 import pygame
 import weapons
 from typing import Tuple, List
+import gc
 
 # to import from a dir
 sys.path.append('../')
@@ -89,21 +90,30 @@ class Game:
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
 
-            for i in range(len(tools)):
-                weapon_type = weapons.get_weapon_type(tools[i])
-                if weapon_type:
-                    weapon = Weapon([self.visible_sprites], weapon_type, "rare")
-                    if weapon_type == "bow":
-                        weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
-                                             weapon_type, "rare")
+            for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
+                weapon_type = weapons.get_weapon_type(tool_id)
 
+                if weapon_type:
                     player_weapon = self.player.get_weapon_in_slot(i)
 
                     if player_weapon:
                         if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
+
+                            weapon = Weapon([self.visible_sprites], weapon_type, "rare")
+                            if weapon_type == "bow":
+                                weapon.kill()
+                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
+                                                     weapon_type, "rare")
+
                             self.player.remove_weapon_in_slot(i)
                             self.player.set_weapon_in_slot(i, weapon)
                     else:
+                        weapon = Weapon([self.visible_sprites], weapon_type, "rare")
+                        if weapon_type == "bow":
+                            weapon.kill()
+                            weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
+                                                 weapon_type, "rare")
+
                         self.player.set_weapon_in_slot(i, weapon)
                 else:
                     self.player.set_weapon_in_slot(i, None)

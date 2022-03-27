@@ -22,7 +22,6 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
     # entities
     num_of_entities = player_status[-1]
     player_status = player_status[:-1]
-    print(num_of_entities)
 
     if num_of_entities == 0:
         return player_status, []
@@ -30,7 +29,6 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
     raw_entities = parse(MESSAGE_ENDIANESS +  ENTITY_FORMAT * num_of_entities, # Format
                                  packet[SERVER_HEADER_SIZE: SERVER_HEADER_SIZE + num_of_entities * struct.calcsize(ENTITY_FORMAT) ]) # partition
 
-    print(raw_entities)
     if raw_entities:
         entities = [(raw_entities[i], (raw_entities[i + 1], raw_entities[i + 2]), (raw_entities[i + 3], raw_entities[i + 4])) 
                     for i in range(0, len(raw_entities) -1, ENTITY_FIELD_NUM)]

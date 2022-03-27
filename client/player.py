@@ -1,4 +1,6 @@
 """Player class..."""
+from typing import List
+
 import pygame
 
 from common.consts import SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -21,7 +23,7 @@ class Player(pygame.sprite.Sprite):
         self.attacking = False
         self.is_typing = False
 
-        self.hotbar = [None] * 6
+        self.hotbar: List[Weapon | None] = [None] * 6
         self.current_slot = 0
 
     def input(self):
@@ -113,7 +115,7 @@ class Player(pygame.sprite.Sprite):
 
     def remove_weapon_in_slot(self, slot):
         if self.hotbar[slot]:
-            self.hotbar[slot].remove()
+            self.hotbar[slot].kill()
             self.hotbar[slot] = None
 
     def next_slot(self):

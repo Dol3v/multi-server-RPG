@@ -6,13 +6,14 @@ from common.utils import normalize_vec
 
 
 def get_weapon_type(tool_id: int) -> str:
-    weapons = {
-        0: None,
-        1: "sword",
-        2: "axe",
-        3: "bow"
-    }
-    return weapons.get(tool_id)
+    if tool_id == 0:
+        return None
+    if tool_id == 1:
+        return "sword"
+    if tool_id == 2:
+        return "axe"
+    if tool_id == 3:
+        return "bow"
 
 
 class Weapon(pygame.sprite.Sprite):
