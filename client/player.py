@@ -1,9 +1,10 @@
 """Player class..."""
-from typing import List
+from typing import List, Tuple
 
 import pygame
 
 from common.consts import SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
+from common.utils import normalize_vec
 from weapons import Weapon
 from consts import *
 
@@ -67,6 +68,7 @@ class Player(pygame.sprite.Sprite):
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.attacking = True
                     self.attack_cooldown = pygame.time.get_ticks() + ATTACK_COOLDOWN
+
         else:
             self.attacking = False
 
@@ -137,6 +139,23 @@ class Player(pygame.sprite.Sprite):
             self.current_slot -= 1
         else:
             self.current_slot = len(self.hotbar) - 1
+
+    def get_direction_vec(self) -> Tuple[float, float]:
+        center_x = self.rect.centerx
+        center_y = self.rect.centery
+
+        if center_x < SCREEN_WIDTH // 2:
+            center_x = SCREEN_WIDTH // 2
+
+        if center_y < SCREEN_HEIGHT // 2:
+            center_y = SCREEN_HEIGHT // 2
+
+        mouse_pos = pygame.mouse.get_pos()
+
+        vec_x = (mouse_pos[0] - center_x)
+        vec_y = (mouse_pos[1] - center_y)
+
+        return normalize_vec(vec_x, vec_y)
 
     def update(self):
         self.input()
