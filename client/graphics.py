@@ -244,6 +244,8 @@ class ChatBox(pygame.sprite.Sprite):
         self.load_message_surface()
         self.at_bottom = True
 
+        self.text_area = None
+
     def add_message(self, message: str):
         if message == "":
             return
@@ -261,11 +263,12 @@ class ChatBox(pygame.sprite.Sprite):
         self.image.fill(self.background_color)
         self.image.blit(self.message_surface, (0, self.scroll_height))
 
-        current_message_surf = self.font.render(current_message, True, self.text_color, None)
+        current_message_surf = self.generate_surface(current_message)
 
         text_surface = pygame.Surface((self.width, current_message_surf.get_height()), pygame.SRCALPHA)
         text_surface.fill((255, 255, 255, 150))
         text_surface.blit(current_message_surf, (0, 0))
+        self.text_area = text_surface.copy()
         surface.blit(self.combine_surfaces(self.image, text_surface), (self.x, self.y))
 
     def update(self, event_list):
@@ -319,7 +322,7 @@ class ChatBox(pygame.sprite.Sprite):
             return full_surface
 
     def has_collision(self, x, y) -> bool:
-        return self.image.get_rect(topleft=(self.x, self.y)).collidepoint(x, y)
+        return self.combine_surfaces(self.image, self.text_area).get_rect(topleft=(self.x, self.y)).collidepoint(x, y)
 
     def combine_surfaces(self, f_surf, s_surf):
         # Create a surface and pass the sum of the widths.

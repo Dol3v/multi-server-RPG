@@ -101,7 +101,6 @@ class Game:
 
                     if player_weapon:
                         if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
-                            print("lmao")
                             self.player.remove_weapon_in_slot(i)
                             self.player.set_weapon_in_slot(i, weapon)
                     else:
@@ -184,6 +183,13 @@ class Game:
         while self.running:
             event_list = pygame.event.get()
             for event in event_list:
+
+                if event.type == pygame.MOUSEWHEEL:
+                    if event.y > 0:
+                        self.player.previous_slot()
+                    elif event.y < 0:
+                        self.player.next_slot()
+
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -249,10 +255,18 @@ class Game:
         Use: draw the tool's menu by the tools received from the server
         """
         width = (SCREEN_WIDTH - self.hot_bar.get_width()) / 2
-        hot_bar = self.hot_bar
+        hot_bar = self.hot_bar.copy()
 
         for i, weapon in enumerate(self.player.hotbar):
+
+            surface = pygame.Surface((32, 32), pygame.SRCALPHA)
+            if i == self.player.current_slot:
+                surface.fill((0, 0, 0, 100))
+
             if weapon:
-                hot_bar.blit(weapon.icon, (16 + 36 * i, 18))
+                surface.blit(weapon.icon, (0, 0))
+
+            hot_bar.blit(surface, (16 + 36 * i, 18))
+            # (16 + 36 * i, 18)
 
         self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))

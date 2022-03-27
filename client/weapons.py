@@ -52,6 +52,10 @@ class Weapon(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(
             center=player.rect.center + pygame.math.Vector2(60 * vec[0], (60 * vec[1] + 3)))
 
+    def hide(self):
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+
     @abc.abstractmethod
     def attack(self, player):
         return

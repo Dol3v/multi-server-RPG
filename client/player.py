@@ -116,6 +116,26 @@ class Player(pygame.sprite.Sprite):
             self.hotbar[slot].remove()
             self.hotbar[slot] = None
 
+    def next_slot(self):
+        current_weapon = self.hotbar[self.current_slot]
+        if current_weapon:
+            current_weapon.hide()
+
+        if self.current_slot + 1 < len(self.hotbar):
+            self.current_slot += 1
+        else:
+            self.current_slot = 0
+
+    def previous_slot(self):
+        current_weapon = self.hotbar[self.current_slot]
+        if current_weapon:
+            current_weapon.hide()
+
+        if self.current_slot - 1 > -1:
+            self.current_slot -= 1
+        else:
+            self.current_slot = len(self.hotbar) - 1
+
     def update(self):
         self.input()
         self.move(self.speed)
