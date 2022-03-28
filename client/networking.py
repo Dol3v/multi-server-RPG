@@ -43,7 +43,7 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
 
     if not player_status:
         return (), []
-    # entities
+    # players
     num_of_entities = player_status[-1]
     player_status = player_status[:-1]
 

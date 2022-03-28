@@ -1,6 +1,9 @@
+import sched
+import time
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
+from backend.consts import FRAME_TIME
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT
 
 
@@ -24,3 +27,38 @@ class Player:
         arrow = 3
     tools: [default, tool2, tool3]
     """
+
+
+@dataclass
+class Projectile:
+    pos: Pos = DEFAULT_POS_MARK
+    direction: Tuple[float, float] = DEFAULT_DIR
+
+
+@dataclass
+class Bot:
+    pos: Pos = DEFAULT_POS_MARK
+    direction: Tuple[float, float] = DEFAULT_DIR
+
+
+ServerControlled = Projectile | Bot
+"""Entities with server-controlled movements and actions"""
+
+
+def location_update(s, entities: List[ServerControlled]):
+    """
+    Use: update all projectiles and bots positions inside a loop
+    """
+    for entity in entities:
+        entity.pos = entity.pos[0] + int(entity.direction[0]), entity.pos[1] + int(entity.direction[1])
+
+    s.enter(FRAME_TIME, 1, location_update, (s, entities,))
+
+
+def start_location_update(entities: List[ServerControlled]):
+    """
+    Use: starts the schedular and the function
+    """
+    s = sched.scheduler(time.time, time.sleep)
+    s.enter(FRAME_TIME, 1, location_update, (s, entities,))
+    s.run()

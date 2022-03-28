@@ -13,7 +13,7 @@ def entities_are_colliding(entity: Player, other: Player) -> bool:
 
 
 def get_colliding_entities_with(entity: Player, *, entities_to_check: Iterable[Player]):
-    """Returns all entities that collided with a given player."""
+    """Returns all players that collided with a given player."""
     # would have refactored players_are_colliding into an inner function, but it'll prob be more complicated in the
     # future
     # TODO: optimize the sh*t out of this routine

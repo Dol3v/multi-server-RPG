@@ -27,7 +27,7 @@ def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, heal
                             entities_in_range: list) -> bytes | None:
     """
     Use: creates the server update message
-    Format: [tools + new_msg + last valid player_pos + HP + entities in range]
+    Format: [tools + new_msg + last valid player_pos + HP + players in range]
     NOTE: the first tool inside the tools will be the equipped one. 
     """
     data = []

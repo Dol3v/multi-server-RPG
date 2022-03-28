@@ -18,7 +18,6 @@ SCRYPT_N = 2 ** 14
 SCRYPT_R = 8
 SCRYPT_P = 1
 
-
 # SqlDatabase tables configurations
 MAX_SIZE = 0xff
 USERS_CREDENTIALS_TABLE = "users_creds"
@@ -41,4 +40,4 @@ WEAPON_DATA = {
     AXE: {'cooldown': 0.75, 'damage': 30, 'melee_attack_range': 150, 'is_melee': True},
     BOW: {'cooldown': 1.0, 'damage': 45, 'is_melee': False}
 }
-
+FRAME_TIME = 1 / 60

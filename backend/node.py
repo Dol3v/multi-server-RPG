@@ -24,31 +24,31 @@ class Node:
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        self.entities = defaultdict(lambda: Player())
+        self.players = defaultdict(lambda: Player())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         """Quadtree for collision/range detection. Player keys are tuples `(type, data)`, with the type being
         projectile/player/mob, and data being other stuff that are relevant. Contains address of client for player
-        entities."""
+        players."""
 
         # Starts the node
         self.run()
 
     @functools.cached_property
     def addrs(self) -> Iterable[Addr]:
-        return self.entities.keys()
+        return self.players.keys()
 
     def in_range(self, pos: Pos, width: int, height: int) -> list:
         """Returns all stuff in range of the bounding box."""
         return self.spindex.intersect(get_bounding_box(pos, height, width))
 
     def entities_in_range(self, entity_addr, bbox: Tuple[int, int, int, int]):
-        """Returns all entities in a given bounding box that are not the player itself."""
-        return map(lambda addr: self.entities[addr], filter(lambda addr: addr != entity_addr,
-                                                            self.spindex.intersect(bbox)))
+        """Returns all players in a given bounding box that are not the player itself."""
+        return map(lambda addr: self.players[addr], filter(lambda addr: addr != entity_addr,
+                                                           self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player, entity_addr: Addr) -> Iterable[Player]:
-        """Returns all entities that are within render distance of each other.
+        """Returns all players that are within render distance of each other.
         """
         return self.entities_in_range(entity_addr, get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))
 
@@ -63,7 +63,7 @@ class Node:
 
     def update_location(self, player_pos: Pos, seqn: int, entity: Player, addr: Addr) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
-        Additionally, adds the client to ``self.entities`` if it wasn't there already.
+        Additionally, adds the client to ``self.players`` if it wasn't there already.
 
         :param entity: player to update
         :param player_pos: position of player given by the client
@@ -75,7 +75,7 @@ class Node:
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
         if invalid_movement(entity, player_pos, seqn) or seqn != entity.last_updated + 1:
-            secure_pos = self.entities[addr].pos
+            secure_pos = self.players[addr].pos
         else:
             # update player location in quadtree
             self.spindex.remove(addr, get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
@@ -87,7 +87,7 @@ class Node:
         return secure_pos
 
     def update_hp(self, player: Player, inventory_slot: int, addr: Addr):
-        """Updates hp of entities in case of attack.
+        """Updates hp of players in case of attack.
 
         :param player: player entity with updated position
         :param inventory_slot: slot index of player
@@ -117,13 +117,15 @@ class Node:
                 if player.health < 0:
                     player.health = 0
                 logging.info(f"Updated player health to {player.health}")
+        else:
+            ...
 
     def update_client(self, addr: Addr, secure_pos: Pos) -> None:
         """
         Use: sends server message to the client
         """
         new_chat = ""
-        entity = self.entities[addr]
+        entity = self.players[addr]
 
         entities_array = flatten(
             map(lambda e: (e.entity_type, *e.pos, *e.direction), self.entities_in_rendering_range(entity, addr)))
@@ -146,9 +148,9 @@ class Node:
                 player_pos = x, y
                 if addr not in self.addrs:
                     self.spindex.insert(addr, get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
-                    self.entities[addr].pos = player_pos
+                    self.players[addr].pos = player_pos
 
-                entity = self.entities[addr]
+                entity = self.players[addr]
                 if seqn <= entity.last_updated:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
