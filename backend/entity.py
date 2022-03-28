@@ -25,7 +25,7 @@ class Entity:
 
     def update(self, pos: Pos, width: int, height: int, is_attacking: bool, last_updated: int, health_change=0) -> None:
         """
-        Use: update entity fields
+        Use: update player fields
         """
         self.pos = pos
         self.width = width
