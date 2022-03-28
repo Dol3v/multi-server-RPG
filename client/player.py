@@ -68,6 +68,8 @@ class Player(pygame.sprite.Sprite):
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.attacking = True
                     self.attack_cooldown = pygame.time.get_ticks() + ATTACK_COOLDOWN
+                    if self.hotbar[self.current_slot]:
+                        self.hotbar[self.current_slot].attack(self)
 
         else:
             self.attacking = False
@@ -144,11 +146,13 @@ class Player(pygame.sprite.Sprite):
         center_x = self.rect.centerx
         center_y = self.rect.centery
 
-        if center_x < SCREEN_WIDTH // 2:
+        if center_x > SCREEN_WIDTH // 2:
             center_x = SCREEN_WIDTH // 2
 
-        if center_y < SCREEN_HEIGHT // 2:
+        if center_y > SCREEN_HEIGHT // 2:
             center_y = SCREEN_HEIGHT // 2
+
+        print(f"{center_x} {center_y}")
 
         mouse_pos = pygame.mouse.get_pos()
 
