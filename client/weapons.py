@@ -18,8 +18,9 @@ class Hand(pygame.sprite.Sprite):
         super().__init__(*groups)
 
         self.texture = pygame.image.load("assets/character/knight/knight_hand.png")
-        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * 3.5,
-                                                             self.texture.get_height() * 3.5))
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * (PLAYER_SIZE_MULTIPLIER - 0.5),
+                                                             self.texture.get_height() * (PLAYER_SIZE_MULTIPLIER - 0.5))
+                                              )
         self.original_texture = self.texture.copy()
 
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()))
@@ -54,7 +55,8 @@ class Weapon(pygame.sprite.Sprite):
 
         self.original_texture = pygame.image.load(f"assets/weapons/{weapon_type}/full.png")
         hand = pygame.image.load("assets/character/knight/knight_hand.png")
-        hand = pygame.transform.scale(hand, (hand.get_width() * 3.5, hand.get_height() * 3.5))
+        hand = pygame.transform.scale(hand, (hand.get_width() * (PLAYER_SIZE_MULTIPLIER - 0.5),
+                                             hand.get_height() * (PLAYER_SIZE_MULTIPLIER - 0.5)))
 
         data = weapon_data.get(weapon_type)
 
