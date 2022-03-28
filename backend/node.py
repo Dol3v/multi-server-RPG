@@ -41,12 +41,6 @@ class Node:
         """Returns all stuff in range of the bounding box."""
         return self.spindex.intersect(get_bounding_box(pos, height, width))
 
-    def entities_in_range_of_player(self, entity: Entity, entity_addr: Addr, distance: int) \
-            -> Iterable[Entity]:
-        return map(lambda addr: self.entities[addr],
-                   filter(lambda addr: addr != entity_addr, self.spindex.intersect(
-                       get_bounding_box(entity.pos, CLIENT_WIDTH + distance, CLIENT_HEIGHT + distance))))
-
     def entities_in_range(self, entity_addr, bbox: Tuple[int, int, int, int]):
         """Returns all entities in a given bounding box that are not the player itself."""
         return map(lambda addr: self.entities[addr], filter(lambda addr: addr != entity_addr,
@@ -57,9 +51,12 @@ class Node:
         """
         return self.entities_in_range(entity_addr, get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))
 
-    def entities_in_melee_attack_range(self, entity: Entity, entity_addr: Addr, direction: Tuple[float, float]):
-        """"""
-        ...
+    def entities_in_melee_attack_range(self, entity: Entity, entity_addr: Addr, melee_range: int):
+        """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
+        and close enough)."""
+        weapon_x, weapon_y = int(entity.pos[0] + entity.direction[0]), int(entity.pos[1] + entity.direction[1])
+        return self.entities_in_range(entity_addr, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
+                                                    weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
     def update_location(self, player_pos: Pos, seqn: int, entity: Entity, addr: Addr) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -99,7 +96,7 @@ class Node:
             logging.info(f"Invalid slot index/tool given by {addr=}")
             return
         if weapon_data['is_melee']:
-            players_in_range = self.entities_in_range_of_player(player, addr, weapon_data['melee_attack_range'])
+            players_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
             for player in players_in_range:
                 player.health -= weapon_data['damage']
                 print(f"Updated player health to {player.health}")
