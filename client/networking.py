@@ -55,7 +55,6 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
                              ENTITY_FORMAT)])  # partition
 
     if raw_entities:
-        print(raw_entities)
         entities = [
             (raw_entities[i], (raw_entities[i + 1], raw_entities[i + 2]), (raw_entities[i + 3], raw_entities[i + 4]))
             for i in range(0, len(raw_entities), ENTITY_DATA_SIZE)]

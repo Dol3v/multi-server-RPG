@@ -152,8 +152,6 @@ class Player(pygame.sprite.Sprite):
         if center_y > SCREEN_HEIGHT // 2:
             center_y = SCREEN_HEIGHT // 2
 
-        print(f"{center_x} {center_y}")
-
         mouse_pos = pygame.mouse.get_pos()
 
         vec_x = (mouse_pos[0] - center_x)

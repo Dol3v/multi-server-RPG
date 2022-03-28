@@ -6,7 +6,6 @@ from collections import defaultdict
 
 from pyqtree import Index
 
-
 # to import from a dir
 sys.path.append('../')
 
@@ -15,6 +14,7 @@ from common.utils import *
 from collision import *
 from networking import generate_server_message, parse_client_message
 from consts import WEAPON_DATA
+
 
 class Node:
 
@@ -41,18 +41,20 @@ class Node:
         """Returns all stuff in range of the bounding box."""
         return self.spindex.intersect(get_bounding_box(pos, height, width))
 
-    def entities_in_range_of_player(self, entity: Entity, entity_addr: Addr, distance: int)\
+    def entities_in_range_of_player(self, entity: Entity, entity_addr: Addr, distance: int) \
             -> Iterable[Entity]:
         return map(lambda addr: self.entities[addr],
                    filter(lambda addr: addr != entity_addr, self.spindex.intersect(
-                                    get_bounding_box(entity.pos, CLIENT_WIDTH + distance, CLIENT_HEIGHT + distance))))
+                       get_bounding_box(entity.pos, CLIENT_WIDTH + distance, CLIENT_HEIGHT + distance))))
 
     def entities_in_rendering_range(self, entity: Entity, entity_addr: Addr) -> Iterable[Entity]:
         """
         Use: Returns all entities that are within render distance of each other.
         """
         return map(lambda addr: self.entities[addr], filter(lambda addr: addr != entity_addr,
-                                    self.spindex.intersect(get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
+                                                            self.spindex.intersect(
+                                                                get_bounding_box(entity.pos, SCREEN_HEIGHT,
+                                                                                 SCREEN_WIDTH))))
 
     def update_location(self, player_pos: Pos, seqn: int, entity: Entity, addr: Addr) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -93,7 +95,7 @@ class Node:
             return
         if weapon_data['is_melee']:
             players_in_range = self.entities_in_range_of_player(player, addr, weapon_data['melee_attack_range'])
-            print(f"Will be attacked rn {list(players_in_range)} with {tool=}")
+            # print(f"Will be attacked rn {list(players_in_range)} with {tool=}")
 
     def update_client(self, addr: Addr, secure_pos: Pos) -> None:
         """
@@ -102,7 +104,8 @@ class Node:
         new_chat = ""
         entity = self.entities[addr]
 
-        entities_array = flatten(map(lambda e: (e.ID, *e.pos, *e.direction), self.entities_in_rendering_range(entity, addr)))
+        entities_array = flatten(
+            map(lambda e: (e.entity_type, *e.pos, *e.direction), self.entities_in_rendering_range(entity, addr)))
         # generate and send message
         update_packet = generate_server_message(entity.tools, new_chat, secure_pos, entity.health, entities_array)
         self.server_sock.sendto(update_packet, addr)

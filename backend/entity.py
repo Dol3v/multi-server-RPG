@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR
+from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT
 
 
 @dataclass
 class Entity:
-    ID: int = 0
+    entity_type: int = 0
     pos: Pos = DEFAULT_POS_MARK
     width: int = -1
     height: int = -1
@@ -21,7 +21,7 @@ class Entity:
         arrow = 3
     tools: [default, tool2, tool3]
     """
-    tools: List = field(default_factory=lambda: [SWORD, AXE, BOW])
+    tools: List = field(default_factory=lambda: [SWORD, AXE, BOW, EMPTY_SLOT, EMPTY_SLOT, EMPTY_SLOT])
 
     def update(self, pos: Pos, width: int, height: int, is_attacking: bool, last_updated: int, health_change=0) -> None:
         """

@@ -45,7 +45,10 @@ WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
 ]
 
+# Actions format
 CHAT = 0
-ATTACK = 1
-ATTACK_DIR = 2
-EQUIPPED_ID = 3
+ATTACK = 2
+ATTACK_DIR = 3
+SELECTED_SLOT = 5
+
+

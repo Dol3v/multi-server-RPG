@@ -29,7 +29,7 @@ class ConnectScreen:
         self.running = False
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if platform.system() == "win32":
+        if platform.system() == "Windows":
             self.sock.bind(("0.0.0.0", port))
         self.clock = pygame.time.Clock()
 

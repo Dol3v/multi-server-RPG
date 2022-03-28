@@ -59,8 +59,10 @@ class Game:
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
-        # [msg, dir_bit, attack, attack_dir, equipped_id]
+
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
+        """[message, direction, did attack, attack directions, selected slot]"""
+
         self.chat_msg = ""
 
         self.is_showing_chat = False
@@ -89,7 +91,6 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(x, y)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -126,8 +127,6 @@ class Game:
         """
         Use: update player status by the server message
         """
-        # self.player.hotbar
-
         # update client position only when the server says so
         if valid_pos != DEFAULT_POS_MARK:
             self.player.rect.centerx = valid_pos[0]
@@ -142,11 +141,9 @@ class Game:
         """
         self.actions[CHAT] = self.chat_msg.encode()
         self.actions[ATTACK] = self.player.attacking
-        # BUG: This may cause some problems
-        # TODO: change to ff in the format
         self.actions[ATTACK_DIR] = 0.0  # self.player.direction.rotate()
 
-        self.actions[EQUIPPED_ID] = 1  # equipped_id
+        self.actions[SELECTED_SLOT] = self.player.current_slot
 
     def render_clients(self, entities: List[Tuple[int, int]]) -> None:
         """
