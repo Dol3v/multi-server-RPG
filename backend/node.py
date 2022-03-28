@@ -23,10 +23,10 @@ class Node:
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        self.entities = defaultdict(lambda: Entity())
+        self.entities = defaultdict(lambda: Player())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
-        """Quadtree for collision/range detection. Entity keys are tuples `(type, data)`, with the type being
+        """Quadtree for collision/range detection. Player keys are tuples `(type, data)`, with the type being
         projectile/player/mob, and data being other stuff that are relevant. Contains address of client for player
         entities."""
 
@@ -46,12 +46,12 @@ class Node:
         return map(lambda addr: self.entities[addr], filter(lambda addr: addr != entity_addr,
                                                             self.spindex.intersect(bbox)))
 
-    def entities_in_rendering_range(self, entity: Entity, entity_addr: Addr) -> Iterable[Entity]:
+    def entities_in_rendering_range(self, entity: Player, entity_addr: Addr) -> Iterable[Player]:
         """Returns all entities that are within render distance of each other.
         """
         return self.entities_in_range(entity_addr, get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))
 
-    def entities_in_melee_attack_range(self, entity: Entity, entity_addr: Addr, melee_range: int):
+    def entities_in_melee_attack_range(self, entity: Player, entity_addr: Addr, melee_range: int):
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]),\
@@ -60,7 +60,7 @@ class Node:
         return self.entities_in_range(entity_addr, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                     weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
-    def update_location(self, player_pos: Pos, seqn: int, entity: Entity, addr: Addr) -> Pos:
+    def update_location(self, player_pos: Pos, seqn: int, entity: Player, addr: Addr) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
         Additionally, adds the client to ``self.entities`` if it wasn't there already.
 
@@ -85,7 +85,7 @@ class Node:
             self.spindex.insert(addr, get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
         return secure_pos
 
-    def update_hp(self, player: Entity, inventory_slot: int, addr: Addr):
+    def update_hp(self, player: Player, inventory_slot: int, addr: Addr):
         """Updates hp of entities in case of attack.
 
         :param player: player entity with updated position
@@ -167,7 +167,7 @@ class Node:
             logging.exception(f"{e}")
 
 
-def invalid_movement(entity: Entity, player_pos: Pos, seqn: int) -> bool:
+def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
     """
     Use: check if a given player movement is valid
     """

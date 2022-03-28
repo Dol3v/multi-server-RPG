@@ -7,7 +7,7 @@ from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, DEFAULT_
 
 
 @dataclass
-class Entity:
+class Player:
     entity_type: int = 0
     pos: Pos = DEFAULT_POS_MARK
     width: int = -1

@@ -1,6 +1,6 @@
 """Every sprite or group class for the client"""
 """
-TODO: merge the weapon classes with the Entity class
+TODO: merge the weapon classes with the Player class
 """
 
 import pygame

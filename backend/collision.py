@@ -2,17 +2,17 @@
 import pyqtree 
 from typing import Iterable
 
-from entity import Entity
+from player import Player
 from common.consts import CLIENT_WIDTH, CLIENT_HEIGHT, Pos, SPEED
 
 
-def entities_are_colliding(entity: Entity, other: Entity) -> bool:
+def entities_are_colliding(entity: Player, other: Player) -> bool:
     """Checks if two players are colliding with each other. Assumes the player's position is its center."""
     return (0 <= abs(entity.pos[0] - other.pos[0]) <= 0.5 * (entity.width + other.width)) and \
            (0 <= abs(entity.pos[1] - other.pos[1]) <= 0.5 * (entity.height + other.height))
 
 
-def get_colliding_entities_with(entity: Entity, *, entities_to_check: Iterable[Entity]):
+def get_colliding_entities_with(entity: Player, *, entities_to_check: Iterable[Player]):
     """Returns all entities that collided with a given player."""
     # would have refactored players_are_colliding into an inner function, but it'll prob be more complicated in the
     # future
