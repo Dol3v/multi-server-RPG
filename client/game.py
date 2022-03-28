@@ -156,9 +156,7 @@ class Game:
         """
 
         for entity_id, entity_info in enumerate(entities):
-
             entity_type, pos, entity_dir = entity_info
-
             if entity_id in self.entities:
                 self.entities.get(entity_id).move_to(*pos)
             else:

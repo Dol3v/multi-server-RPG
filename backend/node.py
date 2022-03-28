@@ -95,7 +95,11 @@ class Node:
             return
         if weapon_data['is_melee']:
             players_in_range = self.entities_in_range_of_player(player, addr, weapon_data['melee_attack_range'])
-            # print(f"Will be attacked rn {list(players_in_range)} with {tool=}")
+            for player in players_in_range:
+                player.health -= weapon_data['damage']
+                print(f"Updated player health to {player.health}")
+                if player.health < 0:
+                    player.health = 0
 
     def update_client(self, addr: Addr, secure_pos: Pos) -> None:
         """
@@ -121,7 +125,7 @@ class Node:
                 if not client_msg:
                     continue
 
-                seqn, x, y, chat, attacked, *attack_dir, slot_index = parse_client_message(data)
+                seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
                 player_pos = x, y
                 if addr not in self.addrs:
                     self.spindex.insert(addr, get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
@@ -132,7 +136,9 @@ class Node:
                     logging.info(f"Got outdated packet from {addr=}")
 
                 secure_pos = self.update_location(player_pos, seqn, entity, addr)
-                self.update_hp(entity, slot_index, addr)
+                if attacked:
+                    logging.info(f"Player {addr} attacked")
+                    self.update_hp(entity, slot_index, addr)
                 self.update_client(addr, secure_pos)
             except Exception as e:
                 logging.exception(e)
@@ -164,5 +170,5 @@ def invalid_movement(entity: Entity, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     Node(SERVER_PORT)
