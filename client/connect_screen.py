@@ -173,8 +173,10 @@ class ConnectButton(Button):
                     username = self.connect_screen.get_sprite_by_position(4).text
                     password = self.connect_screen.get_sprite_by_position(6).text
                     if ip == "":
-                        ip = '127.0.0.1'
-                    self.connect_screen.connect_to_server(ip, username, password, is_login=True)
+                        self.connect_screen.running = False  # Debug TODO remove this shit later
+                        return
+
+                    #self.connect_screen.connect_to_server(ip, username, password, is_login=True)
 
 
 class RegisterButton(Button):

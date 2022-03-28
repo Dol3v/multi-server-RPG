@@ -1,19 +1,16 @@
 """Game loop and communication with the server"""
 import queue
-import random
 import socket
 import sys
 import threading
-import pygame
 import weapons
 from typing import Tuple, List
-import gc
 
 # to import from a dir
 sys.path.append('../')
 
 from graphics import ChatBox
-from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT, VALID_POS, Pos, MIN_HEALTH
+from common.consts import *
 from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
@@ -55,6 +52,10 @@ class Game:
         self.hot_bar = pygame.image.load("assets/hot_bar.png")
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
+
+        self.inv = pygame.image.load("assets/inventory.png")
+        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
+        self.inv.set_alpha(150)
 
         self.entities = {}
         self.recv_queue = queue.Queue()
@@ -100,7 +101,7 @@ class Game:
                         if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
 
                             weapon = Weapon([self.visible_sprites], weapon_type, "rare")
-                            if weapon_type == "bow":
+                            if weapon.is_ranged:
                                 weapon.kill()
                                 weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
                                                      weapon_type, "rare")
@@ -109,7 +110,7 @@ class Game:
                             self.player.set_weapon_in_slot(i, weapon)
                     else:
                         weapon = Weapon([self.visible_sprites], weapon_type, "rare")
-                        if weapon_type == "bow":
+                        if weapon.is_ranged:
                             weapon.kill()
                             weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
                                                  weapon_type, "rare")
@@ -208,6 +209,7 @@ class Game:
                     self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
 
                 if event.type == pygame.KEYDOWN:
+
                     if self.player.is_typing:
                         if event.key == pygame.K_TAB:  # Check if closes the chat
                             self.player.is_typing = not self.player.is_typing
@@ -233,6 +235,8 @@ class Game:
                             self.full_screen = not self.full_screen
                         if event.key == pygame.K_TAB:
                             self.is_showing_chat = not self.is_showing_chat
+                        if event.key == pygame.K_e:
+                            self.player.is_inv_open = not self.player.is_inv_open
 
             # sprite update
             self.display_surface.fill("black")
@@ -241,7 +245,8 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
-            self.server_update()
+            self.draw_inventory()
+            # self.server_update()
             pygame.display.update()
             self.clock.tick(FPS)
 
@@ -274,9 +279,18 @@ class Game:
                 surface.fill((0, 0, 0, 100))
 
             if weapon:
-                surface.blit(weapon.icon, (0, 0))
 
+                if weapon.is_ranged:
+                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (0, 0))
+                else:
+                    surface.blit(weapon.icon, (0, 0))
             hot_bar.blit(surface, (16 + 36 * i, 18))
             # (16 + 36 * i, 18)
 
         self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))
+
+    def draw_inventory(self):
+        if self.player.is_inv_open:
+            x = SCREEN_WIDTH - self.inv.get_width()
+            y = 0
+            self.display_surface.blit(self.inv, (x, y))

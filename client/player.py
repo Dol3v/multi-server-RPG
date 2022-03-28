@@ -3,17 +3,33 @@ from typing import List, Tuple
 
 import pygame
 
-from common.consts import SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
-from common.utils import normalize_vec
-from weapons import Weapon
+from common.consts import SPEED
+from weapons import *
 from consts import *
+from graphics import Animation
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, obstacle_sprites):
         super().__init__(*groups)
-        self.image = pygame.image.load(PLAYER_IMG).convert_alpha()
+        # self.image = pygame.image.load(PLAYER_IMG).convert_alpha()
+
+        self.image = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (self.image.get_width() * PLAYER_SIZE_MULTIPLIER,
+                                                         self.image.get_height() * PLAYER_SIZE_MULTIPLIER))
+
+        self.original_image = self.image.copy()
+
+        self.moving_animation = Animation(
+            [pygame.image.load("assets/character/knight/move_0.png"),
+             pygame.image.load("assets/character/knight/move_1.png"),
+             pygame.image.load("assets/character/knight/move_2.png")],
+            10
+        )
+
         self.rect = self.image.get_rect(topleft=pos)
+
+        self.looking_direction = "RIGHT"
 
         self.direction = pygame.math.Vector2()
         self.speed = SPEED
@@ -23,9 +39,15 @@ class Player(pygame.sprite.Sprite):
         self.attack_cooldown = pygame.time.get_ticks()
         self.attacking = False
         self.is_typing = False
+        self.is_inv_open = False
+
+        self.hand = Hand(groups)
 
         self.hotbar: List[Weapon | None] = [None] * 6
         self.current_slot = 0
+        self.hotbar[0] = Weapon(groups, "sword", "rare")
+        self.hotbar[1] = Weapon(groups, "axe", "rare")
+        self.hotbar[2] = RangeWeapon(groups, obstacle_sprites, "bow", "rare")
 
     def input(self):
         if self.is_typing:
@@ -64,10 +86,14 @@ class Player(pygame.sprite.Sprite):
             self.direction.x = 0
 
         if pygame.mouse.get_pressed()[0]:  # Check if the mouse is clicked
+
+            if not self.hotbar[self.current_slot]:
+                return
+            weapon = self.hotbar[self.current_slot]
             if not self.attacking:
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.attacking = True
-                    self.attack_cooldown = pygame.time.get_ticks() + ATTACK_COOLDOWN
+                    self.attack_cooldown = pygame.time.get_ticks() + weapon.cooldown
                     if self.hotbar[self.current_slot]:
                         self.hotbar[self.current_slot].attack(self)
 
@@ -110,6 +136,9 @@ class Player(pygame.sprite.Sprite):
         weapon = self.hotbar[self.current_slot]
         if weapon:
             weapon.draw_weapon(self)
+            self.hand.hide()
+        else:
+            self.hand.draw_hand(self)
 
     def set_weapon_in_slot(self, slot, weapon: Weapon):
         self.hotbar[slot] = weapon
@@ -152,7 +181,8 @@ class Player(pygame.sprite.Sprite):
         if center_y > SCREEN_HEIGHT // 2:
             center_y = SCREEN_HEIGHT // 2
 
-        print(f"{center_x} {center_y}")
+        center_x = SCREEN_WIDTH // 2  # TODO: Remove when map and camera done
+        center_y = SCREEN_HEIGHT // 2
 
         mouse_pos = pygame.mouse.get_pos()
 
@@ -161,7 +191,38 @@ class Player(pygame.sprite.Sprite):
 
         return normalize_vec(vec_x, vec_y)
 
+    def update_looking_direction(self):
+        vec = self.get_direction_vec()
+        if vec[0] >= 0:  # Check if looking x is positive (pointing on the right side of the screen)
+            self.looking_direction = "RIGHT"
+        else:
+            self.looking_direction = "LEFT"
+
+    def update_player_animation(self):
+        if self.direction.x == 0 and self.direction.y == 0:
+            if self.looking_direction == "RIGHT":
+                self.image = self.original_image.copy()
+
+            if self.looking_direction == "LEFT":
+                self.image = pygame.transform.flip(self.original_image, True, False)
+            return
+
+        if self.looking_direction == "LEFT":
+            frame = self.moving_animation.get_next_frame()
+            frame = pygame.transform.flip(frame, True, False)
+            frame = pygame.transform.scale(frame, (frame.get_width() * PLAYER_SIZE_MULTIPLIER,
+                                                   frame.get_height() * PLAYER_SIZE_MULTIPLIER))
+            self.image = frame
+
+        if self.looking_direction == "RIGHT":
+            frame = self.moving_animation.get_next_frame()
+            frame = pygame.transform.scale(frame, (frame.get_width() * PLAYER_SIZE_MULTIPLIER,
+                                                   frame.get_height() * PLAYER_SIZE_MULTIPLIER))
+            self.image = frame
+
     def update(self):
         self.input()
         self.move(self.speed)
         self.draw_main_weapon()
+        self.update_looking_direction()
+        self.update_player_animation()

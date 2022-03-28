@@ -1,5 +1,7 @@
 """General consts for client side"""
 # Images
+
+PLAYER_SIZE_MULTIPLIER = 4
 PLAYER_IMG = "assets/idle_down.png"
 HEALTH_BACKGROUND_IMG = "assets/health/health_background.png"
 HEALTH_BAR_IMG = "assets/health/health_bar.png"
@@ -23,8 +25,14 @@ ATTACK_COOLDOWN = 250
 MAX_HEALTH = 100
 
 weapon_data = {
-    'sword': {'cooldown': 100, 'damage': 15, 'graphics': "assets/weapons/sword/full.png"},
-    'axe': {'cooldown': 300, 'damage': 30, 'graphics': "assets/weapons/axe/full.png"}
+    'sword': {"id": 1, "is_ranged": False, 'cooldown': 100, 'damage': 15, 'graphics': "assets/weapons/sword/full.png",
+              "hand_position": (9, 45)},
+
+    'axe': {"id": 2, "is_ranged": False, 'cooldown': 300, 'damage': 30, 'graphics': "assets/weapons/axe/full.png",
+            "hand_position": (15, 40)},
+
+    'bow': {"id": 3, "is_ranged": True, 'cooldown': 400, 'damage': 40, 'graphics': "assets/weapons/bow/full.png",
+            "hand_position": (20, 15)}
 
 }
 
