@@ -48,7 +48,8 @@ WORLD_MAP = [
 # Actions format
 CHAT = 0
 ATTACK = 2
-ATTACK_DIR = 3
+ATTACK_DIR_X = 3
+ATTACK_DIR_Y = 4
 SELECTED_SLOT = 5
 
 

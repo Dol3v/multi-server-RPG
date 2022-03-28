@@ -141,8 +141,7 @@ class Game:
         """
         self.actions[CHAT] = self.chat_msg.encode()
         self.actions[ATTACK] = self.player.attacking
-        self.actions[ATTACK_DIR] = 0.0  # self.player.direction.rotate()
-
+        self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
         self.actions[SELECTED_SLOT] = self.player.current_slot
 
     def render_clients(self, entities: List[Tuple[int, int]]) -> None:
@@ -154,7 +153,6 @@ class Game:
                 [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
-
         for entity_id, entity_info in enumerate(entities):
             entity_type, pos, entity_dir = entity_info
             if entity_id in self.entities:

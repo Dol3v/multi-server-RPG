@@ -47,14 +47,19 @@ class Node:
                    filter(lambda addr: addr != entity_addr, self.spindex.intersect(
                        get_bounding_box(entity.pos, CLIENT_WIDTH + distance, CLIENT_HEIGHT + distance))))
 
-    def entities_in_rendering_range(self, entity: Entity, entity_addr: Addr) -> Iterable[Entity]:
-        """
-        Use: Returns all entities that are within render distance of each other.
-        """
+    def entities_in_range(self, entity_addr, bbox: Tuple[int, int, int, int]):
+        """Returns all entities in a given bounding box that are not the player itself."""
         return map(lambda addr: self.entities[addr], filter(lambda addr: addr != entity_addr,
-                                                            self.spindex.intersect(
-                                                                get_bounding_box(entity.pos, SCREEN_HEIGHT,
-                                                                                 SCREEN_WIDTH))))
+                                                            self.spindex.intersect(bbox)))
+
+    def entities_in_rendering_range(self, entity: Entity, entity_addr: Addr) -> Iterable[Entity]:
+        """Returns all entities that are within render distance of each other.
+        """
+        return self.entities_in_range(entity_addr, get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))
+
+    def entities_in_melee_attack_range(self, entity: Entity, entity_addr: Addr, direction: Tuple[float, float]):
+        """"""
+        ...
 
     def update_location(self, player_pos: Pos, seqn: int, entity: Entity, addr: Addr) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
