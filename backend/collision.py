@@ -2,7 +2,7 @@
 import pyqtree 
 from typing import Iterable
 
-from backend.entity import Entity
+from entity import Entity
 from common.consts import CLIENT_WIDTH, CLIENT_HEIGHT, Pos, SPEED
 
 

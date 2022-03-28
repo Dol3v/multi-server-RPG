@@ -7,12 +7,13 @@ from cryptography.exceptions import InvalidKey
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from sqlalchemy import select, insert
 
-from backend.database import SqlDatabase
+# to import from a dir
+sys.path.append('../')
+
+from database import SqlDatabase
 from common.utils import *
 from consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R, USERNAME_COL, HASH_COL, SALT_COL
 
-# to import from a dir
-sys.path.append('./')
 
 
 def generate_hash_and_salt(password: bytes) -> Tuple[bytes, bytes]:

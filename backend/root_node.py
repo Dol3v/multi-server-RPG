@@ -1,5 +1,6 @@
 """Login/Load-balancing server"""
 import logging
+import sys
 import socket
 import struct
 from base64 import urlsafe_b64encode
@@ -10,9 +11,11 @@ from typing import Tuple, Dict, List
 from add_user import login, signup
 from cryptography.fernet import Fernet, InvalidToken
 
-from backend.consts import FERNET_TOKEN_LENGTH, CREDENTIALS_PACKET_SIZE
-from backend.database import SqlDatabase
-from backend.networking import do_ecdh
+# to import from a dir
+sys.path.append('../')
+from consts import FERNET_TOKEN_LENGTH, CREDENTIALS_PACKET_SIZE, DB_PASS
+from database import SqlDatabase
+from networking import do_ecdh
 from common.consts import ROOT_IP, ROOT_PORT, Addr
 
 
@@ -73,6 +76,6 @@ class EntryNode:
 if __name__ == "__main__":
     sock = socket.socket()
     sock.bind((ROOT_IP, ROOT_PORT))
-    db = SqlDatabase("127.0.0.1", "dummyPass")
+    db = SqlDatabase("127.0.0.1", DB_PASS)
     node = EntryNode(db, sock)
     node.run()

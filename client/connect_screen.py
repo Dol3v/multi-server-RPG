@@ -1,6 +1,7 @@
 """Connection screen login and signup"""
 import socket
 import sys
+import platform
 
 import pygame.transform
 
@@ -28,7 +29,8 @@ class ConnectScreen:
         self.running = False
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("0.0.0.0", port))
+        if platform.system() == "win32":
+            self.sock.bind(("0.0.0.0", port))
         self.clock = pygame.time.Clock()
 
         self.is_login_screen = True

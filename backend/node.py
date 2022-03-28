@@ -6,16 +6,15 @@ from collections import defaultdict
 
 from pyqtree import Index
 
-# to import from a dir
-from backend.consts import WEAPON_DATA
 
+# to import from a dir
 sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
-from backend.collision import *
-from backend.networking import generate_server_message, parse_client_message
-
+from collision import *
+from networking import generate_server_message, parse_client_message
+from consts import WEAPON_DATA
 
 class Node:
 

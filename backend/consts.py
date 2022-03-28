@@ -3,8 +3,9 @@ from common.consts import SWORD, AXE, BOW
 
 SQL_TYPE = "mysql"
 DB_PORT = 3306
-DB_NAME = "users"
-DB_USERNAME = "dummy"
+DB_NAME = "db"
+DB_USERNAME = "reem"
+DB_PASS = "12"
 
 # Column Numbers
 USERNAME_COL = 0
