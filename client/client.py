@@ -28,8 +28,10 @@ def init_pygame() -> pygame.Surface:
 if __name__ == "__main__":
     screen = init_pygame()
 
-    connection_screen = connect_screen.ConnectScreen(screen, SERVER_PORT)
+    connection_screen = connect_screen.ConnectScreen(screen, 10001)
     connection_screen.run()
-
-    my_game = game.Game(connection_screen.sock, connection_screen.addr, connection_screen.full_screen)
-    my_game.run()
+    if not connection_screen.sock:
+        print("oof")
+    else:
+        my_game = game.Game(connection_screen.sock, connection_screen.game_server_addr, connection_screen.full_screen)
+        my_game.run()

@@ -1,6 +1,8 @@
 """General Common consts"""
-from typing import Tuple
 import struct
+from typing import Tuple
+
+from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 
 INT_SIZE = 4
 # Format 
@@ -17,8 +19,8 @@ HEALTH = 'i'
 NEW_CHAT_MSG = '255s'
 ENTITY_FORMAT = 'i' + POSITION_FORMAT + 'ff'
 ENTITY_FIELD_NUM = 4
-SERVER_HEADER_FORMAT = MESSAGE_ENDIANESS + TOOLS + NEW_CHAT_MSG + POSITION_FORMAT + HEALTH + NUMBER_OF_POSITIONS_FORMAT 
-SERVER_HEADER_SIZE = struct.calcsize(SERVER_HEADER_FORMAT) 
+SERVER_HEADER_FORMAT = MESSAGE_ENDIANESS + TOOLS + NEW_CHAT_MSG + POSITION_FORMAT + HEALTH + NUMBER_OF_POSITIONS_FORMAT
+SERVER_HEADER_SIZE = struct.calcsize(SERVER_HEADER_FORMAT)
 
 # Useful graphics consts
 CLIENT_HEIGHT = 64
@@ -32,7 +34,6 @@ SCREEN_HEIGHT = 720
 # Types
 Pos = Tuple[int, int]
 Addr = Tuple[str, int]
-
 
 # Server configurations
 SERVER_PORT = 42069
@@ -48,7 +49,17 @@ DEFAULT_DIR = (0.0, 0.0)
 SPEED = 5
 MAX_HEALTH = 100
 MIN_HEALTH = 0
+
 # Tools 
 SWORD = 1
 AXE = 2
 BOW = 3
+
+# ECDH Consts
+COMPRESSED_POINT_SIZE = 49
+ELLIPTIC_CURVE = SECP384R1()
+SHARED_KEY_SIZE = 32
+
+# Some temporary consts
+ROOT_IP = "127.0.0.1"
+ROOT_PORT = 30000
