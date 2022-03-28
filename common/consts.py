@@ -42,7 +42,7 @@ RECV_CHUNK = 1024
 THREADS_COUNT = 1
 
 # Networking conventions
-DEFAULT_INVALID_POS = (-1, -1)
+DEFAULT_POS_MARK = (-1, -1)
 DEFAULT_DIR = (0.0, 0.0)
 
 # Useful player information

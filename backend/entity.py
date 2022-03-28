@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, DEFAULT_INVALID_POS, DEFAULT_DIR
+from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR
 
 
 @dataclass
 class Entity:
     ID: int = 0
-    pos: Pos = DEFAULT_INVALID_POS
+    pos: Pos = DEFAULT_POS_MARK
     width: int = -1
     height: int = -1
     is_attacking: bool = False
