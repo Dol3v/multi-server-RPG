@@ -2,6 +2,7 @@ import functools
 import logging
 import sys
 import threading
+import time
 from collections import defaultdict
 
 from pyqtree import Index
@@ -91,6 +92,14 @@ class Node:
         :param player: player entity with updated position
         :param inventory_slot: slot index of player
         :param addr: address of client"""
+
+        # check for cooldown and update it accordingly
+        if player.current_cooldown != -1:
+            if player.current_cooldown + player.last_time_attacked > (new := time.time()):
+                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {addr=}")
+                return
+            logging.debug(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
+            player.current_cooldown = -1
         try:
             tool = player.tools[inventory_slot]
             weapon_data = WEAPON_DATA[tool]
@@ -99,11 +108,15 @@ class Node:
             return
         if weapon_data['is_melee']:
             players_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
+            # resetting cooldown
+            player.current_cooldown = weapon_data['cooldown']
+            player.last_time_attacked = time.time()
+
             for player in players_in_range:
                 player.health -= weapon_data['damage']
-                logging.info(f"Updated player health to {player.health}")
                 if player.health < 0:
                     player.health = 0
+                logging.info(f"Updated player health to {player.health}")
 
     def update_client(self, addr: Addr, secure_pos: Pos) -> None:
         """
@@ -140,10 +153,10 @@ class Node:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
 
-                entity.direction = attack_dir # TODO: check if normalized
+                entity.direction = attack_dir   # TODO: check if normalized
                 secure_pos = self.update_location(player_pos, seqn, entity, addr)
                 if attacked:
-                    logging.info(f"Player {addr} attacked")
+                    logging.info(f"Player {addr} tried to attack")
                     self.update_hp(entity, slot_index, addr)
                 self.update_client(addr, secure_pos)
             except Exception as e:
