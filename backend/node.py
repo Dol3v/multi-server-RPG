@@ -13,7 +13,7 @@ from common.consts import *
 from common.utils import *
 from collision import *
 from networking import generate_server_message, parse_client_message
-from consts import WEAPON_DATA
+from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER
 
 
 class Node:
@@ -54,7 +54,9 @@ class Node:
     def entities_in_melee_attack_range(self, entity: Entity, entity_addr: Addr, melee_range: int):
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
-        weapon_x, weapon_y = int(entity.pos[0] + entity.direction[0]), int(entity.pos[1] + entity.direction[1])
+        weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]),\
+                             int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
+        logging.debug(f"pos={entity.pos}, dir={entity.direction}, weapon={weapon_x, weapon_y}")
         return self.entities_in_range(entity_addr, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                     weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
@@ -99,7 +101,7 @@ class Node:
             players_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
             for player in players_in_range:
                 player.health -= weapon_data['damage']
-                print(f"Updated player health to {player.health}")
+                logging.info(f"Updated player health to {player.health}")
                 if player.health < 0:
                     player.health = 0
 
@@ -136,7 +138,9 @@ class Node:
                 entity = self.entities[addr]
                 if seqn <= entity.last_updated:
                     logging.info(f"Got outdated packet from {addr=}")
+                    continue
 
+                entity.direction = attack_dir # TODO: check if normalized
                 secure_pos = self.update_location(player_pos, seqn, entity, addr)
                 if attacked:
                     logging.info(f"Player {addr} attacked")
@@ -172,5 +176,5 @@ def invalid_movement(entity: Entity, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(SERVER_PORT)

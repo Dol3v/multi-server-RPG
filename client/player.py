@@ -86,7 +86,6 @@ class Player(pygame.sprite.Sprite):
             self.direction.x = 0
 
         if pygame.mouse.get_pressed()[0]:  # Check if the mouse is clicked
-
             if not self.hotbar[self.current_slot]:
                 return
             weapon = self.hotbar[self.current_slot]
@@ -96,7 +95,6 @@ class Player(pygame.sprite.Sprite):
                     self.attack_cooldown = pygame.time.get_ticks() + weapon.cooldown
                     if self.hotbar[self.current_slot]:
                         self.hotbar[self.current_slot].attack(self)
-
         else:
             self.attacking = False
 

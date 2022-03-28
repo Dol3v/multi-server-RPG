@@ -187,7 +187,6 @@ class Game:
         while self.running:
             event_list = pygame.event.get()
             for event in event_list:
-
                 if event.type == pygame.MOUSEWHEEL:
                     if event.y > 0:
                         self.player.previous_slot()
@@ -202,7 +201,6 @@ class Game:
                     self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
 
                 if event.type == pygame.KEYDOWN:
-
                     if self.player.is_typing:
                         if event.key == pygame.K_TAB:  # Check if closes the chat
                             self.player.is_typing = not self.player.is_typing

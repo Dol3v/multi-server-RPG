@@ -39,7 +39,7 @@ def flatten(iterable: Iterable) -> list:
 def normalize_vec(x, y) -> Tuple[float, float]:
     factor = math.sqrt(x ** 2 + y ** 2)
     if factor == 0:
-        return 0, -0.1
+        return 0, 0
     return x / factor, y / factor
 
 
