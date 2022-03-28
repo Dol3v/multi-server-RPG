@@ -1,4 +1,6 @@
 # SqlDatabase configurations
+from common.consts import SWORD, AXE, BOW
+
 SQL_TYPE = "mysql"
 DB_PORT = 3306
 DB_NAME = "users"
@@ -28,3 +30,12 @@ CREDENTIALS_PACKET_SIZE = 1 + 2 * FERNET_TOKEN_LENGTH
 
 # Entity Consts
 TYPE_PLAYER = 0
+
+# Game consts
+ATTACK_BBOX_LENGTH = 100
+WEAPON_DATA = {
+    SWORD: {'cooldown': 100, 'damage': 15, 'melee_attack_range': 70, 'is_melee': True},
+    AXE: {'cooldown': 300, 'damage': 30, 'melee_attack_range': 100, 'is_melee': True},
+    BOW: {'cooldown': 400, 'damage': 45, 'is_melee': False}
+}
+

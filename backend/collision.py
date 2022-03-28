@@ -7,7 +7,7 @@ from common.consts import CLIENT_WIDTH, CLIENT_HEIGHT, Pos, SPEED
 
 
 def entities_are_colliding(entity: Entity, other: Entity) -> bool:
-    """Checks if two players are colliding with each other. Assumes the entity's position is its center."""
+    """Checks if two players are colliding with each other. Assumes the player's position is its center."""
     return (0 <= abs(entity.pos[0] - other.pos[0]) <= 0.5 * (entity.width + other.width)) and \
            (0 <= abs(entity.pos[1] - other.pos[1]) <= 0.5 * (entity.height + other.height))
 

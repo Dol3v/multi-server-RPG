@@ -22,12 +22,6 @@ SPEED = 5
 ATTACK_COOLDOWN = 250
 MAX_HEALTH = 100
 
-weapon_data = {
-    'sword': {'cooldown': 100, 'damage': 15, 'graphics': "assets/weapons/sword/full.png"},
-    'axe': {'cooldown': 300, 'damage': 30, 'graphics': "assets/weapons/axe/full.png"}
-
-}
-
 WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
     ['x', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'x'],

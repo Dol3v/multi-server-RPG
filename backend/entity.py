@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, VALID_POS, DEFAULT_DIR
+from common.consts import Pos, MAX_HEALTH, MIN_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR
 
 
 @dataclass
 class Entity:
     ID: int = 0
-    pos: Pos = VALID_POS
+    pos: Pos = DEFAULT_POS_MARK
     width: int = -1
     height: int = -1
     is_attacking: bool = False
@@ -25,7 +25,7 @@ class Entity:
 
     def update(self, pos: Pos, width: int, height: int, is_attacking: bool, last_updated: int, health_change=0) -> None:
         """
-        Use: update entity fields
+        Use: update player fields
         """
         self.pos = pos
         self.width = width

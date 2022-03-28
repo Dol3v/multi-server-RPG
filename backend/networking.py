@@ -1,7 +1,7 @@
 import socket
 import struct
 
-from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos, ENTITY_FORMAT, ENTITY_FIELD_NUM, RECV_CHUNK
+from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos, ENTITY_FORMAT, ENTITY_DATA_SIZE, RECV_CHUNK
 from common.utils import parse, send_public_key, get_shared_key, deserialize_public_key
 
 
@@ -10,7 +10,6 @@ def do_ecdh(conn: socket.socket) -> None | bytes:
     client_key = conn.recv(RECV_CHUNK)
     try:
         client_public_key = deserialize_public_key(client_key)
-        print(client_public_key)
     except ValueError:
         return None
     private_key = send_public_key(conn)
@@ -28,19 +27,17 @@ def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, heal
                             entities_in_range: list) -> bytes | None:
     """
     Use: creates the server update message
-    Format: [tools + new_msg + last valid pos + HP + entities in range]
+    Format: [tools + new_msg + last valid player_pos + HP + entities in range]
     NOTE: the first tool inside the tools will be the equipped one. 
     """
     data = []
-    entities_count = len(entities_in_range) // ENTITY_FIELD_NUM
-    # create data array
+    entities_count = len(entities_in_range) // ENTITY_DATA_SIZE
+    # # create data array
     data += tools
     data.append(new_msg.encode())
     data += [*last_valid_pos]
     data.append(health)
     data.append(entities_count)
-    # packet data
     data += entities_in_range
     packet_format = SERVER_HEADER_FORMAT + ENTITY_FORMAT * entities_count
-    print(data)
     return struct.pack(packet_format, *data)

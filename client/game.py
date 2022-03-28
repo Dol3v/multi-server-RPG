@@ -13,7 +13,7 @@ import gc
 sys.path.append('../')
 
 from graphics import ChatBox
-from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT, VALID_POS, Pos, MIN_HEALTH
+from common.consts import RECV_CHUNK, SCREEN_WIDTH, SCREEN_HEIGHT, DEFAULT_POS_MARK, Pos, MIN_HEALTH
 from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
@@ -89,7 +89,7 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-
+            print(x, y)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -129,7 +129,7 @@ class Game:
         # self.player.hotbar
 
         # update client position only when the server says so
-        if (valid_pos != VALID_POS):
+        if valid_pos != DEFAULT_POS_MARK:
             self.player.rect.centerx = valid_pos[0]
             self.player.rect.centery = valid_pos[1]
 

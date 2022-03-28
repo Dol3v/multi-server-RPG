@@ -4,7 +4,7 @@ from base64 import urlsafe_b64encode
 from cryptography.fernet import Fernet
 
 from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, MESSAGE_ENDIANESS, CLIENT_FORMAT, ENTITY_FORMAT, \
-    ENTITY_FIELD_NUM, RECV_CHUNK
+    ENTITY_DATA_SIZE, RECV_CHUNK
 from common.utils import *
 
 
@@ -38,7 +38,7 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
     """
     Use: convert the packets bytes to a list of fields
     """
-    # tools, new_chat, valid pos, health
+    # tools, new_chat, valid player_pos, health
     player_status = parse(SERVER_HEADER_FORMAT, packet[:SERVER_HEADER_SIZE])
 
     if not player_status:
@@ -55,9 +55,10 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
                              ENTITY_FORMAT)])  # partition
 
     if raw_entities:
+        print(raw_entities)
         entities = [
             (raw_entities[i], (raw_entities[i + 1], raw_entities[i + 2]), (raw_entities[i + 3], raw_entities[i + 4]))
-            for i in range(0, len(raw_entities) - 1, ENTITY_FIELD_NUM)]
+            for i in range(0, len(raw_entities), ENTITY_DATA_SIZE)]
 
         return player_status, entities
 
@@ -65,6 +66,6 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
 def generate_client_message(seqn: int, x: int, y: int, actions: list) -> bytes | None:
     """
     Use: generate the client message bytes by this format
-    Format: [pos(x, y) + (new_msg || attack || attack_directiton || equipped_id )]
+    Format: [player_pos(x, y) + (new_msg || attack || attack_directiton || equipped_id )]
     """
     return struct.pack(CLIENT_FORMAT, seqn, x, y, *actions)
