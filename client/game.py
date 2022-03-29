@@ -166,16 +166,10 @@ class Game:
 
     def create_map(self) -> None:
         """
-        Use:
+        creates the player...
         """
-        for row_index, row in enumerate(WORLD_MAP):
-            for col_index, col in enumerate(row):
-                x = col_index * TILE_SIZE
-                y = row_index * TILE_SIZE
-                if col == 'x':
-                    Tile((x, y), [self.visible_sprites, self.obstacles_sprites])
-                if col == 'p':
-                    self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites)
+        self.player = Player((1988, 1500), [self.visible_sprites], self.obstacles_sprites)
+
 
     def run(self) -> None:
         """

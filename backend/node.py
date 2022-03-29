@@ -10,10 +10,10 @@ from typing import Any
 from pyqtree import Index
 
 # to import from a dir
-from client.consts import WORLD_MAP, TILE_SIZE
 
 sys.path.append('../')
 
+from client.consts import WORLD_MAP, TILE_SIZE
 from common.consts import *
 from common.utils import *
 from collision import *
