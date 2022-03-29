@@ -116,6 +116,7 @@ class Node:
         :param inventory_slot: slot index of player
         :param addr: address of client"""
 
+        logging.info(f"Player {addr} tried to attack")
         # check for cooldown and update it accordingly
         if player.current_cooldown != -1:
             if player.current_cooldown + player.last_time_attacked > (new := time.time()):
@@ -141,7 +142,8 @@ class Node:
                     attackable.health = 0
                 logging.info(f"Updated entity health to {attackable.health}")
         else:
-            print(weapon_data)
+            player.current_cooldown = weapon_data['cooldown']
+            player.last_time_attacked = time.time()
             # adding into saved data
             projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
                                          int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
@@ -149,6 +151,7 @@ class Node:
             self.projectiles[projectile.time_created] = projectile
             self.spindex.insert((PROJECTILE_TYPE, projectile.time_created),
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+            logging.info(f"Added projectile {projectile}")
 
     def update_client(self, addr: Addr, secure_pos: Pos):
         """
@@ -196,22 +199,37 @@ class Node:
         Use: update all projectiles and bots positions inside a loop
         """
         # projectile handling
+        to_remove = []
         for projectile in projectiles.values():
+            collided = False
             intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             if intersection:
                 for kind, identifier in intersection:
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
-                        print(projectile.damage)
+                        logging.info(f"Projectile {projectile} hit a player {player}")
                         player.health -= projectile.damage
-                        print(player.health)
                         if player.health < MIN_HEALTH:
                             player.health = MIN_HEALTH
                         logging.info(f"Updated player {identifier} health to {player.health}")
-
-            projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
-                             int(PROJECTILE_SPEED * projectile.direction[1])
-
+                        to_remove.append(projectile)
+                        collided = True
+                        # TODO: add wall collision
+            if not collided:
+                self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                                                                                PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+                self.projectiles[projectile.time_created].pos = projectile.pos[0] + \
+                                 int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
+                                 int(PROJECTILE_SPEED * projectile.direction[1])
+                self.spindex.insert((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                                                                                                 PROJECTILE_HEIGHT,
+                                                                                                 PROJECTILE_WIDTH))
+        # print(list(self.projectiles.values()))
+        for projectile in to_remove:
+            self.projectiles.pop(projectile.time_created)
+            self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                                                                                             PROJECTILE_HEIGHT,
+                                                                                             PROJECTILE_WIDTH))
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
