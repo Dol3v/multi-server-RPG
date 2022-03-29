@@ -210,6 +210,7 @@ class Node:
         Use: update all projectiles and bots positions inside a loop
         """
         # projectile handling
+        to_remove = []
         for projectile in projectiles.values():
             intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             if intersection:
@@ -226,13 +227,17 @@ class Node:
                         if bot.health < MIN_HEALTH:
                             bot.health = MIN_HEALTH
                         logging.info(f"Updated bot {identifier} health to {bot.health}")
+                    elif kind != OBSTACLE_TYPE:
+                        continue
                 self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
                                     PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
-                self.projectiles.pop(projectile.time_created)
-
+                to_remove.append(projectile)
             else:
                 projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
                              int(PROJECTILE_SPEED * projectile.direction[1])
+
+        for projectile in to_remove:
+            self.projectiles.pop(projectile.time_created)
 
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
