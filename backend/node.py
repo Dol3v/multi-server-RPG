@@ -213,6 +213,7 @@ class Node:
         # projectile handling
         to_remove = []
         print(f"LEN 1: {len(projectiles)}, {len(self.projectiles)}")
+
         for projectile in projectiles.values():
             intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             if intersection:

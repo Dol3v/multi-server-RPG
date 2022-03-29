@@ -50,7 +50,9 @@ class Entity(pygame.sprite.Sprite):
         super().__init__(*groups)
         self.x = x
         self.y = y
-        self.texture = pygame.image.load(PLAYER_IMG)
+        self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
+                                                   self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
         self.draw_player_entity()
 
     def move_to(self, x, y):
