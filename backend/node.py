@@ -225,8 +225,12 @@ class Node:
                         if bot.health < MIN_HEALTH:
                             bot.health = MIN_HEALTH
                         logging.info(f"Updated bot {identifier} health to {bot.health}")
+                self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                                    PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+                self.projectiles.pop(projectile.time_created)
 
-            projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
+            else:
+                projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
                              int(PROJECTILE_SPEED * projectile.direction[1])
 
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
