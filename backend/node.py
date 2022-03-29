@@ -1,6 +1,7 @@
 import functools
 import itertools
 import logging
+import sched
 import sys
 import threading
 from collections import defaultdict
@@ -15,7 +16,7 @@ sys.path.append('../')
 from common.consts import *
 from common.utils import *
 from collision import *
-from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER
+from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME
 from entities import *
 from networking import generate_server_message, parse_client_message
 
@@ -118,9 +119,9 @@ class Node:
         # check for cooldown and update it accordingly
         if player.current_cooldown != -1:
             if player.current_cooldown + player.last_time_attacked > (new := time.time()):
-                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {addr=}")
+                logging.info(f"COOLDOWN {player.current_cooldown} prevented attack by {addr=}")
                 return
-            logging.debug(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
+            logging.info(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
             player.current_cooldown = -1
         try:
             tool = player.tools[inventory_slot]
@@ -140,10 +141,11 @@ class Node:
                     attackable.health = 0
                 logging.info(f"Updated entity health to {attackable.health}")
         else:
+            print(weapon_data)
             # adding into saved data
-            projectile = Projectile((int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
-                                     int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
-                                    player.direction)
+            projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
+                                         int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
+                                    direction=player.direction, damage=weapon_data['damage'])
             self.projectiles[projectile.time_created] = projectile
             self.spindex.insert((PROJECTILE_TYPE, projectile.time_created),
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
@@ -189,22 +191,35 @@ class Node:
             except Exception as e:
                 logging.exception(e)
 
-    def location_update(self, s, projectiles, bots: List[Bot]):
+    def server_controlled_entities_update(self, s, projectiles, bots: List[Bot]):
         """
         Use: update all projectiles and bots positions inside a loop
         """
+        # projectile handling
         for projectile in projectiles.values():
-            projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] +\
+            intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+            if intersection:
+                for kind, identifier in intersection:
+                    if kind == PLAYER_TYPE:
+                        player = self.players[identifier]
+                        print(projectile.damage)
+                        player.health -= projectile.damage
+                        print(player.health)
+                        if player.health < MIN_HEALTH:
+                            player.health = MIN_HEALTH
+                        logging.info(f"Updated player {identifier} health to {player.health}")
+
+            projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
                              int(PROJECTILE_SPEED * projectile.direction[1])
 
-        s.enter(FRAME_TIME, 1, self.location_update, (s, projectiles, bots,))
+        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
         """
         Use: starts the schedular and the function
         """
         s = sched.scheduler(time.time, time.sleep)
-        s.enter(FRAME_TIME, 1, self.location_update, (s, self.projectiles, self.bots,))
+        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, self.projectiles, self.bots,))
         s.run()
 
     def run(self) -> None:

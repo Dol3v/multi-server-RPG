@@ -1,10 +1,7 @@
-import logging
-import sched
 import time
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
-from backend.consts import FRAME_TIME
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT
 
 
@@ -34,6 +31,7 @@ class Projectile:
     pos: Pos = DEFAULT_POS_MARK
     direction: Tuple[float, float] = DEFAULT_DIR
     time_created: float = time.time()
+    damage: int = 0
 
 
 @dataclass
