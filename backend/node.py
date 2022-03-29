@@ -10,6 +10,7 @@ from typing import Any
 from pyqtree import Index
 
 # to import from a dir
+from client.consts import WORLD_MAP, TILE_SIZE
 
 sys.path.append('../')
 
@@ -50,10 +51,23 @@ class Node:
     def server_controlled(self) -> List[ServerControlled]:
         return list(itertools.chain(self.bots, self.projectiles))
 
+    def load_map_to_tree(self):
+        """Loads the global ``WORLD_MAP`` to the quadtree. Currently I'm hella lazy and tired
+        so I'm gonna enter the rectangles manually, but in general we really should come up
+        with some cool algo to do it automatically."""
+        # boundaries of map
+        for i, row in enumerate(WORLD_MAP):
+            for j, tile in enumerate(row):
+                if tile == 'x':
+                    self.spindex.insert((OBSTACLE_TYPE, None),
+                                        (((i - 1) * TILE_SIZE, (j - 1) * TILE_SIZE, i * TILE_SIZE,
+                                          j * TILE_SIZE)))
+
     def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
 
-        :returns: flattened tuple of kind, position and direction"""
+        :returns: flattened tuple of kind, position and direction
+        :raises ValueError: if the kind of the entity was unsupported"""
         if entity_data[0] == PLAYER_TYPE:
             chosen_iterable = self.players
         elif entity_data[0] == PROJECTILE_TYPE:
@@ -67,12 +81,12 @@ class Node:
 
     def attackable_in_range(self, entity_addr: Addr, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
         return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
-                   filter(lambda data: data[1] != entity_addr and data[0] != PROJECTILE_TYPE,
-                          self.spindex.intersect(bbox)))
+                   filter(lambda data: data[1] != entity_addr and data[0] != PROJECTILE_TYPE and data[0] !=
+                   OBSTACLE_TYPE, self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player, player_addr: Addr) -> Iterable[EntityData]:
         """Returns all players that are within render distance of each other."""
-        return map(self.get_data_from_entity, filter(lambda data: data[1] != player_addr,
+        return map(self.get_data_from_entity, filter(lambda data: data[1] != player_addr and data[0] != OBSTACLE_TYPE,
                                                      self.spindex.intersect(
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
@@ -141,7 +155,6 @@ class Node:
                     attackable.health = 0
                 logging.info(f"Updated entity health to {attackable.health}")
         else:
-            print(weapon_data)
             # adding into saved data
             projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
                                          int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
@@ -202,12 +215,16 @@ class Node:
                 for kind, identifier in intersection:
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
-                        print(projectile.damage)
                         player.health -= projectile.damage
-                        print(player.health)
                         if player.health < MIN_HEALTH:
                             player.health = MIN_HEALTH
                         logging.info(f"Updated player {identifier} health to {player.health}")
+                    elif kind == BOT_TYPE:
+                        bot = self.bots[identifier]
+                        bot.health -= projectile.damage
+                        if bot.health < MIN_HEALTH:
+                            bot.health = MIN_HEALTH
+                        logging.info(f"Updated bot {identifier} health to {bot.health}")
 
             projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
                              int(PROJECTILE_SPEED * projectile.direction[1])
