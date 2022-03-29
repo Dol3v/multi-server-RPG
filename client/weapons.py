@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 import abc
 from consts import *
-from common.consts import SCREEN_HEIGHT, SCREEN_WIDTH
+from common.consts import SCREEN_HEIGHT, SCREEN_WIDTH, PROJECTILE_SPEED, ARROW_OFFSET_FACTOR
 from common.utils import normalize_vec
 
 
@@ -112,7 +112,7 @@ class RangeWeapon(Weapon):
 
     def attack(self, player):
         Projectile([*self.groups, self.obstacle_sprites], player.rect.centerx, player.rect.centery,
-                   self.projectile_texture, 5, player.get_direction_vec(), 200)
+                   self.projectile_texture, PROJECTILE_SPEED, player.get_direction_vec(), 200)
         pass
 
 
@@ -120,8 +120,8 @@ class Projectile(pygame.sprite.Sprite):
     def __init__(self, groups, x, y, texture, speed, vec, ttl):
         super().__init__(*groups)
         self.groups = groups
-        self.x = x + 100 * vec[0]
-        self.y = y + 100 * vec[1]
+        self.x = x + ARROW_OFFSET_FACTOR * vec[0]
+        self.y = y + ARROW_OFFSET_FACTOR * vec[1]
         self.texture = texture
         self.speed = speed
         self.vec = vec

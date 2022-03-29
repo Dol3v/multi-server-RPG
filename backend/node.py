@@ -31,7 +31,7 @@ class Node:
 
         self.players = defaultdict(lambda: Player())
         self.bots: List[Bot] = []
-        self.projectiles: List[Projectile] = []
+        self.projectiles = defaultdict(lambda: Projectile())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         """Quadtree for collision/range detection. Player keys are tuples `(type, data)`, with the type being
@@ -46,8 +46,8 @@ class Node:
         return self.players.keys()
 
     @property
-    def server_controlled(self) -> Iterable[ServerControlled]:
-        return itertools.chain(self.bots, self.projectiles)
+    def server_controlled(self) -> List[ServerControlled]:
+        return list(itertools.chain(self.bots, self.projectiles))
 
     def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
@@ -72,7 +72,8 @@ class Node:
     def entities_in_rendering_range(self, entity: Player, player_addr: Addr) -> Iterable[EntityData]:
         """Returns all players that are within render distance of each other."""
         return map(self.get_data_from_entity, filter(lambda data: data[1] != player_addr,
-                   self.spindex.intersect(get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
+                                                     self.spindex.intersect(
+                                                         get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
     def entities_in_melee_attack_range(self, entity: Player, entity_addr: Addr, melee_range: int):
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
@@ -80,7 +81,7 @@ class Node:
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
                              int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
         return self.attackable_in_range(entity_addr, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
-                                        weapon_x + melee_range // 2, weapon_y + melee_range // 2))
+                                                      weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
     def update_location(self, player_pos: Pos, seqn: int, entity: Player, addr: Addr) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -139,7 +140,13 @@ class Node:
                     attackable.health = 0
                 logging.info(f"Updated entity health to {attackable.health}")
         else:
-            ...
+            # adding into saved data
+            projectile = Projectile((int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
+                                     int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
+                                    player.direction)
+            self.projectiles[projectile.time_created] = projectile
+            self.spindex.insert((PROJECTILE_TYPE, projectile.time_created),
+                                get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
 
     def update_client(self, addr: Addr, secure_pos: Pos):
         """
@@ -163,7 +170,6 @@ class Node:
                 client_msg = parse_client_message(data)
                 if not client_msg:
                     continue
-
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
                 player_pos = x, y
                 if addr not in self.addrs:
@@ -183,6 +189,24 @@ class Node:
             except Exception as e:
                 logging.exception(e)
 
+    def location_update(self, s, projectiles, bots: List[Bot]):
+        """
+        Use: update all projectiles and bots positions inside a loop
+        """
+        for projectile in projectiles.values():
+            projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] +\
+                             int(PROJECTILE_SPEED * projectile.direction[1])
+
+        s.enter(FRAME_TIME, 1, self.location_update, (s, projectiles, bots,))
+
+    def start_location_update(self):
+        """
+        Use: starts the schedular and the function
+        """
+        s = sched.scheduler(time.time, time.sleep)
+        s.enter(FRAME_TIME, 1, self.location_update, (s, self.projectiles, self.bots,))
+        s.run()
+
     def run(self) -> None:
         """
         Use: starts node threads
@@ -192,6 +216,7 @@ class Node:
         logging.info(f"Binded to address {self.address}")
 
         try:
+            threading.Thread(target=self.start_location_update).start()
             for i in range(THREADS_COUNT):
                 # starts handlers threads
                 client_thread = threading.Thread(target=self.handle_client)
@@ -210,5 +235,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(SERVER_PORT)

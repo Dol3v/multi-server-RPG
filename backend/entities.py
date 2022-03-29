@@ -1,3 +1,4 @@
+import logging
 import sched
 import time
 from dataclasses import dataclass, field
@@ -32,6 +33,7 @@ class Player:
 class Projectile:
     pos: Pos = DEFAULT_POS_MARK
     direction: Tuple[float, float] = DEFAULT_DIR
+    time_created: float = time.time()
 
 
 @dataclass
@@ -49,22 +51,3 @@ Attackable = Bot | Player
 
 Entity = ServerControlled | Player
 """In game object with a position that should be rendered."""
-
-
-def location_update(s, entities: List[ServerControlled]):
-    """
-    Use: update all projectiles and bots positions inside a loop
-    """
-    for entity in entities:
-        entity.pos = entity.pos[0] + int(entity.direction[0]), entity.pos[1] + int(entity.direction[1])
-
-    s.enter(FRAME_TIME, 1, location_update, (s, entities,))
-
-
-def start_location_update(entities: List[ServerControlled]):
-    """
-    Use: starts the schedular and the function
-    """
-    s = sched.scheduler(time.time, time.sleep)
-    s.enter(FRAME_TIME, 1, location_update, (s, entities,))
-    s.run()
