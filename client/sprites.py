@@ -53,6 +53,9 @@ class Entity(pygame.sprite.Sprite):
         self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
                                                    self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
+
+        self.original_texture = self.texture.copy()
+
         self.direction = direction
         self.draw_player_entity()
 
@@ -66,8 +69,10 @@ class Entity(pygame.sprite.Sprite):
 
         # Left
         if self.direction[0] < 0:
-            self.texture = pygame.transform.flip(self.texture, True, False)
-            print("flips")
+            self.texture = pygame.transform.flip(self.original_texture, True, False)
+        else:
+            self.texture = self.original_texture
+
 
         self.image.blit(self.texture, (0, 0))
         self.rect = self.image.get_rect(center=(self.x, self.y))

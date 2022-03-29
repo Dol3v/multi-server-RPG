@@ -158,11 +158,11 @@ class Game:
             entity_type, pos, entity_dir = entity_info
             if entity_type != PLAYER_TYPE:
                 continue
-            print(entity_type, pos, entity_dir)
             if index in self.entities:
                 self.entities[index].direction = entity_dir
                 self.entities[index].move_to(*pos)
             else:
+                print(entity_dir)
                 self.entities[index] = Entity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
 
     def create_map(self) -> None:
