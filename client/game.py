@@ -92,7 +92,6 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(x, y, health)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -159,6 +158,7 @@ class Game:
             entity_type, pos, entity_dir = entity_info
             if entity_type != PLAYER_TYPE:
                 continue
+            print(entity_type, pos, entity_dir)
             if index in self.entities:
                 self.entities.get(index).move_to(*pos)
             else:

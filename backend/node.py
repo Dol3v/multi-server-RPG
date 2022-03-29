@@ -169,6 +169,7 @@ class Node:
         """
         new_chat = ""
         player = self.players[addr]
+        print(f"Sent to {addr} {list(self.entities_in_rendering_range(player, addr))}")
         entities_array = flatten(self.entities_in_rendering_range(player, addr))
         # generate and send message
         logging.debug(f"Player {addr} health {player.health}")
@@ -271,5 +272,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
     Node(SERVER_PORT)
