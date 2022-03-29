@@ -169,14 +169,13 @@ class Node:
         """
         new_chat = ""
         player = self.players[addr]
-        print(f"Sent to {addr} {list(self.entities_in_rendering_range(player, addr))}")
         entities_array = flatten(self.entities_in_rendering_range(player, addr))
         # generate and send message
         logging.debug(f"Player {addr} health {player.health}")
         update_packet = generate_server_message(player.tools, new_chat, secure_pos, player.health, entities_array)
         self.server_sock.sendto(update_packet, addr)
 
-    def handle_client(self):
+    def handle_clients(self):
         """
         Use: communicate with client
         """
@@ -201,6 +200,8 @@ class Node:
                 secure_pos = self.update_location(player_pos, seqn, entity, addr)
                 if attacked:
                     self.update_hp(entity, slot_index, addr)
+                if len(self.projectiles) > 0:
+                    print(self.projectiles)
                 self.update_client(addr, secure_pos)
             except Exception as e:
                 logging.exception(e)
@@ -211,9 +212,11 @@ class Node:
         """
         # projectile handling
         to_remove = []
+        print(f"LEN 1: {len(projectiles)}, {len(self.projectiles)}")
         for projectile in projectiles.values():
             intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             if intersection:
+                print("COLLIDED")
                 for kind, identifier in intersection:
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
@@ -233,13 +236,22 @@ class Node:
                                     PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
                 to_remove.append(projectile)
             else:
-                projectile.pos = projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
+                self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                                                                                                 PROJECTILE_HEIGHT,
+                                                                                                 PROJECTILE_WIDTH))
+                self.projectiles[projectile.time_created].pos =\
+                    projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
                              int(PROJECTILE_SPEED * projectile.direction[1])
-
+                self.spindex.insert((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                                                                                                 PROJECTILE_HEIGHT,
+                                                                                                 PROJECTILE_WIDTH))
+        print(f"LEN 2: {len(projectiles)}, {len(self.projectiles)}")
         for projectile in to_remove:
             self.projectiles.pop(projectile.time_created)
+            print("POPPED")
+        print(f"LEN 3: {len(projectiles)}, {len(self.projectiles)}")
 
-        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
+        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, self.projectiles, bots,))
 
     def start_location_update(self):
         """
@@ -261,7 +273,7 @@ class Node:
             threading.Thread(target=self.start_location_update).start()
             for i in range(THREADS_COUNT):
                 # starts handlers threads
-                client_thread = threading.Thread(target=self.handle_client)
+                client_thread = threading.Thread(target=self.handle_clients)
                 client_thread.start()
 
         except Exception as e:
