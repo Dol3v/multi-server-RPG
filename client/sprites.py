@@ -26,10 +26,18 @@ class FollowingCameraGroup(pygame.sprite.Group):
         self.half_height = SCREEN_HEIGHT / 2
         self.offset = pygame.math.Vector2()
 
+        # creating the floor
+        self.floor_surface = pygame.image.load('assets/map1.jpg')
+        self.floor_rect = self.floor_surface.get_rect(topleft=(0,0))
+
     def custom_draw(self, player):
         # getting the offset
         self.offset.x = player.rect.centerx - self.half_width
         self.offset.y = player.rect.centery - self.half_height
+
+         # drawing the floor
+        floor_offset_pos = self.floor_rect.topleft - self.offset
+        self.display_surface.blit(self.floor_surface,floor_offset_pos)
 
         # for spr in self.sprites():
         for sprite in sorted(self.sprites(), key=lambda spr: spr.rect.centery):
@@ -38,11 +46,17 @@ class FollowingCameraGroup(pygame.sprite.Group):
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, groups, x, y):
+    def __init__(self, groups, x, y, direction):
         super().__init__(*groups)
         self.x = x
         self.y = y
-        self.texture = pygame.image.load(PLAYER_IMG)
+        self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
+                                                   self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
+
+        self.original_texture = self.texture.copy()
+
+        self.direction = direction
         self.draw_player_entity()
 
     def move_to(self, x, y):
@@ -52,6 +66,13 @@ class Entity(pygame.sprite.Sprite):
     def draw_player_entity(self):
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()),
                                     pygame.SRCALPHA)
+
+        # Left
+        if self.direction[0] < 0:
+            self.texture = pygame.transform.flip(self.original_texture, True, False)
+        else:
+            self.texture = self.original_texture
+
 
         self.image.blit(self.texture, (0, 0))
         self.rect = self.image.get_rect(center=(self.x, self.y))

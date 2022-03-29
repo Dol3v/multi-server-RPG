@@ -92,7 +92,6 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(x, y, health)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -160,22 +159,18 @@ class Game:
             if entity_type != PLAYER_TYPE:
                 continue
             if index in self.entities:
-                self.entities.get(index).move_to(*pos)
+                self.entities[index].direction = entity_dir
+                self.entities[index].move_to(*pos)
             else:
-                self.entities[index] = Entity([self.obstacles_sprites, self.visible_sprites], *pos)
+                print(entity_dir)
+                self.entities[index] = Entity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
 
     def create_map(self) -> None:
         """
-        Use:
+        creates the player...
         """
-        for row_index, row in enumerate(WORLD_MAP):
-            for col_index, col in enumerate(row):
-                x = col_index * TILE_SIZE
-                y = row_index * TILE_SIZE
-                if col == 'x':
-                    Tile((x, y), [self.visible_sprites, self.obstacles_sprites])
-                if col == 'p':
-                    self.player = Player((x, y), [self.visible_sprites], self.obstacles_sprites)
+        self.player = Player((1988, 1500), [self.visible_sprites], self.obstacles_sprites)
+
 
     def run(self) -> None:
         """
