@@ -13,7 +13,6 @@ from pyqtree import Index
 
 sys.path.append('../')
 
-from client.consts import WORLD_MAP, TILE_SIZE
 from common.consts import *
 from common.utils import *
 from collision import *
@@ -51,23 +50,10 @@ class Node:
     def server_controlled(self) -> List[ServerControlled]:
         return list(itertools.chain(self.bots, self.projectiles))
 
-    def load_map_to_tree(self):
-        """Loads the global ``WORLD_MAP`` to the quadtree. Currently I'm hella lazy and tired
-        so I'm gonna enter the rectangles manually, but in general we really should come up
-        with some cool algo to do it automatically."""
-        # boundaries of map
-        for i, row in enumerate(WORLD_MAP):
-            for j, tile in enumerate(row):
-                if tile == 'x':
-                    self.spindex.insert((OBSTACLE_TYPE, None),
-                                        (((i - 1) * TILE_SIZE, (j - 1) * TILE_SIZE, i * TILE_SIZE,
-                                          j * TILE_SIZE)))
-
     def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
 
-        :returns: flattened tuple of kind, position and direction
-        :raises ValueError: if the kind of the entity was unsupported"""
+        :returns: flattened tuple of kind, position and direction"""
         if entity_data[0] == PLAYER_TYPE:
             chosen_iterable = self.players
         elif entity_data[0] == PROJECTILE_TYPE:
@@ -81,12 +67,12 @@ class Node:
 
     def attackable_in_range(self, entity_addr: Addr, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
         return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
-                   filter(lambda data: data[1] != entity_addr and data[0] != PROJECTILE_TYPE and data[0] !=
-                   OBSTACLE_TYPE, self.spindex.intersect(bbox)))
+                   filter(lambda data: data[1] != entity_addr and data[0] != PROJECTILE_TYPE,
+                          self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player, player_addr: Addr) -> Iterable[EntityData]:
         """Returns all players that are within render distance of each other."""
-        return map(self.get_data_from_entity, filter(lambda data: data[1] != player_addr and data[0] != OBSTACLE_TYPE,
+        return map(self.get_data_from_entity, filter(lambda data: data[1] != player_addr,
                                                      self.spindex.intersect(
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
@@ -130,6 +116,7 @@ class Node:
         :param inventory_slot: slot index of player
         :param addr: address of client"""
 
+        logging.info(f"Player {addr} tried to attack")
         # check for cooldown and update it accordingly
         if player.current_cooldown != -1:
             if player.current_cooldown + player.last_time_attacked > (new := time.time()):
@@ -155,6 +142,8 @@ class Node:
                     attackable.health = 0
                 logging.info(f"Updated entity health to {attackable.health}")
         else:
+            player.current_cooldown = weapon_data['cooldown']
+            player.last_time_attacked = time.time()
             # adding into saved data
             projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
                                          int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
@@ -162,6 +151,7 @@ class Node:
             self.projectiles[projectile.time_created] = projectile
             self.spindex.insert((PROJECTILE_TYPE, projectile.time_created),
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+            logging.info(f"Added projectile {projectile}")
 
     def update_client(self, addr: Addr, secure_pos: Pos):
         """
@@ -175,7 +165,7 @@ class Node:
         update_packet = generate_server_message(player.tools, new_chat, secure_pos, player.health, entities_array)
         self.server_sock.sendto(update_packet, addr)
 
-    def handle_clients(self):
+    def handle_client(self):
         """
         Use: communicate with client
         """
@@ -200,8 +190,6 @@ class Node:
                 secure_pos = self.update_location(player_pos, seqn, entity, addr)
                 if attacked:
                     self.update_hp(entity, slot_index, addr)
-                if len(self.projectiles) > 0:
-                    print(self.projectiles)
                 self.update_client(addr, secure_pos)
             except Exception as e:
                 logging.exception(e)
@@ -212,47 +200,37 @@ class Node:
         """
         # projectile handling
         to_remove = []
-        print(f"LEN 1: {len(projectiles)}, {len(self.projectiles)}")
-
         for projectile in projectiles.values():
+            collided = False
             intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             if intersection:
-                print("COLLIDED")
                 for kind, identifier in intersection:
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
+                        logging.info(f"Projectile {projectile} hit a player {player}")
                         player.health -= projectile.damage
                         if player.health < MIN_HEALTH:
                             player.health = MIN_HEALTH
                         logging.info(f"Updated player {identifier} health to {player.health}")
-                    elif kind == BOT_TYPE:
-                        bot = self.bots[identifier]
-                        bot.health -= projectile.damage
-                        if bot.health < MIN_HEALTH:
-                            bot.health = MIN_HEALTH
-                        logging.info(f"Updated bot {identifier} health to {bot.health}")
-                    elif kind != OBSTACLE_TYPE:
-                        continue
+                        to_remove.append(projectile)
+                        collided = True
+                        # TODO: add wall collision
+            if not collided:
                 self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
-                                    PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
-                to_remove.append(projectile)
-            else:
-                self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
-                                                                                                 PROJECTILE_HEIGHT,
-                                                                                                 PROJECTILE_WIDTH))
-                self.projectiles[projectile.time_created].pos =\
-                    projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
-                             int(PROJECTILE_SPEED * projectile.direction[1])
+                                                                                PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+                self.projectiles[projectile.time_created].pos = projectile.pos[0] + \
+                                 int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
+                                 int(PROJECTILE_SPEED * projectile.direction[1])
                 self.spindex.insert((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
                                                                                                  PROJECTILE_HEIGHT,
                                                                                                  PROJECTILE_WIDTH))
-        print(f"LEN 2: {len(projectiles)}, {len(self.projectiles)}")
+        # print(list(self.projectiles.values()))
         for projectile in to_remove:
             self.projectiles.pop(projectile.time_created)
-            print("POPPED")
-        print(f"LEN 3: {len(projectiles)}, {len(self.projectiles)}")
-
-        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, self.projectiles, bots,))
+            self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                                                                                             PROJECTILE_HEIGHT,
+                                                                                             PROJECTILE_WIDTH))
+        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
         """
@@ -274,7 +252,7 @@ class Node:
             threading.Thread(target=self.start_location_update).start()
             for i in range(THREADS_COUNT):
                 # starts handlers threads
-                client_thread = threading.Thread(target=self.handle_clients)
+                client_thread = threading.Thread(target=self.handle_client)
                 client_thread.start()
 
         except Exception as e:
@@ -290,5 +268,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(SERVER_PORT)
