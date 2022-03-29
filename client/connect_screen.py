@@ -176,6 +176,8 @@ class ConnectButton(Button):
                     password = self.connect_screen.get_sprite_by_position(6).text
                     if ip == "":
                         ip = '127.0.0.1'
+                        self.connect_screen.running = False  # Debug TODO remove this shit later
+
                     self.connect_screen.connect_to_server(ip, username, password, is_login=True)
 
 
