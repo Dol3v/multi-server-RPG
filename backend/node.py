@@ -1,20 +1,25 @@
 import functools
+import itertools
 import logging
 import sys
 import threading
-import time
 from collections import defaultdict
+from typing import Any
 
 from pyqtree import Index
 
 # to import from a dir
+
 sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
 from collision import *
-from networking import generate_server_message, parse_client_message
 from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER
+from entities import *
+from networking import generate_server_message, parse_client_message
+
+EntityData = Tuple[int, int, int, float, float]
 
 
 class Node:
@@ -25,6 +30,8 @@ class Node:
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         self.players = defaultdict(lambda: Player())
+        self.bots: List[Bot] = []
+        self.projectiles: List[Projectile] = []
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         """Quadtree for collision/range detection. Player keys are tuples `(type, data)`, with the type being
@@ -38,28 +45,42 @@ class Node:
     def addrs(self) -> Iterable[Addr]:
         return self.players.keys()
 
-    def in_range(self, pos: Pos, width: int, height: int) -> list:
-        """Returns all stuff in range of the bounding box."""
-        return self.spindex.intersect(get_bounding_box(pos, height, width))
+    @property
+    def server_controlled(self) -> Iterable[ServerControlled]:
+        return itertools.chain(self.bots, self.projectiles)
 
-    def entities_in_range(self, entity_addr, bbox: Tuple[int, int, int, int]):
-        """Returns all players in a given bounding box that are not the player itself."""
-        return map(lambda addr: self.players[addr], filter(lambda addr: addr != entity_addr,
-                                                           self.spindex.intersect(bbox)))
+    def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
+        """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
 
-    def entities_in_rendering_range(self, entity: Player, entity_addr: Addr) -> Iterable[Player]:
-        """Returns all players that are within render distance of each other.
-        """
-        return self.entities_in_range(entity_addr, get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))
+        :returns: flattened tuple of kind, position and direction"""
+        if entity_data[0] == PLAYER_TYPE:
+            chosen_iterable = self.players
+        elif entity_data[0] == PROJECTILE_TYPE:
+            chosen_iterable = self.projectiles
+        elif entity_data[0] == BOT_TYPE:
+            chosen_iterable = self.bots
+        else:
+            raise ValueError(f"Invalid entity type {entity_data[0]} given, with identifier {entity_data[1]}")
+        entity = chosen_iterable[entity_data[1]]
+        return entity_data[0], *entity.pos, *entity.direction
+
+    def attackable_in_range(self, entity_addr: Addr, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
+        return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
+                   filter(lambda data: data[1] != entity_addr and data[0] != PROJECTILE_TYPE,
+                          self.spindex.intersect(bbox)))
+
+    def entities_in_rendering_range(self, entity: Player, player_addr: Addr) -> Iterable[EntityData]:
+        """Returns all players that are within render distance of each other."""
+        return map(self.get_data_from_entity, filter(lambda data: data[1] != player_addr,
+                   self.spindex.intersect(get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
     def entities_in_melee_attack_range(self, entity: Player, entity_addr: Addr, melee_range: int):
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
-        weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]),\
+        weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
                              int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
-        logging.debug(f"pos={entity.pos}, dir={entity.direction}, weapon={weapon_x, weapon_y}")
-        return self.entities_in_range(entity_addr, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
-                                                    weapon_x + melee_range // 2, weapon_y + melee_range // 2))
+        return self.attackable_in_range(entity_addr, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
+                                        weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
     def update_location(self, player_pos: Pos, seqn: int, entity: Player, addr: Addr) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -78,12 +99,12 @@ class Node:
             secure_pos = self.players[addr].pos
         else:
             # update player location in quadtree
-            self.spindex.remove(addr, get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+            self.spindex.remove((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
             # if packet is not outdated, update player stats
             entity.pos = player_pos
             entity.last_updated = seqn
 
-            self.spindex.insert(addr, get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+            self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
         return secure_pos
 
     def update_hp(self, player: Player, inventory_slot: int, addr: Addr):
@@ -107,30 +128,29 @@ class Node:
             logging.info(f"Invalid slot index/tool given by {addr=}")
             return
         if weapon_data['is_melee']:
-            players_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
+            attackable_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
             # resetting cooldown
             player.current_cooldown = weapon_data['cooldown']
             player.last_time_attacked = time.time()
 
-            for player in players_in_range:
-                player.health -= weapon_data['damage']
-                if player.health < 0:
-                    player.health = 0
-                logging.info(f"Updated player health to {player.health}")
+            for attackable in attackable_in_range:
+                attackable.health -= weapon_data['damage']
+                if attackable.health < 0:
+                    attackable.health = 0
+                logging.info(f"Updated entity health to {attackable.health}")
         else:
             ...
 
-    def update_client(self, addr: Addr, secure_pos: Pos) -> None:
+    def update_client(self, addr: Addr, secure_pos: Pos):
         """
         Use: sends server message to the client
         """
         new_chat = ""
-        entity = self.players[addr]
-
-        entities_array = flatten(
-            map(lambda e: (e.entity_type, *e.pos, *e.direction), self.entities_in_rendering_range(entity, addr)))
+        player = self.players[addr]
+        entities_array = flatten(self.entities_in_rendering_range(player, addr))
         # generate and send message
-        update_packet = generate_server_message(entity.tools, new_chat, secure_pos, entity.health, entities_array)
+        logging.debug(f"Player {addr} health {player.health}")
+        update_packet = generate_server_message(player.tools, new_chat, secure_pos, player.health, entities_array)
         self.server_sock.sendto(update_packet, addr)
 
     def handle_client(self):
@@ -147,7 +167,7 @@ class Node:
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
                 player_pos = x, y
                 if addr not in self.addrs:
-                    self.spindex.insert(addr, get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+                    self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
                     self.players[addr].pos = player_pos
 
                 entity = self.players[addr]
@@ -155,10 +175,9 @@ class Node:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
 
-                entity.direction = attack_dir   # TODO: check if normalized
+                entity.direction = attack_dir  # TODO: check if normalized
                 secure_pos = self.update_location(player_pos, seqn, entity, addr)
                 if attacked:
-                    logging.info(f"Player {addr} tried to attack")
                     self.update_hp(entity, slot_index, addr)
                 self.update_client(addr, secure_pos)
             except Exception as e:
@@ -191,5 +210,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     Node(SERVER_PORT)

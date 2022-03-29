@@ -2,7 +2,7 @@
 import pyqtree 
 from typing import Iterable
 
-from player import Player
+from entities import Player
 from common.consts import CLIENT_WIDTH, CLIENT_HEIGHT, Pos, SPEED
 
 

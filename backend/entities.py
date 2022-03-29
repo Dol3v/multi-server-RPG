@@ -9,7 +9,6 @@ from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DE
 
 @dataclass
 class Player:
-    entity_type: int = 0
     pos: Pos = DEFAULT_POS_MARK
     width: int = -1
     height: int = -1
@@ -39,10 +38,17 @@ class Projectile:
 class Bot:
     pos: Pos = DEFAULT_POS_MARK
     direction: Tuple[float, float] = DEFAULT_DIR
+    health: int = MAX_HEALTH
 
 
 ServerControlled = Projectile | Bot
-"""Entities with server-controlled movements and actions"""
+"""Entity with server-controlled movements and actions"""
+
+Attackable = Bot | Player
+"""Entity that can be attacked."""
+
+Entity = ServerControlled | Player
+"""In game object with a position that should be rendered."""
 
 
 def location_update(s, entities: List[ServerControlled]):

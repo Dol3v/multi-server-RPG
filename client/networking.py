@@ -34,9 +34,9 @@ def get_login_response(conn: socket.socket) -> Tuple[bool, str]:
     return success, conn.recv(msg_length).decode()
 
 
-def parse_server_message(packet: bytes) -> Tuple[Tuple, list] | Tuple:
+def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
     """
-    Use: convert the packets bytes to a list of fields
+    Use: convert the packets bytes to a list of fields.
     """
     # tools, new_chat, valid player_pos, health
     player_status = parse(SERVER_HEADER_FORMAT, packet[:SERVER_HEADER_SIZE])

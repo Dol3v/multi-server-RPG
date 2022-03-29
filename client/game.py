@@ -92,6 +92,7 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
+            print(x, y, health)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -145,7 +146,7 @@ class Game:
         self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
         self.actions[SELECTED_SLOT] = self.player.current_slot
 
-    def render_clients(self, entities: List[Tuple[int, int]]) -> None:
+    def render_clients(self, entities: List[Tuple[int, tuple, tuple]]) -> None:
         """
         Use: prints the other clients by the given info about them
 
@@ -154,12 +155,14 @@ class Game:
                 [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
-        for entity_id, entity_info in enumerate(entities):
+        for index, entity_info in enumerate(entities):
             entity_type, pos, entity_dir = entity_info
-            if entity_id in self.entities:
-                self.entities.get(entity_id).move_to(*pos)
+            if entity_type != PLAYER_TYPE:
+                continue
+            if index in self.entities:
+                self.entities.get(index).move_to(*pos)
             else:
-                self.entities[entity_id] = Entity([self.obstacles_sprites, self.visible_sprites], *pos)
+                self.entities[index] = Entity([self.obstacles_sprites, self.visible_sprites], *pos)
 
     def create_map(self) -> None:
         """
