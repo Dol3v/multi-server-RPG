@@ -160,9 +160,10 @@ class Game:
                 continue
             print(entity_type, pos, entity_dir)
             if index in self.entities:
-                self.entities.get(index).move_to(*pos)
+                self.entities[index].direction = entity_dir
+                self.entities[index].move_to(*pos)
             else:
-                self.entities[index] = Entity([self.obstacles_sprites, self.visible_sprites], *pos)
+                self.entities[index] = Entity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
 
     def create_map(self) -> None:
         """
