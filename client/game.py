@@ -14,7 +14,7 @@ from common.consts import *
 from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
-from sprites import Entity, FollowingCameraGroup, Tile
+from sprites import PlayerEntity, FollowingCameraGroup, Tile
 from weapons import *
 
 
@@ -162,8 +162,8 @@ class Game:
                 self.entities[index].direction = entity_dir
                 self.entities[index].move_to(*pos)
             else:
-                print(entity_dir)
-                self.entities[index] = Entity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
+                print(f"{[self.obstacles_sprites, self.visible_sprites]} {pos} {entity_dir}")
+                self.entities[index] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
 
     def create_map(self) -> None:
         """
