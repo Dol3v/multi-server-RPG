@@ -32,8 +32,8 @@ class Node:
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         self.players = defaultdict(lambda: Player())
-        self.bots: List[Bot] = []
-        self.projectiles = defaultdict(lambda: Projectile())
+        self.bots: defaultdict[str, Bot] = defaultdict(lambda: Bot())
+        self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
@@ -47,8 +47,8 @@ class Node:
         return self.players.keys()
 
     @property
-    def server_controlled(self) -> List[ServerControlled]:
-        return list(itertools.chain(self.bots, self.projectiles))
+    def entities(self) -> defaultdict[str, Entity]:
+        return self.players | self.bots | self.players
 
     def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
@@ -134,10 +134,10 @@ class Node:
         except KeyError:
             logging.info(f"Invalid slot index/tool given by {addr=}")
             return
+        player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
         if weapon_data['is_melee']:
             attackable_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
             # resetting cooldown
-            player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
             player.last_time_attacked = time.time()
 
             for attackable in attackable_in_range:
@@ -146,7 +146,6 @@ class Node:
                     attackable.health = 0
                 logging.debug(f"Updated entity health to {attackable.health}")
         else:
-            player.current_cooldown = weapon_data['cooldown']
             player.last_time_attacked = time.time()
             # adding into saved data
             projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
@@ -165,7 +164,6 @@ class Node:
         player = self.players[addr]
         entities_array = flatten(self.entities_in_rendering_range(player, addr))
         # generate and send message
-        logging.debug(f"Player {addr} health {player.health}")
         update_packet = generate_server_message(player.tools, new_chat, secure_pos, player.health, entities_array)
         self.server_sock.sendto(update_packet, addr)
 
@@ -279,5 +277,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     Node(SERVER_PORT)
