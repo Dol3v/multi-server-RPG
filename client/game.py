@@ -3,18 +3,18 @@ import queue
 import socket
 import sys
 import threading
+from typing import List
+
 import weapons
-from typing import Tuple, List
 
 # to import from a dir
 sys.path.append('../')
 
 from graphics import ChatBox
 from common.consts import *
-from consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
-from sprites import PlayerEntity, FollowingCameraGroup, Tile
+from sprites import PlayerEntity, FollowingCameraGroup
 from weapons import *
 
 
@@ -145,7 +145,7 @@ class Game:
         self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
         self.actions[SELECTED_SLOT] = self.player.current_slot
 
-    def render_clients(self, entities: List[Tuple[int, str, tuple, tuple]]) -> None:
+    def render_clients(self, entities: List[Tuple[int, str, tuple, tuple, int]]) -> None:
         """
         Use: prints the other clients by the given info about them
 
@@ -155,22 +155,21 @@ class Game:
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
         for entity_info in entities:
-            entity_type, entity_uuid, pos, entity_dir = entity_info
+            entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
             if entity_type != PLAYER_TYPE:
                 continue
             if entity_uuid in self.entities:
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
             else:
-                print(f"{[self.obstacles_sprites, self.visible_sprites]} {pos} {entity_dir}")
-                self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
+                self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
+                                                          entity_dir)
 
     def create_map(self) -> None:
         """
         creates the player...
         """
         self.player = Player((1988, 1500), [self.visible_sprites], self.obstacles_sprites)
-
 
     def run(self) -> None:
         """

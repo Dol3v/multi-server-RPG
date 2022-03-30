@@ -21,6 +21,7 @@ class Player(Entity):
     last_time_attacked: float = -1
     current_cooldown: float = -1
     health: int = MAX_HEALTH
+    slot: int = 0
     tools: List = field(default_factory=lambda: [SWORD, AXE, BOW, EMPTY_SLOT, EMPTY_SLOT, EMPTY_SLOT])
     """
     [IDs]
@@ -39,6 +40,7 @@ class Projectile(Entity):
 @dataclass
 class Bot(Entity):
     health: int = MAX_HEALTH
+    weapon: int = SWORD
 
 
 ServerControlled = Projectile | Bot

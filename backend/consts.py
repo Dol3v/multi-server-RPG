@@ -38,3 +38,4 @@ WEAPON_DATA = {
     BOW: {'cooldown': 400, 'damage': 45, 'is_melee': False}
 }
 FRAME_TIME = 1 / 60
+MAX_SLOT = 6

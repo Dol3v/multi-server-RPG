@@ -57,7 +57,7 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
     if raw_entities:
         entities = [
             (raw_entities[i], raw_entities[i+1], (raw_entities[i + 2], raw_entities[i + 3]),
-             (raw_entities[i + 4], raw_entities[i + 5]))
+             (raw_entities[i + 4], raw_entities[i + 5]), raw_entities[i + 6])
             for i in range(0, len(raw_entities), ENTITY_NUM_OF_FIELDS)]
 
         return player_status, entities
