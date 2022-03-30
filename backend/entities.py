@@ -1,4 +1,5 @@
 import time
+import uuid as uuid
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
@@ -6,12 +7,15 @@ from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DE
 
 
 @dataclass
-class Player:
+class Entity:
     pos: Pos = DEFAULT_POS_MARK
-    width: int = -1
-    height: int = -1
-    is_attacking: bool = False
     direction: Tuple[float, float] = DEFAULT_DIR
+    uuid: str = str(uuid.uuid4())
+
+
+@dataclass
+class Player(Entity):
+    is_attacking: bool = False
     last_updated: int = -1  # latest sequence number basically
     last_time_attacked: float = -1
     current_cooldown: float = -1
@@ -27,17 +31,13 @@ class Player:
 
 
 @dataclass
-class Projectile:
-    pos: Pos = DEFAULT_POS_MARK
-    direction: Tuple[float, float] = DEFAULT_DIR
+class Projectile(Entity):
     time_created: float = time.time()
     damage: int = 0
 
 
 @dataclass
-class Bot:
-    pos: Pos = DEFAULT_POS_MARK
-    direction: Tuple[float, float] = DEFAULT_DIR
+class Bot(Entity):
     health: int = MAX_HEALTH
 
 
@@ -46,6 +46,3 @@ ServerControlled = Projectile | Bot
 
 Attackable = Bot | Player
 """Entity that can be attacked."""
-
-Entity = ServerControlled | Player
-"""In game object with a position that should be rendered."""
