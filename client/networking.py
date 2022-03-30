@@ -4,7 +4,7 @@ from base64 import urlsafe_b64encode
 from cryptography.fernet import Fernet
 
 from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, MESSAGE_ENDIANESS, CLIENT_FORMAT, ENTITY_FORMAT, \
-    ENTITY_DATA_SIZE, RECV_CHUNK
+    RECV_CHUNK, ENTITY_NUM_OF_FIELDS
 from common.utils import *
 
 
@@ -56,8 +56,9 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
 
     if raw_entities:
         entities = [
-            (raw_entities[i], (raw_entities[i + 1], raw_entities[i + 2]), (raw_entities[i + 3], raw_entities[i + 4]))
-            for i in range(0, len(raw_entities), ENTITY_DATA_SIZE)]
+            (raw_entities[i], raw_entities[i+1], (raw_entities[i + 2], raw_entities[i + 3]),
+             (raw_entities[i + 4], raw_entities[i + 5]), raw_entities[i + 6])
+            for i in range(0, len(raw_entities), ENTITY_NUM_OF_FIELDS)]
 
         return player_status, entities
 
