@@ -1,0 +1,7 @@
+mysqlclient
+sqlalchemy
+pygame
+numpy
+pyqtree
+dataclasses
+cryptography
