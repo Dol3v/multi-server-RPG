@@ -42,6 +42,7 @@ PROJECTILE_WIDTH = 20
 # Types
 Pos = Tuple[int, int]
 Addr = Tuple[str, int]
+Dir = Tuple[float, float]
 
 # Server configurations
 SERVER_PORT = 42069

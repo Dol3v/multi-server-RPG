@@ -2,23 +2,36 @@
 from sqlalchemy import select, insert
 from database import SqlDatabase
 from typing import Optional, Tuple
-from consts import USERNAME_COL, HASH_COL, SALT_COL
-from common.utils import *
 
-def save_user_info(db: SqlDatabase):
+from consts import USERNAME_COL, HASH_COL, SALT_COL
+from entities import Player
+from common.utils import *
+from common.consts import *
+
+def save_user_info(db: SqlDatabase, user: Player):
     """
     insert a new row inside the users_info table
     """
+    stmt = (
+            insert(db.users_table).values(uuid=user.uuid, position=user.pos, 
+                direction=user.direction, last_seqn=user.last_seqn, health=user.health, 
+                slot=user.slot, tools=user.tools)
+    )
+    return db.exec(stmt)
     
-def load_user_info(db: SqlDatabase):
+def load_user_info(db: SqlDatabase, uuid: str):
     """
-    select and return the result of the given username (maybe change this to uuid?)
+    select and return the result of the given uuid
     """
+    stmt = select(db.users_table).where(db.users_table.uuid == uuid)
+    return db.exec(stmt)
 
-def delete_user_info(db: SqlDatabase):
+def delete_user_info(db: SqlDatabase, uuid: str):
     """
-    delete the row of the given username (maybe change this to uuid?)
+    delete the row of the given uuid
     """
+    stmt = db.delete().where(db.users_table.uuid == uuid)
+    return db.exec(stmt)
 
 def add_user_to_database(db: SqlDatabase, username: str, password_hash: bytes, password_salt: bytes):
     """

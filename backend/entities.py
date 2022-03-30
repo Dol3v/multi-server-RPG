@@ -3,13 +3,13 @@ import uuid as uuid
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
-from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr
+from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir
 
 
 @dataclass
 class Entity:
     pos: Pos = DEFAULT_POS_MARK
-    direction: Tuple[float, float] = DEFAULT_DIR
+    direction: Dir = DEFAULT_DIR
     uuid: str = str(uuid.uuid4())
 
 
