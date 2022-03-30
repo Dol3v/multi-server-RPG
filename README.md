@@ -9,7 +9,14 @@ Server update message
 ```
 [tools, new_chat_msg, last_valid_pos, HP, entities in range]
 entity
-[enitity_id, pos, dir_vector]
+[enitity_type, pos, dir_vector]
+```
+Data base structure
+```
+creds
+chat
+user_info (uuid, pos, direction, last_seqn, health, slot, tools (JSON))
+
 ```
 
 # FUCK ENTITY_ID
