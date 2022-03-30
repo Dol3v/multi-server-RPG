@@ -35,9 +35,8 @@ class Node:
         self.projectiles = defaultdict(lambda: Projectile())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
-        """Quadtree for collision/range detection. Player keys are tuples `(type, data)`, with the type being
-        projectile/player/mob, and data being other stuff that are relevant. Contains address of client for player
-        players."""
+        """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
+        projectile/player/mob, and the uuid being, well, the uuid."""
 
         # Starts the node
         self.run()
@@ -148,8 +147,8 @@ class Node:
             projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
                                          int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
                                     direction=player.direction, damage=weapon_data['damage'])
-            self.projectiles[projectile.time_created] = projectile
-            self.spindex.insert((PROJECTILE_TYPE, projectile.time_created),
+            self.projectiles[projectile.uuid] = projectile
+            self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             logging.info(f"Added projectile {projectile}")
 
@@ -216,18 +215,18 @@ class Node:
                         collided = True
                         # TODO: add wall collision
             if not collided:
-                self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
-                                                                                PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
-                self.projectiles[projectile.time_created].pos = projectile.pos[0] + \
+                self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
+                                                                        PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+                self.projectiles[projectile.uuid].pos = projectile.pos[0] + \
                                  int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
                                  int(PROJECTILE_SPEED * projectile.direction[1])
-                self.spindex.insert((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+                self.spindex.insert((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                                  PROJECTILE_HEIGHT,
                                                                                                  PROJECTILE_WIDTH))
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
-            self.projectiles.pop(projectile.time_created)
-            self.spindex.remove((PROJECTILE_TYPE, projectile.time_created), get_bounding_box(projectile.pos,
+            self.projectiles.pop(projectile.uuid)
+            self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                              PROJECTILE_HEIGHT,
                                                                                              PROJECTILE_WIDTH))
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
