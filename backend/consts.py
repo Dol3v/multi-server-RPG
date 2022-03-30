@@ -20,9 +20,11 @@ SCRYPT_P = 1
 
 # SqlDatabase tables configurations
 MAX_SIZE = 0xff
+UUID_SIZE = 36
 USERS_CREDENTIALS_TABLE = "users_creds"
 PLAYER_STATS_TABLE = "players_stats"
 CHAT_TABLE = "chat"
+USER_TABLE = "user_info"
 
 # Fernet Consts
 FERNET_TOKEN_LENGTH = 100
