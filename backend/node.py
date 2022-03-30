@@ -20,7 +20,8 @@ from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME
 from entities import *
 from networking import generate_server_message, parse_client_message
 
-EntityData = Tuple[int, int, int, float, float]
+EntityData = Tuple[int, str, int, int, float, float]
+"""type, uuid, x, y, direction in x, direction in y"""
 
 
 class Node:
@@ -62,7 +63,7 @@ class Node:
         else:
             raise ValueError(f"Invalid entity type {entity_data[0]} given, with identifier {entity_data[1]}")
         entity = chosen_iterable[entity_data[1]]
-        return entity_data[0], *entity.pos, *entity.direction
+        return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction
 
     def attackable_in_range(self, entity_addr: Addr, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
         return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
@@ -132,7 +133,7 @@ class Node:
         if weapon_data['is_melee']:
             attackable_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
             # resetting cooldown
-            player.current_cooldown = weapon_data['cooldown']
+            player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
             player.last_time_attacked = time.time()
 
             for attackable in attackable_in_range:
@@ -216,19 +217,21 @@ class Node:
                         # TODO: add wall collision
             if not collided:
                 self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                        PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+                                                                                         PROJECTILE_HEIGHT,
+                                                                                         PROJECTILE_WIDTH))
                 self.projectiles[projectile.uuid].pos = projectile.pos[0] + \
-                                 int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
-                                 int(PROJECTILE_SPEED * projectile.direction[1])
+                                                        int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[
+                                                            1] + \
+                                                        int(PROJECTILE_SPEED * projectile.direction[1])
                 self.spindex.insert((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                                 PROJECTILE_HEIGHT,
-                                                                                                 PROJECTILE_WIDTH))
+                                                                                         PROJECTILE_HEIGHT,
+                                                                                         PROJECTILE_WIDTH))
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                             PROJECTILE_HEIGHT,
-                                                                                             PROJECTILE_WIDTH))
+                                                                                     PROJECTILE_HEIGHT,
+                                                                                     PROJECTILE_WIDTH))
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):

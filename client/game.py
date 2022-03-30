@@ -145,7 +145,7 @@ class Game:
         self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
         self.actions[SELECTED_SLOT] = self.player.current_slot
 
-    def render_clients(self, entities: List[Tuple[int, tuple, tuple]]) -> None:
+    def render_clients(self, entities: List[Tuple[int, str, tuple, tuple]]) -> None:
         """
         Use: prints the other clients by the given info about them
 
@@ -154,16 +154,16 @@ class Game:
                 [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
-        for index, entity_info in enumerate(entities):
-            entity_type, pos, entity_dir = entity_info
+        for entity_info in entities:
+            entity_type, entity_uuid, pos, entity_dir = entity_info
             if entity_type != PLAYER_TYPE:
                 continue
-            if index in self.entities:
-                self.entities[index].direction = entity_dir
-                self.entities[index].move_to(*pos)
+            if entity_uuid in self.entities:
+                self.entities[entity_uuid].direction = entity_dir
+                self.entities[entity_uuid].move_to(*pos)
             else:
                 print(f"{[self.obstacles_sprites, self.visible_sprites]} {pos} {entity_dir}")
-                self.entities[index] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
+                self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos, entity_dir)
 
     def create_map(self) -> None:
         """
