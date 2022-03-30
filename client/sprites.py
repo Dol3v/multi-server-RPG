@@ -93,6 +93,7 @@ class PlayerEntity(Entity):
         self.direction = direction
 
         self.visible_sprites = (groups[1],)
+        self.obstacles_sprites = (groups[0],)
         self.tool_id = 0
         self.hand = Hand(self.visible_sprites)
         self.update_tool(tool_id)
@@ -150,7 +151,7 @@ class PlayerEntity(Entity):
             case 2:
                 self.hand = Weapon(self.visible_sprites, "axe", "rare")
             case 3:
-                self.hand = RangeWeapon(self.visible_sprites, (self.groups[0],), "bow", "rare")
+                self.hand = RangeWeapon(self.visible_sprites, self.obstacles_sprites, "bow", "rare")
 
     def update(self):
         self.draw_entity()
