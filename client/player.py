@@ -3,7 +3,8 @@ from typing import List, Tuple
 
 import pygame
 
-from common.consts import SPEED
+from common.consts import SPEED, SCREEN_HEIGHT, SCREEN_WIDTH
+from common.utils import normalize_vec
 from weapons import *
 from consts import *
 from graphics import Animation
@@ -104,11 +105,12 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += self.direction.x * speed
         if self.rect.x < 0:
             self.rect.x = 0
-
         self.collision('horizontal')
+
         self.rect.y += self.direction.y * speed
         if self.rect.y < 0:
             self.rect.y = 0
+
         self.collision('vertical')
 
     # self.rect.center += self.direction*speed
@@ -183,9 +185,6 @@ class Player(pygame.sprite.Sprite):
 
         if center_y > SCREEN_HEIGHT // 2:
             center_y = SCREEN_HEIGHT // 2
-
-        center_x = SCREEN_WIDTH // 2  # TODO: Remove when map and camera done
-        center_y = SCREEN_HEIGHT // 2
 
         mouse_pos = pygame.mouse.get_pos()
 
