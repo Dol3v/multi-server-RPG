@@ -1,8 +1,10 @@
 import pygame
 import numpy as np
 import abc
+
+from common.utils import get_bounding_box
 from consts import *
-from common.consts import PROJECTILE_SPEED, ARROW_OFFSET_FACTOR
+from common.consts import PROJECTILE_SPEED, ARROW_OFFSET_FACTOR, SCREEN_HEIGHT, SCREEN_WIDTH
 
 
 def get_weapon_type(tool_id: int) -> str | None:
@@ -102,23 +104,25 @@ class Weapon(pygame.sprite.Sprite):
 
 
 class RangeWeapon(Weapon):
-    def __init__(self, groups, obstacle_sprites, weapon_type, rarity):
+    def __init__(self, groups, obstacle_sprites, map_collision, weapon_type, rarity):
         super().__init__(groups, weapon_type, rarity)
         self.groups = groups
+        self.map_collision = map_collision
         self.projectile_texture = pygame.image.load(f"assets/weapons/{weapon_type}/projectile.png")
         self.obstacle_sprites = obstacle_sprites
         self.is_ranged = True
 
     def attack(self, player):
-        Projectile([*self.groups, self.obstacle_sprites], player.rect.centerx, player.rect.centery,
+        Projectile((*self.groups, self.obstacle_sprites), self.map_collision, player.rect.centerx, player.rect.centery,
                    self.projectile_texture, PROJECTILE_SPEED, player.get_direction_vec(), 200)
         pass
 
 
 class Projectile(pygame.sprite.Sprite):
-    def __init__(self, groups, x, y, texture, speed, vec, ttl):
+    def __init__(self, groups, map_collision, x, y, texture, speed, vec, ttl):
         super().__init__(*groups)
         self.groups = groups
+        self.map_collision = map_collision
         self.x = x + ARROW_OFFSET_FACTOR * vec[0]
         self.y = y + ARROW_OFFSET_FACTOR * vec[1]
         self.texture = texture
@@ -140,6 +144,10 @@ class Projectile(pygame.sprite.Sprite):
     def check_collision(self):
         for sprite in self.groups[1]:
             if sprite != self and sprite.rect.colliderect(self.rect) and not isinstance(sprite, Projectile):
+                self.kill()
+        for rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
+                                                                  SCREEN_HEIGHT, SCREEN_WIDTH)):
+            if rect.colliderect(self.rect):
                 self.kill()
 
     def move_projectile(self):

@@ -109,7 +109,7 @@ class Game:
                     if player_weapon:
                         if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
 
-                            weapon = Weapon([self.visible_sprites], weapon_type, "rare")
+                            weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
                             if weapon.is_ranged:
                                 weapon.kill()
                                 weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
@@ -118,10 +118,10 @@ class Game:
                             self.player.remove_weapon_in_slot(i)
                             self.player.set_weapon_in_slot(i, weapon)
                     else:
-                        weapon = Weapon([self.visible_sprites], weapon_type, "rare")
+                        weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
                         if weapon.is_ranged:
                             weapon.kill()
-                            weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
+                            weapon = RangeWeapon((self.visible_sprites,), self.obstacles_sprites, self.map_collision,
                                                  weapon_type, "rare")
 
                         self.player.set_weapon_in_slot(i, weapon)
