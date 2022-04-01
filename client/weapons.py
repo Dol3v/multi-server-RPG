@@ -2,11 +2,10 @@ import pygame
 import numpy as np
 import abc
 from consts import *
-from common.consts import SCREEN_HEIGHT, SCREEN_WIDTH, PROJECTILE_SPEED, ARROW_OFFSET_FACTOR
-from common.utils import normalize_vec
+from common.consts import PROJECTILE_SPEED, ARROW_OFFSET_FACTOR
 
 
-def get_weapon_type(tool_id: int) -> str:
+def get_weapon_type(tool_id: int) -> str | None:
     for weapon_type in weapon_data:
         if weapon_data[weapon_type]["id"] == tool_id:
             return weapon_type

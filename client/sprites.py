@@ -11,12 +11,19 @@ from consts import *
 from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
 
 
+class Obstacle(pygame.sprite.Sprite):
+    def __init__(self, obstacle_group, rect: pygame.Rect):
+        super().__init__(obstacle_group)
+        self.image = None
+        self.rect = rect
+
+
 class Tile(pygame.sprite.Sprite):
-    def __init__(self, pos, groups):
+    def __init__(self, groups, pos, image):
         super().__init__(*groups)
         # get the directory of this file
+        self.image = image
 
-        self.image = pygame.image.load(TREE_IMG).convert_alpha()
         self.rect = self.image.get_rect(topleft=pos)
 
 

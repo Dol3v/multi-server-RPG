@@ -3,6 +3,8 @@ import queue
 import socket
 import sys
 import threading
+from pyqtree import Index
+from common.utils import get_bounding_box
 from typing import List
 
 import weapons
@@ -16,6 +18,7 @@ from networking import generate_client_message, parse_server_message
 from player import Player
 from sprites import PlayerEntity, FollowingCameraGroup
 from weapons import *
+from map_manager import *
 
 
 class Game:
@@ -26,12 +29,17 @@ class Game:
         self.obstacles_sprites = pygame.sprite.Group()
         self.attack_sprite = None
 
+        self.map_collision = Index((0, 0, self.visible_sprites.floor_surface.get_width(),
+                                    self.visible_sprites.floor_surface.get_height()))
+
         # player init
-        self.player = None
+        self.player = Player((1988, 1500), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
 
-        # generate map
-        self.create_map()
+        self.map = Map()
+        self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
+                                                                            "assets/map/new_props.tsj")))
+        self.map.load_collision_objects(self.map_collision)
 
         self.full_screen = full_screen
         self.running = False
@@ -66,7 +74,7 @@ class Game:
 
         self.chat_msg = ""
 
-        self.is_showing_chat = False
+        self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
 
     def receiver(self):
@@ -170,12 +178,6 @@ class Game:
                 self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
                                                           entity_dir, tool_id)
 
-    def create_map(self) -> None:
-        """
-        creates the player...
-        """
-        self.player = Player((1988, 1500), [self.visible_sprites], self.obstacles_sprites)
-
     def run(self) -> None:
         """
         Use: game loop
@@ -184,6 +186,7 @@ class Game:
         # starts the receiving thread 
         recv_thread = threading.Thread(target=self.receiver)
         recv_thread.start()
+        self.draw_map()
 
         # Game loop
         while self.running:
@@ -287,3 +290,7 @@ class Game:
             x = SCREEN_WIDTH - self.inv.get_width()
             y = 0
             self.display_surface.blit(self.inv, (x, y))
+
+    def draw_map(self):
+        for layer in self.map.layers:
+            layer.draw_layer(self.visible_sprites)
