@@ -16,6 +16,8 @@ from networking import generate_client_message, parse_server_message
 from player import Player
 from sprites import PlayerEntity, FollowingCameraGroup
 from weapons import *
+from map_manager import *
+from consts import SPEED
 
 
 class Game:
@@ -31,7 +33,12 @@ class Game:
         self.player_img = pygame.image.load(PLAYER_IMG)
 
         # generate map
-        self.create_map()
+        self.player = Player((1988, 1500), (self.visible_sprites,), self.obstacles_sprites)
+
+        self.map = Map()
+        self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
+                                                                            "assets/map/new_props.tsj")))
+        self.map.load_collision_objects(self.obstacles_sprites)
 
         self.full_screen = full_screen
         self.running = False
@@ -170,12 +177,6 @@ class Game:
                 self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
                                                           entity_dir, tool_id)
 
-    def create_map(self) -> None:
-        """
-        creates the player...
-        """
-        self.player = Player((1988, 1500), [self.visible_sprites], self.obstacles_sprites)
-
     def run(self) -> None:
         """
         Use: game loop
@@ -184,6 +185,7 @@ class Game:
         # starts the receiving thread 
         recv_thread = threading.Thread(target=self.receiver)
         recv_thread.start()
+        self.draw_map()
 
         # Game loop
         while self.running:
@@ -287,3 +289,7 @@ class Game:
             x = SCREEN_WIDTH - self.inv.get_width()
             y = 0
             self.display_surface.blit(self.inv, (x, y))
+
+    def draw_map(self):
+        for layer in self.map.layers:
+            layer.draw_layer(self.visible_sprites)
