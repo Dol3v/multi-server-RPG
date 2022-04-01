@@ -1,11 +1,10 @@
 import functools
-import itertools
 import logging
 import sched
 import sys
 import threading
 from collections import defaultdict
-from typing import Any
+from typing import Any, Dict
 
 from pyqtree import Index
 
@@ -47,8 +46,8 @@ class Node:
         return self.players.keys()
 
     @property
-    def entities(self) -> defaultdict[str, Entity]:
-        return self.players | self.bots | self.players
+    def server_controlled(self) -> Dict[str, Bot | Projectile]:
+        return self.bots | self.projectiles
 
     def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
@@ -69,6 +68,27 @@ class Node:
         elif entity_data[0] == BOT_TYPE:
             tool_id = entity.weapon
         return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction, tool_id
+
+    def update_entity_position(self, entity: Entity, pos: Pos, kind: int, *, addr: Addr = None,
+                               width: int = CLIENT_WIDTH, height: int = CLIENT_HEIGHT):
+        """Updates the position of an entity.
+
+        :param entity: entity to update
+        :param pos: new entity position
+        :param kind: entity type
+        :param addr: address of client, relevant only if `kind=PLAYER_TYPE`
+        :param width: width of entity sprite
+        :param height: height of entity sprite"""
+        self.spindex.remove((kind, entity.uuid), get_bounding_box(entity.pos, height, width))
+        if kind == PLAYER_TYPE:
+            self.players[addr].pos = pos
+        else:
+            self.server_controlled[entity.uuid].pos = pos
+        self.spindex.insert((kind, entity.uuid), get_bounding_box(entity.pos, height, width))
+
+    def remove_entity(self, entity: Entity, kind: int, *, addr: Addr = None,
+                      width: int = CLIENT_WIDTH, height: int = CLIENT_HEIGHT):
+        self.spindex.remove((kind, entity.uuid), get_bounding_box(entity.pos, height, width))
 
     def attackable_in_range(self, entity_addr: Addr, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
         return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
@@ -105,13 +125,8 @@ class Node:
         if invalid_movement(entity, player_pos, seqn) or seqn != entity.last_updated + 1:
             secure_pos = self.players[addr].pos
         else:
-            # update player location in quadtree
-            self.spindex.remove((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
-            # if packet is not outdated, update player stats
-            entity.pos = player_pos
+            self.update_entity_position(entity, player_pos, PLAYER_TYPE, addr=addr)
             entity.last_updated = seqn
-
-            self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
         return secure_pos
 
     def update_hp(self, player: Player, inventory_slot: int, addr: Addr):
@@ -181,12 +196,12 @@ class Node:
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
-
-                if addr not in self.addrs:
-                    self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
-                    self.players[addr].pos = player_pos
-
+                
                 entity = self.players[addr]
+                if addr not in self.addrs:
+                    self.spindex.insert((PLAYER_TYPE, entity.uuid), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+                    entity.pos = player_pos
+
                 if seqn <= entity.last_updated:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
@@ -223,16 +238,11 @@ class Node:
                         collided = True
                         # TODO: add wall collision
             if not collided:
-                self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                         PROJECTILE_HEIGHT,
-                                                                                         PROJECTILE_WIDTH))
-                self.projectiles[projectile.uuid].pos = projectile.pos[0] + \
-                                                        int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[
-                                                            1] + \
-                                                        int(PROJECTILE_SPEED * projectile.direction[1])
-                self.spindex.insert((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                         PROJECTILE_HEIGHT,
-                                                                                         PROJECTILE_WIDTH))
+                self.update_entity_position(projectile, (projectile.pos[0] +
+                                                         int(PROJECTILE_SPEED * projectile.direction[0]),
+                                                         projectile.pos[1] +
+                                                         int(PROJECTILE_SPEED * projectile.direction[1])),
+                                            PROJECTILE_TYPE, height=PROJECTILE_HEIGHT, width=PROJECTILE_WIDTH)
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
