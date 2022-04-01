@@ -29,7 +29,7 @@ def parse_credentials(shared_key: bytes, data: bytes) -> Tuple[bool, str, bytes]
         username_token, password_token = data[:FERNET_TOKEN_LENGTH], data[FERNET_TOKEN_LENGTH:]
         return login, fernet.decrypt(username_token).decode(), fernet.decrypt(password_token)
     except InvalidToken as e:
-        logging.critical(f"Decryption of username/password failed {e=}")
+        logging.critical(f"[error] decryption of username/password failed {e=}")
         return None
 
 

@@ -120,9 +120,9 @@ class Node:
         :returns:``DEFAULT_POS_MARK`` if the client position is fine, or the server-side-calculated pos for the client
         otherwise.
         """
-        # if the received packet is dated then update player
+        # if the received packet is dated then update player to last known position
         secure_pos = DEFAULT_POS_MARK
-        if invalid_movement(entity, player_pos, seqn) or seqn != entity.last_updated + 1:
+        if invalid_movement(entity, player_pos, seqn):
             secure_pos = self.players[addr].pos
         else:
             self.update_entity_position(entity, player_pos, PLAYER_TYPE, addr=addr)
@@ -135,21 +135,20 @@ class Node:
         :param player: player entity with updated position
         :param inventory_slot: slot index of player
         :param addr: address of client"""
-        logging.debug(f"Player {addr} tried to attack")
         # check for cooldown and update it accordingly
         if player.current_cooldown != -1:
             if player.current_cooldown + player.last_time_attacked > (new := time.time()):
-                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {addr=}")
+                logging.info(f"[blocked] cooldown={player.current_cooldown} prevented attack by {addr=}")
                 return
-            logging.info(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
             player.current_cooldown = -1
         try:
             tool = player.tools[inventory_slot]
             weapon_data = WEAPON_DATA[tool]
         except KeyError:
-            logging.info(f"Invalid slot index/tool given by {addr=}")
+            logging.info(f"[error, blocked] invalid slot index/tool given by {addr=}")
             return
         player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
+        logging.info(f"[action] player={player.uuid} attacked")
         if weapon_data['is_melee']:
             attackable_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
             # resetting cooldown
@@ -159,7 +158,7 @@ class Node:
                 attackable.health -= weapon_data['damage']
                 if attackable.health < 0:
                     attackable.health = 0
-                logging.debug(f"Updated entity health to {attackable.health}")
+                logging.debug(f"[updated] entity health to {attackable.health}")
         else:
             player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
             player.last_time_attacked = time.time()
@@ -170,7 +169,7 @@ class Node:
             self.projectiles[projectile.uuid] = projectile
             self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
-            logging.info(f"Added projectile {projectile}")
+            logging.info(f"[added] projectile {projectile}")
 
     def update_client(self, addr: Addr, secure_pos: Pos):
         """
@@ -197,25 +196,33 @@ class Node:
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
-                
-                entity = self.players[addr]
+
+                # TODO: signup with uuid & username/password
                 if addr not in self.addrs:
-                    self.spindex.insert((PLAYER_TYPE, entity.uuid), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+                    entity = self.players[addr]
+                    self.spindex.insert((PLAYER_TYPE, entity.uuid), get_bounding_box(player_pos, CLIENT_HEIGHT,
+                                                                                     CLIENT_WIDTH))
                     entity.pos = player_pos
+                    entity.last_updated = seqn
+                    logging.info(f"[update] added new player {addr=} {entity=}")
 
+                entity = self.players[addr]
                 if seqn <= entity.last_updated:
-                    logging.info(f"Got outdated packet from {addr=}")
+                    logging.info(f"[blocked] got outdated packet from {addr=}")
                     continue
+                elif seqn == entity.last_updated + 1:
+                    entity.direction = attack_dir  # TODO: check if normalized
+                    secure_pos = self.update_location(player_pos, seqn, entity, addr)
 
-                entity.direction = attack_dir  # TODO: check if normalized
-                secure_pos = self.update_location(player_pos, seqn, entity, addr)
-
-                entity.slot = slot_index
-                if attacked:
-                    self.update_hp(entity, slot_index, addr)
+                    entity.slot = slot_index
+                    if attacked:
+                        self.update_hp(entity, slot_index, addr)
+                else:
+                    # if there was a packet gap, update the client to use the previous known state
+                    secure_pos = entity.pos
                 self.update_client(addr, secure_pos)
             except Exception as e:
-                logging.exception(e)
+                logging.exception(f"[exception] {e}, {self.players=} {self.projectiles=} {self.bots=}")
 
     def server_controlled_entities_update(self, s, projectiles, bots: List[Bot]):
         """
@@ -230,11 +237,11 @@ class Node:
                 for kind, identifier in intersection:
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
-                        logging.info(f"Projectile {projectile} hit a player {player}")
+                        logging.info(f"[update, action] projectile {projectile} hit a player {player}")
                         player.health -= projectile.damage
                         if player.health < MIN_HEALTH:
                             player.health = MIN_HEALTH
-                        logging.debug(f"Updated player {identifier} health to {player.health}")
+                        logging.info(f"[update] updated player {identifier} health to {player.health}")
                         to_remove.append(projectile)
                         collided = True
                         # TODO: add wall collision
@@ -246,6 +253,7 @@ class Node:
                                             PROJECTILE_TYPE, height=PROJECTILE_HEIGHT, width=PROJECTILE_WIDTH)
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
+            logging.debug(f"[update] trying to remove projectile {projectile}")
             self.projectiles.pop(projectile.uuid)
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                      PROJECTILE_HEIGHT,
@@ -266,7 +274,7 @@ class Node:
         """
 
         self.server_sock.bind(self.address)
-        logging.info(f"Binded to address {self.address}")
+        logging.info(f"[general] binded to address {self.address}")
 
         try:
             threading.Thread(target=self.start_location_update).start()
@@ -288,5 +296,6 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="[%(levelname)s]:%(asctime)s:%(thread)d - %(message)s", filemode="w+",
+                        filename="server.log", level=logging.DEBUG)
     Node(SERVER_PORT)

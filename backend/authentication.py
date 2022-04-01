@@ -43,7 +43,7 @@ def verify_credentials(expected_key: bytes, unverified_password: bytes, salt: by
     try:
         kdf.verify(unverified_password, expected_key)
     except InvalidKey:
-        logging.info("User login failed")
+        logging.info("[blocked] user login failed")
         return False
     return True
 
