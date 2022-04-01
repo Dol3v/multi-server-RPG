@@ -161,9 +161,14 @@ class Game:
             if entity_uuid in self.entities:
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
+
+                print(f"{self.entities[entity_uuid].tool_id} {tool_id}")
+
+                if self.entities[entity_uuid].tool_id != tool_id:
+                    self.entities[entity_uuid].update_tool(tool_id)
             else:
                 self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
-                                                          entity_dir)
+                                                          entity_dir, tool_id)
 
     def create_map(self) -> None:
         """

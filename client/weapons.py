@@ -28,7 +28,7 @@ class Hand(pygame.sprite.Sprite):
 
         self.rect = self.image.get_rect()
 
-    def draw_hand(self, player):
+    def draw_weapon(self, player):
         vec = player.get_direction_vec()
 
         angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))

@@ -161,6 +161,7 @@ class Node:
                     attackable.health = 0
                 logging.debug(f"Updated entity health to {attackable.health}")
         else:
+            player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
             player.last_time_attacked = time.time()
             # adding into saved data
             projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),

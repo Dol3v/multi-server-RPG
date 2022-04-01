@@ -8,7 +8,7 @@ from collections import defaultdict
 from threading import Thread
 from typing import Tuple, Dict, List
 
-from add_user import login, signup
+from authentication import login, signup
 from cryptography.fernet import Fernet, InvalidToken
 
 # to import from a dir

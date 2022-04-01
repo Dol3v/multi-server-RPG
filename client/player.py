@@ -141,7 +141,7 @@ class Player(pygame.sprite.Sprite):
             weapon.draw_weapon(self)
             self.hand.hide()
         else:
-            self.hand.draw_hand(self)
+            self.hand.draw_weapon(self)
 
     def set_weapon_in_slot(self, slot, weapon: Weapon):
         self.hotbar[slot] = weapon

@@ -5,6 +5,7 @@ TODO: merge the weapon classes with the Player class
 
 import pygame
 
+from weapons import *
 from graphics import Animation
 from consts import *
 from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
@@ -83,14 +84,21 @@ class Entity(pygame.sprite.Sprite):
 
 
 class PlayerEntity(Entity):
-    def __init__(self, groups, x, y, direction):
+    def __init__(self, groups, x, y, direction, tool_id):
         super().__init__(groups, x, y, direction)
         self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
                                                              self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
         self.original_texture = self.texture.copy()
-
         self.direction = direction
+
+        self.visible_sprites = (groups[1],)
+        self.obstacles_sprites = (groups[0],)
+        self.tool_id = 0
+        self.hand = Hand(self.visible_sprites)
+        self.update_tool(tool_id)
+
+        self.groups = groups
 
         self.animation = Animation(
             [
@@ -110,9 +118,15 @@ class PlayerEntity(Entity):
         self.image.blit(self.texture, (0, 0))
         self.rect = self.image.get_rect(center=(self.x, self.y))
 
+    def get_direction_vec(self):
+        return self.direction
+
     def update_player_animation(self):
+        # Hand Movements
+        self.hand.draw_weapon(self)
+
+        # Movement
         if self.last_x != self.x or self.last_y != self.y:
-            print("should to animation")
             frame = self.animation.get_next_frame()
             if self.direction[0] < 0:
                 frame = pygame.transform.flip(frame, True, False)
@@ -125,6 +139,19 @@ class PlayerEntity(Entity):
                 self.texture = pygame.transform.flip(self.original_texture, True, False)
             else:
                 self.texture = self.original_texture
+
+    def update_tool(self, tool_id):
+        self.tool_id = tool_id
+        self.hand.kill()
+        match tool_id:
+            case 0:
+                self.hand = Hand(self.visible_sprites)
+            case 1:
+                self.hand = Weapon(self.visible_sprites, "sword", "rare")
+            case 2:
+                self.hand = Weapon(self.visible_sprites, "axe", "rare")
+            case 3:
+                self.hand = RangeWeapon(self.visible_sprites, self.obstacles_sprites, "bow", "rare")
 
     def update(self):
         self.draw_entity()
