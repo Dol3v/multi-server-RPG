@@ -18,7 +18,6 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (self.image.get_width() * PLAYER_SIZE_MULTIPLIER,
                                                          self.image.get_height() * PLAYER_SIZE_MULTIPLIER))
-
         self.original_image = self.image.copy()
 
         self.moving_animation = Animation(
@@ -40,7 +39,7 @@ class Player(pygame.sprite.Sprite):
         self.attack_cooldown = pygame.time.get_ticks()
         self.attacking = False
         self.is_typing = False
-        self.is_inv_open = False
+        self.is_inv_open = True
 
         self.hand = Hand(groups)
 

@@ -39,7 +39,6 @@ class TilesetData:
         tile_id = 0
         for y_cord in range(8):
             for x_cord in range(8):
-                print((x_cord * 64, y_cord * 64, 64, 64))
                 map_tile = MapTile(
                     self.image.subsurface((x_cord * 64, y_cord * 64, 64, 64))
                 )
@@ -69,7 +68,6 @@ class Layer:
         self.collision_objects = []
 
     def load_collision_objects(self):
-
         for y in range(len(self.layer_grid)):
             for x in range(len(self.layer_grid[0])):
                 tile_id = int(self.layer_grid[y][x])
@@ -107,8 +105,3 @@ class Map:
             for collision_object in layer.collision_objects:
                 Obstacle(obstacle_sprites, collision_object)
 
-    def has_collision(self, player):
-        for collision_object in self.collision_objects:
-            if collision_object.colliderect(player.rect):
-                return True
-        return False

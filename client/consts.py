@@ -1,7 +1,7 @@
 """General consts for client side"""
 # Images
 
-PLAYER_SIZE_MULTIPLIER = 4
+PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
 HEALTH_BACKGROUND_IMG = "assets/health/health_background.png"
 HEALTH_BAR_IMG = "assets/health/health_bar.png"

@@ -17,7 +17,6 @@ from player import Player
 from sprites import PlayerEntity, FollowingCameraGroup
 from weapons import *
 from map_manager import *
-from consts import SPEED
 
 
 class Game:
@@ -73,7 +72,7 @@ class Game:
 
         self.chat_msg = ""
 
-        self.is_showing_chat = False
+        self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
 
     def receiver(self):
