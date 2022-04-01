@@ -3,6 +3,8 @@ import queue
 import socket
 import sys
 import threading
+from pyqtree import Index
+from common.utils import get_bounding_box
 from typing import List
 
 import weapons
@@ -27,17 +29,17 @@ class Game:
         self.obstacles_sprites = pygame.sprite.Group()
         self.attack_sprite = None
 
-        # player init
-        self.player = None
-        self.player_img = pygame.image.load(PLAYER_IMG)
+        self.map_collision = Index((0, 0, self.visible_sprites.floor_surface.get_width(),
+                                    self.visible_sprites.floor_surface.get_height()))
 
-        # generate map
-        self.player = Player((1988, 1500), (self.visible_sprites,), self.obstacles_sprites)
+        # player init
+        self.player = Player((1988, 1500), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+        self.player_img = pygame.image.load(PLAYER_IMG)
 
         self.map = Map()
         self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
                                                                             "assets/map/new_props.tsj")))
-        self.map.load_collision_objects(self.obstacles_sprites)
+        self.map.load_collision_objects(self.map_collision)
 
         self.full_screen = full_screen
         self.running = False

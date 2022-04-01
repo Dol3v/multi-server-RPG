@@ -3,6 +3,8 @@ import json
 from csv import reader
 from consts import TILE_SIZE
 from sprites import Tile, Obstacle
+from pyqtree import Index
+from common.utils import get_bounding_box
 
 
 def import_csv_layer(path):
@@ -96,12 +98,11 @@ class Map:
     def add_layer(self, layer: Layer):
         self.layers.append(layer)
 
-    def load_collision_objects(self, obstacle_sprites):
+    def load_collision_objects(self, map_collision: Index):
         self.collision_objects = []
         for layer in self.layers:
             layer.load_collision_objects()
             self.collision_objects.extend(layer.collision_objects)
 
-            for collision_object in layer.collision_objects:
-                Obstacle(obstacle_sprites, collision_object)
-
+            for obj in layer.collision_objects:
+                map_collision.insert(obj, get_bounding_box((obj.x, obj.y), obj.height, obj.width))

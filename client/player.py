@@ -4,17 +4,17 @@ from typing import List, Tuple
 import pygame
 
 from common.consts import SPEED, SCREEN_HEIGHT, SCREEN_WIDTH
-from common.utils import normalize_vec
+from common.utils import normalize_vec, get_bounding_box
 from weapons import *
 from consts import *
 from graphics import Animation
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, obstacle_sprites):
+    def __init__(self, pos, groups, obstacle_sprites, map_collision):
         super().__init__(*groups)
         # self.image = pygame.image.load(PLAYER_IMG).convert_alpha()
-
+        self.map_collision = map_collision
         self.image = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (self.image.get_width() * PLAYER_SIZE_MULTIPLIER,
                                                          self.image.get_height() * PLAYER_SIZE_MULTIPLIER))
@@ -122,6 +122,13 @@ class Player(pygame.sprite.Sprite):
                         self.rect.right = sprite.rect.left
                     if self.direction.x < 0:  # moving left
                         self.rect.left = sprite.rect.right
+            for rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
+                                                                      SCREEN_HEIGHT, SCREEN_WIDTH)):
+                if rect.colliderect(self.rect):
+                    if self.direction.x > 0:  # moving right
+                        self.rect.right = rect.left
+                    if self.direction.x < 0:  # moving left
+                        self.rect.left = rect.right
 
         if direction == 'vertical':
             for sprite in self.obstacle_sprites:
@@ -130,6 +137,13 @@ class Player(pygame.sprite.Sprite):
                         self.rect.bottom = sprite.rect.top
                     if self.direction.y < 0:  # moving up
                         self.rect.top = sprite.rect.bottom
+            for rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
+                                                                      SCREEN_HEIGHT, SCREEN_WIDTH)):
+                if rect.colliderect(self.rect):
+                    if self.direction.y > 0:  # moving down
+                        self.rect.bottom = rect.top
+                    if self.direction.y < 0:  # moving up
+                        self.rect.top = rect.bottom
 
     def get_screen_location(self):
         half_width = SCREEN_WIDTH / 2
