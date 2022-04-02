@@ -3,12 +3,10 @@
 TODO: merge the weapon classes with the Player class
 """
 
-import pygame
-
-from weapons import *
-from graphics import Animation
-from consts import *
 from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+from consts import *
+from graphics import Animation
+from weapons import *
 
 
 class Obstacle(pygame.sprite.Sprite):
@@ -163,3 +161,29 @@ class PlayerEntity(Entity):
     def update(self):
         self.draw_entity()
         self.update_player_animation()
+
+
+class EntityBoots(Entity):
+    def __init__(self, groups, x, y, direction):
+        super().__init__(groups, x, y, direction)
+        self.texture = pygame.image.load("assets/mobs/Big demon/big_demon_idle_anim_f0.png").convert_alpha()
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
+                                                             self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
+        self.original_texture = self.texture.copy()
+        self.direction = direction
+
+        self.visible_sprites = (groups[1],)
+        self.obstacles_sprites = (groups[0],)
+        self.groups = groups
+
+        self.animation = Animation(
+            [
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f0.png"),
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f1.png"),
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f2.png"),
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f3.png")
+            ],
+            10
+        )
+
+        self.draw_entity()

@@ -3,7 +3,7 @@ import os
 import sys
 
 sys.path.append('../')
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT 
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, NODE_PORT
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
@@ -30,7 +30,7 @@ def main():
 
     connection_screen = connect_screen.ConnectScreen(screen, 10001)
     connection_screen.run()
-    if not connection_screen.sock:
+    if not connection_screen.received_player_uuid:
         print("Login/Signup failed")
         return
 

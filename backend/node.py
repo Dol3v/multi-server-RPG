@@ -1,11 +1,11 @@
 import functools
-import itertools
 import logging
+import queue
 import sched
 import sys
 import threading
 from collections import defaultdict
-from typing import Any
+from typing import Dict
 
 from pyqtree import Index
 
@@ -16,7 +16,7 @@ sys.path.append('../')
 from common.consts import *
 from common.utils import *
 from collision import *
-from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT
+from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT
 from entities import *
 from networking import generate_server_message, parse_client_message
 
@@ -26,18 +26,26 @@ EntityData = Tuple[int, str, int, int, float, float, int]
 
 class Node:
 
-    def __init__(self, port) -> None:
+    def __init__(self, port):
         self.node_ip = socket.gethostbyname(socket.gethostname())
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.root_sock = socket.socket()
+        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))
 
-        self.players = defaultdict(lambda: Player())
+        self.players: Dict[str, Player] = {}
         self.bots: defaultdict[str, Bot] = defaultdict(lambda: Bot())
         self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
         projectile/player/mob, and the uuid being, well, the uuid."""
+
+        self.send_queue = queue.Queue()
+        self.recv_queue = queue.Queue()
+
+        self.socket_dict = defaultdict(lambda: self.server_sock)
+        self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
         # Starts the node
         self.run()
@@ -50,81 +58,69 @@ class Node:
     def entities(self) -> defaultdict[str, Entity]:
         return self.players | self.bots | self.players
 
-    def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
+    def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
 
         :returns: flattened tuple of kind, position and direction"""
-        tool_id = EMPTY_SLOT
-        if entity_data[0] == PLAYER_TYPE:
-            chosen_iterable = self.players
-        elif entity_data[0] == PROJECTILE_TYPE:
-            chosen_iterable = self.projectiles
-        elif entity_data[0] == BOT_TYPE:
-            chosen_iterable = self.bots
-        else:
-            raise ValueError(f"Invalid entity type {entity_data[0]} given, with identifier {entity_data[1]}")
-        entity = chosen_iterable[entity_data[1]]
+        entity = self.entities[entity_data[1]]
         if entity_data[0] == PLAYER_TYPE:
             tool_id = entity.tools[entity.slot]
         elif entity_data[0] == BOT_TYPE:
             tool_id = entity.weapon
         return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction, tool_id
 
-    def attackable_in_range(self, entity_addr: Addr, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
+    def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
         return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
-                   filter(lambda data: data[1] != entity_addr and data[0] != PROJECTILE_TYPE,
+                   filter(lambda data: data[1] != entity_uuid and data[0] != PROJECTILE_TYPE,
                           self.spindex.intersect(bbox)))
 
-    def entities_in_rendering_range(self, entity: Player, player_addr: Addr) -> Iterable[EntityData]:
+    def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
         """Returns all players that are within render distance of each other."""
-        return map(self.get_data_from_entity, filter(lambda data: data[1] != player_addr,
+        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid,
                                                      self.spindex.intersect(
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
-    def entities_in_melee_attack_range(self, entity: Player, entity_addr: Addr, melee_range: int):
+    def entities_in_melee_attack_range(self, entity: Player, melee_range: int) \
+            -> Iterable[Attackable]:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
                              int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
-        return self.attackable_in_range(entity_addr, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
+        return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
-    def update_location(self, player_pos: Pos, seqn: int, entity: Player, addr: Addr) -> Pos:
+    def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
-        Additionally, adds the client to ``self.players`` if it wasn't there already.
 
-        :param entity: player to update
+        :param player: player to update
         :param player_pos: position of player given by the client
         :param seqn: sequence number given by the client
-        :param addr: address of client
         :returns:``DEFAULT_POS_MARK`` if the client position is fine, or the server-side-calculated pos for the client
         otherwise.
         """
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if invalid_movement(entity, player_pos, seqn) or seqn != entity.last_updated + 1:
-            secure_pos = self.players[addr].pos
+        if invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
+            secure_pos = self.players[player.uuid].pos
         else:
             # update player location in quadtree
-            self.spindex.remove((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+            self.spindex.remove((PLAYER_TYPE, player.uuid), get_bounding_box(player.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
             # if packet is not outdated, update player stats
-            entity.pos = player_pos
-            entity.last_updated = seqn
-
-            self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+            player.pos = player_pos
+            player.last_updated = seqn
+            self.spindex.insert((PLAYER_TYPE, player.uuid), get_bounding_box(player.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
         return secure_pos
 
-    def update_hp(self, player: Player, inventory_slot: int, addr: Addr):
+    def update_hp(self, player: Player, inventory_slot: int):
         """Updates hp of players in case of attack.
 
         :param player: player entity with updated position
-        :param inventory_slot: slot index of player
-        :param addr: address of client"""
-        logging.debug(f"Player {addr} tried to attack")
+        :param inventory_slot: slot index of player"""
+        logging.debug(f"Player {player.addr} tried to attack")
         # check for cooldown and update it accordingly
         if player.current_cooldown != -1:
             if player.current_cooldown + player.last_time_attacked > (new := time.time()):
-                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {addr=}")
+                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {uuid}")
                 return
             logging.info(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
             player.current_cooldown = -1
@@ -132,11 +128,12 @@ class Node:
             tool = player.tools[inventory_slot]
             weapon_data = WEAPON_DATA[tool]
         except KeyError:
-            logging.info(f"Invalid slot index/tool given by {addr=}")
+            logging.info(f"Invalid slot index/tool given by {uuid}")
             return
         player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
         if weapon_data['is_melee']:
-            attackable_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
+            attackable_in_range = self.entities_in_melee_attack_range(player,
+                                                                      player.uuid, weapon_data['melee_attack_range'])
             # resetting cooldown
             player.last_time_attacked = time.time()
 
@@ -157,16 +154,16 @@ class Node:
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             logging.info(f"Added projectile {projectile}")
 
-    def update_client(self, addr: Addr, secure_pos: Pos):
+    def update_client(self, player_uuid: str, secure_pos: Pos):
         """
         Use: sends server message to the client
         """
         new_chat = ""
-        player = self.players[addr]
-        entities_array = flatten(self.entities_in_rendering_range(player, addr))
+        player = self.players[player_uuid]
+        entities_array = flatten(self.entities_in_rendering_range(player))
         # generate and send message
         update_packet = generate_server_message(player.tools, new_chat, secure_pos, player.health, entities_array)
-        self.server_sock.sendto(update_packet, addr)
+        self.server_sock.sendto(update_packet, player.addr)
 
     def handle_client(self):
         """
@@ -175,6 +172,7 @@ class Node:
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
+                logging.debug(f"[general] {addr=} sent {data=}")
                 client_msg = parse_client_message(data)
                 if not client_msg:
                     continue
@@ -182,10 +180,10 @@ class Node:
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
+                print("Ended iter")
+                continue
 
-                if addr not in self.addrs:
-                    self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
-                    self.players[addr].pos = player_pos
+                self.spindex.insert((PLAYER_TYPE,), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
 
                 entity = self.players[addr]
                 if seqn <= entity.last_updated != 0:
@@ -251,6 +249,15 @@ class Node:
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, self.projectiles, self.bots,))
         s.run()
 
+    def root_receiver(self):
+        while True:
+            data = self.root_sock.recv(RECV_CHUNK)
+            shared_key, player_uuid = data[SHARED_KEY_SIZE:], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
+            addr = struct.unpack(">4Bl", data[SHARED_KEY_SIZE + UUID_SIZE:])
+            ip = "".join(str(ip_byte) + "." for ip_byte in addr[:-1])[:-1] # Go Spaghetti code!
+            logging.info(f"[login] notified player {player_uuid=} with addr={(ip, addr[1])} is about to join")
+            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, addr[1]))
+
     def run(self) -> None:
         """
         Use: starts node threads
@@ -261,7 +268,8 @@ class Node:
 
         try:
             threading.Thread(target=self.start_location_update).start()
-            for i in range(THREADS_COUNT):
+            threading.Thread(target=self.root_receiver).start()
+            for _ in range(THREADS_COUNT):
                 # starts handlers threads
                 client_thread = threading.Thread(target=self.handle_client)
                 client_thread.start()

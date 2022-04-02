@@ -16,7 +16,8 @@ from consts import DB_PASS, CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT
 from authentication import login, signup, parse_credentials
 from database import SqlDatabase
 from networking import do_ecdh
-from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID
+from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NODE_PORT, \
+    NUM_NODES
 
 
 @dataclass
@@ -39,11 +40,14 @@ class EntryNode:
 
     def __init__(self, db: SqlDatabase, sock: socket.socket):
         self.sock = sock
+        self.sock.bind((ROOT_IP, ROOT_PORT))
+
         self.db_conn = db
         # addresses currently connected to a given server
         self.nodes: List[NodeData] = []
         self.server2server = socket.socket()
-        self.server2server.bind(("0.0.0.0", ROOT_SERVER2SERVER_PORT))
+        self.server2server.bind((ROOT_IP, ROOT_SERVER2SERVER_PORT))
+
         self.server_send_queue = queue.Queue()
         """Queue of messages to be broadcast-ed from the root to other nodes"""
         self.server_recv_queue = queue.Queue()
@@ -64,6 +68,7 @@ class EntryNode:
         """Sends messages to nodes"""
         while True:
             recipients, msg = self.server_send_queue.get()
+            logging.info(f"[action] sending {msg=} to {recipients=}")
             for server in recipients:
                 server.conn.send(msg)
 
@@ -82,9 +87,7 @@ class EntryNode:
 
     def handle_incoming_players(self):
         while True:
-            print("Got to func")
             conn, addr = self.sock.accept()
-            print("Got here")
             logging.info(f"[update] client with {addr=} tries to login/signup")
             shared_key = do_ecdh(conn)
             is_login, username, password = parse_credentials(shared_key, conn.recv(CREDENTIALS_PACKET_SIZE))
@@ -107,7 +110,8 @@ class EntryNode:
                 struct.pack(REDIRECT_FORMAT, user_uuid.encode(), target_node.ip.encode(),
                             success, len(error_msg)) + error_msg.encode())
 
-            self.server_send_queue.put((target_node.conn, ))
+            self.server_send_queue.put(([target_node], shared_key + user_uuid.encode() + socket.inet_aton(addr[0]) +
+                                        struct.pack(">l", addr[1])))
 
             conn.close()
 
@@ -115,27 +119,27 @@ class EntryNode:
         """
         Initializes nodes' data based on user input.
         """
-        # for node_index in range(NODE_COUNT):
-        #     ip = input(f"Enter {node_index=} ip: ")
-        #     while not valid_ip(ip):
-        #         ip = input(f"Enter {node_index=} ip: ")
-
         # # TODO: actually make this secure lmao
-        # conn, data = self.server2server.accept()
-        self.nodes.append(NodeData("127.0.0.1", [], None))
+        self.server2server.listen()
+        for _ in range(NUM_NODES):
+            conn, addr = self.server2server.accept()
+            logging.info(f"[update] accepted one server connection with {addr=}")
+            # while addr[1] != NODE_PORT: - doesn't work, need to use more thorough check, prob
+            # like manually whitelisting servers using input()
+            #     conn, addr = self.server2server.accept()
 
+            self.nodes.append(NodeData(addr[0], [], conn))
         # TODO: send here the generated SQL password for user
         # self.server_send_queue.put()
 
     def run(self):
-        self.server2server.listen()
         self.init_nodes()
 
         threads = []
         self.sock.listen()
         # # server2server threads
-        # threads.append(Thread(target=self.receiver))
-        # threads.append(Thread(target=self.sender))
+        threads.append(Thread(target=self.receiver))
+        threads.append(Thread(target=self.sender))
 
         # client handling threads
         for _ in range(self.client_thread_count):
@@ -148,7 +152,6 @@ class EntryNode:
 if __name__ == "__main__":
     logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     sock = socket.socket()
-    sock.bind((ROOT_IP, ROOT_PORT))
     db = SqlDatabase("127.0.0.1", DB_PASS)
     node = EntryNode(db, sock)
     node.run()

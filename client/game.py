@@ -24,6 +24,7 @@ from map_manager import *
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple, full_screen):
         # init sprites
+        self.can_recv: bool = False
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = FollowingCameraGroup()
         self.obstacles_sprites = pygame.sprite.Group()
@@ -78,7 +79,8 @@ class Game:
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
 
     def receiver(self):
-        while True:
+        while self.can_recv:
+            print(self.conn)
             self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
     def server_update(self):
@@ -162,8 +164,6 @@ class Game:
                 [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
-
-        print(len(entities), entities)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
             if entity_type != PLAYER_TYPE:
@@ -243,6 +243,7 @@ class Game:
             self.draw_chat(event_list)
             self.draw_inventory()
             self.server_update()
+            self.can_recv = True
             pygame.display.update()
             self.clock.tick(FPS)
 

@@ -18,6 +18,7 @@ from graphics import *
 class ConnectScreen:
     def __init__(self, screen, port: int):
         """Remove port later, currently stays for debugging before login"""
+        self.received_player_uuid = None
         self.game_server_addr = None
         self.shared_key = None
         self.width = SCREEN_WIDTH
@@ -158,6 +159,7 @@ class ConnectScreen:
             ip, user_uuid, success, error_message = get_login_response(conn)
             self.game_server_addr = (ip, NODE_PORT)
             self.received_player_uuid = user_uuid.encode()
+
             if not success:
                 print(error_message)
                 self.sock = None
