@@ -11,6 +11,7 @@ DB_PASS = "dummyPass"
 USERNAME_COL = 0
 HASH_COL = 1
 SALT_COL = 2
+UUID_COL = 3
 
 # Scrypt Consts
 SCRYPT_KEY_LENGTH = 32
@@ -41,3 +42,6 @@ WEAPON_DATA = {
 }
 FRAME_TIME = 1 / 60
 MAX_SLOT = 6
+
+# Server communication ports
+ROOT_SERVER2SERVER_PORT = 30000
