@@ -7,6 +7,7 @@ import threading
 from collections import defaultdict
 from typing import Dict
 
+from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
 # to import from a dir
@@ -87,7 +88,7 @@ class Node:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
-            int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
+                             int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
         return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
@@ -174,7 +175,13 @@ class Node:
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-                logging.debug(f"[general] {addr=} sent {data=}")
+                logging.debug(f"[debug] {addr=} sent data")
+                player_uuid = data[:UUID_SIZE].decode()
+                try:
+                    data = self.players[player_uuid].fernet.decrypt(data[UUID_SIZE:])
+                except InvalidToken:
+                    logging.warning(f"[security] player {addr=} sent non-matching uuid={player_uuid}")
+                    continue
                 client_msg = parse_client_message(data)
                 if not client_msg:
                     continue
@@ -185,7 +192,7 @@ class Node:
 
                 self.spindex.insert((PLAYER_TYPE,), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
 
-                entity = self.players[addr]
+                entity = self.players[player_uuid]
                 if seqn <= entity.last_updated != 0:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
@@ -251,11 +258,13 @@ class Node:
     def root_receiver(self):
         while True:
             data = self.root_sock.recv(RECV_CHUNK)
-            shared_key, player_uuid = data[SHARED_KEY_SIZE:], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
+            shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
             addr = struct.unpack(">4Bl", data[SHARED_KEY_SIZE + UUID_SIZE:])
-            ip = "".join(str(ip_byte) + "." for ip_byte in addr[:-1])[:-1] # Go Spaghetti code!
+            ip = "".join(str(ip_byte) + "." for ip_byte in addr[:-1])[:-1]  # Go Spaghetti code!
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, addr[-1])} is about to join")
-            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, addr[-1]))
+            print(len(shared_key), shared_key)
+            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, addr[-1]),
+                                               fernet=Fernet(base64.urlsafe_b64encode(shared_key)))
 
     def run(self) -> None:
         """

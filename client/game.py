@@ -1,8 +1,11 @@
 """Game loop and communication with the server"""
+import base64
 import queue
 import socket
 import sys
 import threading
+
+from cryptography.fernet import Fernet
 from pyqtree import Index
 from common.utils import get_bounding_box
 from typing import List
@@ -22,7 +25,14 @@ from map_manager import *
 
 
 class Game:
-    def __init__(self, conn: socket.socket, server_addr: tuple, full_screen):
+    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen):
+        # misc networking
+        self.entities = {}
+        self.recv_queue = queue.Queue()
+        self.seqn = 0
+        print(len(shared_key), shared_key)
+        self.fernet = Fernet(base64.urlsafe_b64encode(shared_key))
+
         # init sprites
         self.can_recv: bool = False
         self.display_surface = pygame.display.get_surface()
@@ -36,6 +46,7 @@ class Game:
         # player init
         self.player = Player((1988, 1500), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
+        self.player_uuid = player_uuid
 
         self.map = Map()
         self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
@@ -62,13 +73,10 @@ class Game:
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
+        # inventory init
         self.inv = pygame.image.load("assets/inventory.png")
         self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
         self.inv.set_alpha(150)
-
-        self.entities = {}
-        self.recv_queue = queue.Queue()
-        self.seqn = 0
 
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
         """[message, direction, did attack, attack directions, selected slot]"""
@@ -77,6 +85,14 @@ class Game:
 
         self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
+
+    @property
+    def x(self):
+        return self.player.rect.centerx
+
+    @property
+    def y(self):
+        return self.player.rect.centery
 
     def receiver(self):
         print("Started receiver")
@@ -94,8 +110,8 @@ class Game:
         # update server
         print("Got to server update")
         self.update_player_actions()
-        update_packet = generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery,
-                                                self.actions)
+        update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
+                                                self.actions, self.fernet)
         print("Sending update packet")
         self.conn.sendto(update_packet, self.server_addr)
         print("Sent packet")

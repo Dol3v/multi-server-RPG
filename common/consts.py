@@ -5,8 +5,11 @@ from typing import Tuple
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 
 INT_SIZE = 4
+UUID_SIZE = 36
+
 # Format 
 MESSAGE_ENDIANESS = "<"
+UUID_FORMAT = f'{UUID_SIZE}s'
 SEQUENCE_FORMAT = 'q'
 POSITION_FORMAT = 'll'
 # [chat msg, attack, attack dir, equipped id]
@@ -19,7 +22,6 @@ TOOLS = 'i' * NUMBER_OF_TOOLS
 HEALTH = 'i'
 NEW_CHAT_MSG = '255s'
 TYPE_FORMAT = 'i'
-UUID_FORMAT = '36s'
 DIRECTION_FORMAT = 'ff'
 TOOL_FORMAT = 'l'
 ENTITY_FORMAT = TYPE_FORMAT + UUID_FORMAT + POSITION_FORMAT + DIRECTION_FORMAT + TOOL_FORMAT
@@ -34,7 +36,6 @@ LOGIN_RESULT_FORMAT = "?l"
 REDIRECT_FORMAT = MESSAGE_ENDIANESS + UUID_FORMAT + IP_FORMAT + LOGIN_RESULT_FORMAT
 
 # sizes of stuff
-UUID_SIZE = 36
 NUM_NODES = 1
 
 # Some defaults

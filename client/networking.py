@@ -23,10 +23,12 @@ def send_credentials(username: str, password: str, conn: socket.socket, shared_k
     """
     Use: login to the server
     """
+    print(f"len={len(shared_key)}, {shared_key=}, urlsafe={urlsafe_b64encode(shared_key) == shared_key}")
     fernet = Fernet(urlsafe_b64encode(shared_key))
     username_token = fernet.encrypt(username.encode())
     password_token = fernet.encrypt(password.encode())
     conn.send(int(is_login).to_bytes(1, "big") + username_token + password_token)
+    return fernet
 
 
 def get_login_response(conn: socket.socket) -> Tuple[str, str, bool, str]:
@@ -56,16 +58,16 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
 
     if raw_entities:
         entities = [
-            (raw_entities[i], raw_entities[i+1], (raw_entities[i + 2], raw_entities[i + 3]),
+            (raw_entities[i], raw_entities[i + 1], (raw_entities[i + 2], raw_entities[i + 3]),
              (raw_entities[i + 4], raw_entities[i + 5]), raw_entities[i + 6])
             for i in range(0, len(raw_entities), ENTITY_NUM_OF_FIELDS)]
 
         return player_status, entities
 
 
-def generate_client_message(seqn: int, x: int, y: int, actions: list) -> bytes | None:
+def generate_client_message(player_uuid: str, seqn: int, x: int, y: int, actions: list, fernet: Fernet) -> bytes | None:
     """
     Use: generate the client message bytes by this format
     Format: [player_pos(x, y) + (new_msg || attack || attack_directiton || equipped_id )]
     """
-    return struct.pack(CLIENT_FORMAT, seqn, x, y, *actions)
+    return player_uuid.encode() + fernet.encrypt(struct.pack(CLIENT_FORMAT, seqn, x, y, *actions))

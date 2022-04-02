@@ -3,6 +3,8 @@ import uuid as uuid
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
+from cryptography.fernet import Fernet
+
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir
 
 
@@ -30,6 +32,7 @@ class Player(Entity):
         arrow = 3
     tools: [default, tool2, tool3]
     """
+    fernet: Fernet = None
 
 
 @dataclass
