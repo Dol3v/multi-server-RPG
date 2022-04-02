@@ -156,9 +156,8 @@ class ConnectScreen:
             print(f"Did ecdh, key={self.shared_key}")
             send_credentials(username, password, conn, self.shared_key, is_login)
             ip, user_uuid, success, error_message = get_login_response(conn)
-            print(f"{ip=}, {user_uuid=}")
             self.game_server_addr = (ip, NODE_PORT)
-
+            self.received_player_uuid = user_uuid.encode()
             if not success:
                 print(error_message)
                 self.sock = None
