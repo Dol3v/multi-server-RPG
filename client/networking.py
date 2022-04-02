@@ -4,7 +4,7 @@ from base64 import urlsafe_b64encode
 from cryptography.fernet import Fernet
 
 from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, MESSAGE_ENDIANESS, CLIENT_FORMAT, ENTITY_FORMAT, \
-    RECV_CHUNK, ENTITY_NUM_OF_FIELDS
+    RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT
 from common.utils import *
 
 
@@ -30,8 +30,8 @@ def send_credentials(username: str, password: str, conn: socket.socket, shared_k
 
 
 def get_login_response(conn: socket.socket) -> Tuple[bool, str]:
-    success, msg_length = struct.unpack(">?l", conn.recv(1 + 4))
-    return success, conn.recv(msg_length).decode()
+    ip, success, msg_length = struct.unpack(REDIRECT_FORMAT, conn.recv(struct.calcsize(REDIRECT_FORMAT)))
+    return ip.decode().rstrip("\x00"), success, conn.recv(msg_length).decode()
 
 
 def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:

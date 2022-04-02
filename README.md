@@ -18,8 +18,13 @@ chat
 user_info (uuid, pos, direction, last_seqn, health, slot, tools (JSON))
 
 ```
+redirect message
+```
+[go_to_addr]
+```
 
-# FUCK ENTITY_ID
+
+
 # Potential hacks
 - spawn player on another entity near a wall, the player will jump out of the wall.
 

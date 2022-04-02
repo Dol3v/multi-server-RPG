@@ -27,7 +27,7 @@ EntityData = Tuple[int, str, int, int, float, float, int]
 class Node:
 
     def __init__(self, port) -> None:
-        self.node_ip = SERVER_IP  # socket.gethostbyname(socket.gethostname())
+        self.node_ip = socket.gethostbyname(socket.gethostname())
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -278,5 +278,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
-    Node(SERVER_PORT)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    Node(NODE_PORT)
