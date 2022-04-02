@@ -162,6 +162,8 @@ class Game:
                 [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
                 [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
+
+        print(len(entities), entities)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
             if entity_type != PLAYER_TYPE:
@@ -169,8 +171,6 @@ class Game:
             if entity_uuid in self.entities:
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
-
-                print(f"{self.entities[entity_uuid].tool_id} {tool_id}")
 
                 if self.entities[entity_uuid].tool_id != tool_id:
                     self.entities[entity_uuid].update_tool(tool_id)

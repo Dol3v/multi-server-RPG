@@ -1,5 +1,6 @@
 import logging
 import sys
+import uuid
 from os import urandom
 
 from base64 import urlsafe_b64encode
@@ -64,7 +65,7 @@ def verify_credentials(expected_key: bytes, unverified_password: bytes, salt: by
     return True
 
 
-def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
+def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str, str | None]:
     """
     Gets user credentials and tries to sign up. If successful, the user's credentials will be entered to the
     database, where byte data will be entered in base64 format.
@@ -75,26 +76,29 @@ def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
     :packet_id password: bytes
     :param db: database object
     :packet_id db: SqlDatabase
-    :returns: if the signup was successful, returns (True, None). Else, returns (False, err_msg)
+    :returns: if the signup was successful, returns (True, None). Else, returns (False, err_msg) also returns
+    generated uuid or None if the signup failed
     """
     if user_in_database(db, username):
-        return False, "User exists already"
-    res = add_user_to_database(db, username, *generate_hash_and_salt(password))
-    return (True, "") if res else (False, "Server encountered error while adding user to database")
+        return False, "User exists already", None
+    user_uuid = str(uuid.uuid4())
+    res = add_user_to_database(db, username, *generate_hash_and_salt(password), user_uuid=user_uuid)
+    return (True, "", user_uuid) if res else (False, "Server encountered error while adding user to database", None)
 
 
-def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
+def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str, str | None]:
     """
     Verifies that the user's creds match up to existing creds in the database.
-    :returns: if the login was successful, returns (True, None). Else, returns (False, err_msg)
+    :returns: if the login was successful, returns (True, None). Else, returns (False, err_msg). Also returns the uuid
+    if the login was successful, else None
     """
     if not user_in_database(db, username):
-        return False, "User does not exist"
+        return False, "User does not exist", None
     creds = get_user_credentials(db, username)
     if not creds:
-        return False, "Server encountered error while receiving client data"
-    password_hash, salt = creds
-    print(password_hash, salt)
-    return (True, "") if verify_credentials(password_hash, password, salt) else (False, "Password does not match")
+        return False, "Server encountered error while receiving client data", None
+    password_hash, salt, user_uuid = creds
+    return (True, "", user_uuid) if verify_credentials(password_hash, password, salt) else\
+        (False, "Password does not match", None)
 
 

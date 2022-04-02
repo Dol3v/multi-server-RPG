@@ -70,6 +70,8 @@ class EntryNode:
     def receiver(self):
         """Receives data from servers and puts in the queue."""
         while True:
+            if not self.conns:
+                break
             ready_socks, _, _ = select.select(self.conns, [], [])
             for readable in ready_socks:
                 self.server_recv_queue.put(readable.recv(RECV_CHUNK))
@@ -80,7 +82,9 @@ class EntryNode:
 
     def handle_incoming_players(self):
         while True:
+            print("Got to func")
             conn, addr = self.sock.accept()
+            print("Got here")
             logging.info(f"[update] client with {addr=} tries to login/signup")
             shared_key = do_ecdh(conn)
             is_login, username, password = parse_credentials(shared_key, conn.recv(CREDENTIALS_PACKET_SIZE))
@@ -115,9 +119,9 @@ class EntryNode:
         #     while not valid_ip(ip):
         #         ip = input(f"Enter {node_index=} ip: ")
 
-        # TODO: actually make this secure lmao
-        conn, data = self.server2server.accept()
-        self.nodes.append(NodeData("127.0.0.1", [], conn))
+        # # TODO: actually make this secure lmao
+        # conn, data = self.server2server.accept()
+        self.nodes.append(NodeData("127.0.0.1", [], None))
 
         # TODO: send here the generated SQL password for user
         # self.server_send_queue.put()
@@ -128,9 +132,9 @@ class EntryNode:
 
         threads = []
         self.sock.listen()
-        # server2server threads
-        threads.append(Thread(target=self.receiver))
-        threads.append(Thread(target=self.sender))
+        # # server2server threads
+        # threads.append(Thread(target=self.receiver))
+        # threads.append(Thread(target=self.sender))
 
         # client handling threads
         for _ in range(self.client_thread_count):
@@ -141,7 +145,7 @@ class EntryNode:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     sock = socket.socket()
     sock.bind((ROOT_IP, ROOT_PORT))
     db = SqlDatabase("127.0.0.1", DB_PASS)

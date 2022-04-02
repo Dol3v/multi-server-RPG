@@ -34,7 +34,7 @@ class SqlDatabase:
                                  Column("username", VARCHAR(MAX_SIZE), primary_key=True),
                                  Column("password", Text),
                                  Column("salt", Text),
-                                 Column("uuid", Text, primary_key=True))
+                                 Column("uuid", VARCHAR(UUID_SIZE), primary_key=True))
         self.chat_table = Table(CHAT_TABLE, self.metadata,
                                 Column("username", VARCHAR(MAX_SIZE), primary_key=True),
                                 Column("date", Text),

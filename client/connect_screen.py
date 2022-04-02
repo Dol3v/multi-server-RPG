@@ -140,6 +140,7 @@ class ConnectScreen:
         return False
 
     def connect_to_server(self, ip, username, password, is_login: bool = False):
+        print("Got to connect")
         if not is_valid_ip(ip):
             print(f"Invalid ip {ip}")
             return
@@ -147,10 +148,12 @@ class ConnectScreen:
         with socket.socket() as conn:
             try:
                 conn.connect((ip, ROOT_PORT))
+                print("Connected")
             except OSError:
                 print(f"Couldn't connect to ip {ip}")
                 return
             self.shared_key = do_ecdh(conn)
+            print(f"Did ecdh, key={self.shared_key}")
             send_credentials(username, password, conn, self.shared_key, is_login)
             ip, success, error_message = get_login_response(conn)
             print(f"{ip=}")

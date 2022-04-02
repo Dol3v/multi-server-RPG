@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import select, insert, delete
 
 from common.utils import *
-from consts import USERNAME_COL, HASH_COL, SALT_COL
+from consts import USERNAME_COL, HASH_COL, SALT_COL, UUID_COL
 from database import SqlDatabase
 from entities import Player
 
@@ -37,13 +37,13 @@ def delete_user_info(db: SqlDatabase, uuid: str):
     return db.exec(stmt)
 
 
-def add_user_to_database(db: SqlDatabase, username: str, password_hash: bytes, password_salt: bytes):
+def add_user_to_database(db: SqlDatabase, username: str, password_hash: bytes, password_salt: bytes, user_uuid: str):
     """
     add user to the table
     """
     stmt = (
         insert(db.creds_table).values(username=username, password=base64_encode(password_hash),
-                                      salt=base64_encode(password_salt))
+                                      salt=base64_encode(password_salt), uuid=user_uuid)
     )
     return db.exec(stmt)
 

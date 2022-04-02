@@ -188,7 +188,7 @@ class Node:
                     self.players[addr].pos = player_pos
 
                 entity = self.players[addr]
-                if seqn <= entity.last_updated:
+                if seqn <= entity.last_updated != 0:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
 
@@ -199,6 +199,7 @@ class Node:
                 if attacked:
                     self.update_hp(entity, slot_index, addr)
                 self.update_client(addr, secure_pos)
+                print(self.players)
             except Exception as e:
                 logging.exception(e)
 
