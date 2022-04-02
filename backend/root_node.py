@@ -64,10 +64,11 @@ class EntryNode:
             target_node = self.get_minimal_load_server()
 
             # uuid & addr
+            logging.info(f"client redirected to {target_node.ip}")
             conn.send(struct.pack(REDIRECT_FORMAT, target_node.ip.encode(), success, len(error_msg)) + error_msg.encode())
-            # send to the server
+            # update redirected node for the upcoming client
             # [uuid, addr]
-            # 
+            
             if success:
                 # self.nodes[]
 
