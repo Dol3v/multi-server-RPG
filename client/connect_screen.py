@@ -11,7 +11,7 @@ from common.utils import is_valid_ip
 
 sys.path.append('../')
 from consts import *
-from common.consts import SERVER_PORT, SCREEN_HEIGHT, ROOT_PORT
+from common.consts import NODE_PORT, SCREEN_HEIGHT, ROOT_PORT
 from graphics import *
 
 
@@ -152,8 +152,10 @@ class ConnectScreen:
                 return
             self.shared_key = do_ecdh(conn)
             send_credentials(username, password, conn, self.shared_key, is_login)
-            success, error_message = get_login_response(conn)
-            self.game_server_addr = (ip, SERVER_PORT)
+            ip, success, error_message = get_login_response(conn)
+            print(f"{ip=}")
+            self.game_server_addr = (ip, NODE_PORT)
+
             if not success:
                 print(error_message)
                 self.sock = None

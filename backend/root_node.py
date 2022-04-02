@@ -1,37 +1,34 @@
 """Login/Load-balancing server"""
 import logging
 import sys
+import uuid
 import socket
 import struct
-from base64 import urlsafe_b64encode
-from collections import defaultdict
 from threading import Thread
-from typing import Tuple, Dict, List
-
-from authentication import login, signup
-from cryptography.fernet import Fernet, InvalidToken
+from typing import Tuple, List
+from dataclasses import dataclass
 
 # to import from a dir
 sys.path.append('../')
-from consts import FERNET_TOKEN_LENGTH, CREDENTIALS_PACKET_SIZE, DB_PASS
+from consts import DB_PASS, CREDENTIALS_PACKET_SIZE
+from authentication import login, signup, parse_credentials
 from database import SqlDatabase
 from networking import do_ecdh
-from common.consts import ROOT_IP, ROOT_PORT, Addr
+from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, NODE_PORT, NODE_COUNT, DEFAULT_ADDR
 
+from common.utils import valid_ip
 
-def parse_credentials(shared_key: bytes, data: bytes) -> Tuple[bool, str, bytes] | None:
-    """
-    Use: receive encrypted (by the shared key) username and password and decrypt them.
-    """
-    fernet = Fernet(urlsafe_b64encode(shared_key))
-    try:
-        login, data = bool(data[0]), data[1:]
-        username_token, password_token = data[:FERNET_TOKEN_LENGTH], data[FERNET_TOKEN_LENGTH:]
-        return login, fernet.decrypt(username_token).decode(), fernet.decrypt(password_token)
-    except InvalidToken as e:
-        logging.critical(f"[error] decryption of username/password failed {e=}")
-        return None
+@dataclass
+class ClientData:
+    addr: Addr = DEFAULT_ADDR
+    uuid: str = uuid.uuid4()
 
+@dataclass
+class NodeData:
+    ip: str
+    conn: socket.socket
+    clients_info : List[ClientData]
+    
 
 class EntryNode:
     """Node that all clients will initially access."""
@@ -42,10 +39,15 @@ class EntryNode:
         self.sock = sock
         self.db_conn = db
         # addresses currently connected to a given server
-        self.servers: Dict[Addr, List[Addr]] = defaultdict(list)
+        self.nodes: List[NodeData] = []
+
 
     def get_minimal_load_server(self):
-        ...
+        """
+        get the Node with the smallest number of clients
+        """
+        return min(self.nodes, key=lambda n: len(n.clients_info))
+
 
     def handle_incoming_players(self):
         while True:
@@ -57,13 +59,37 @@ class EntryNode:
             else:
                 success, error_msg = signup(username, password, self.db_conn)
 
-            conn.send(struct.pack(">?l", success, len(error_msg)) + error_msg.encode())
+            logging.info(f"Error Msg: {error_msg}")
+            # find addr entites {:client count}
+            target_node = self.get_minimal_load_server()
+
+            # uuid & addr
+            logging.info(f"client redirected to {target_node.ip}")
+            conn.send(struct.pack(REDIRECT_FORMAT, target_node.ip.encode(), success, len(error_msg)) + error_msg.encode())
+            # update redirected node for the upcoming client
+            # [uuid, addr]
+            
             if success:
-                # self.servers[]
+                # self.nodes[]
+
                 ...
             conn.close()
 
+    def init_nodes(self):
+        """
+        """
+        for node in range(NODE_COUNT):
+            ip = input(f"Enter {node=} ip: ")
+            if not valid_ip(ip):
+                continue
+
+            self.nodes.append(NodeData(ip, None, [ClientData()]))
+        print(self.nodes)
+
     def run(self):
+
+        self.init_nodes()
+
         threads = []
         self.sock.listen()
         for _ in range(self.thread_count):
@@ -72,8 +98,9 @@ class EntryNode:
         for thread in threads:
             thread.start()
 
-
+REDIRECT_FORMAT
 if __name__ == "__main__":
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     sock = socket.socket()
     sock.bind((ROOT_IP, ROOT_PORT))
     db = SqlDatabase("127.0.0.1", DB_PASS)

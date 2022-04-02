@@ -1,10 +1,11 @@
 import functools
+import itertools
 import logging
 import sched
 import sys
 import threading
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Any
 
 from pyqtree import Index
 
@@ -26,7 +27,7 @@ EntityData = Tuple[int, str, int, int, float, float, int]
 class Node:
 
     def __init__(self, port) -> None:
-        self.node_ip = SERVER_IP  # socket.gethostbyname(socket.gethostname())
+        self.node_ip = socket.gethostbyname(socket.gethostname())
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -46,8 +47,8 @@ class Node:
         return self.players.keys()
 
     @property
-    def server_controlled(self) -> Dict[str, Bot | Projectile]:
-        return self.bots | self.projectiles
+    def entities(self) -> defaultdict[str, Entity]:
+        return self.players | self.bots | self.players
 
     def get_data_from_entity(self, entity_data: Tuple[int, Any]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
@@ -68,27 +69,6 @@ class Node:
         elif entity_data[0] == BOT_TYPE:
             tool_id = entity.weapon
         return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction, tool_id
-
-    def update_entity_position(self, entity: Entity, pos: Pos, kind: int, *, addr: Addr = None,
-                               width: int = CLIENT_WIDTH, height: int = CLIENT_HEIGHT):
-        """Updates the position of an entity.
-
-        :param entity: entity to update
-        :param pos: new entity position
-        :param kind: entity type
-        :param addr: address of client, relevant only if `kind=PLAYER_TYPE`
-        :param width: width of entity sprite
-        :param height: height of entity sprite"""
-        self.spindex.remove((kind, entity.uuid), get_bounding_box(entity.pos, height, width))
-        if kind == PLAYER_TYPE:
-            self.players[addr].pos = pos
-        else:
-            self.server_controlled[entity.uuid].pos = pos
-        self.spindex.insert((kind, entity.uuid), get_bounding_box(entity.pos, height, width))
-
-    def remove_entity(self, entity: Entity, kind: int, *, addr: Addr = None,
-                      width: int = CLIENT_WIDTH, height: int = CLIENT_HEIGHT):
-        self.spindex.remove((kind, entity.uuid), get_bounding_box(entity.pos, height, width))
 
     def attackable_in_range(self, entity_addr: Addr, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
         return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
@@ -120,13 +100,18 @@ class Node:
         :returns:``DEFAULT_POS_MARK`` if the client position is fine, or the server-side-calculated pos for the client
         otherwise.
         """
-        # if the received packet is dated then update player to last known position
+        # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if invalid_movement(entity, player_pos, seqn):
+        if invalid_movement(entity, player_pos, seqn) or seqn != entity.last_updated + 1:
             secure_pos = self.players[addr].pos
         else:
-            self.update_entity_position(entity, player_pos, PLAYER_TYPE, addr=addr)
+            # update player location in quadtree
+            self.spindex.remove((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+            # if packet is not outdated, update player stats
+            entity.pos = player_pos
             entity.last_updated = seqn
+
+            self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(entity.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
         return secure_pos
 
     def update_hp(self, player: Player, inventory_slot: int, addr: Addr):
@@ -135,20 +120,21 @@ class Node:
         :param player: player entity with updated position
         :param inventory_slot: slot index of player
         :param addr: address of client"""
+        logging.debug(f"Player {addr} tried to attack")
         # check for cooldown and update it accordingly
         if player.current_cooldown != -1:
             if player.current_cooldown + player.last_time_attacked > (new := time.time()):
-                logging.info(f"[blocked] cooldown={player.current_cooldown} prevented attack by {addr=}")
+                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {addr=}")
                 return
+            logging.info(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
             player.current_cooldown = -1
         try:
             tool = player.tools[inventory_slot]
             weapon_data = WEAPON_DATA[tool]
         except KeyError:
-            logging.info(f"[error, blocked] invalid slot index/tool given by {addr=}")
+            logging.info(f"Invalid slot index/tool given by {addr=}")
             return
         player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
-        logging.info(f"[action] player={player.uuid} attacked")
         if weapon_data['is_melee']:
             attackable_in_range = self.entities_in_melee_attack_range(player, addr, weapon_data['melee_attack_range'])
             # resetting cooldown
@@ -158,7 +144,7 @@ class Node:
                 attackable.health -= weapon_data['damage']
                 if attackable.health < 0:
                     attackable.health = 0
-                logging.debug(f"[updated] entity health to {attackable.health}")
+                logging.debug(f"Updated entity health to {attackable.health}")
         else:
             player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
             player.last_time_attacked = time.time()
@@ -169,7 +155,7 @@ class Node:
             self.projectiles[projectile.uuid] = projectile
             self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
-            logging.info(f"[added] projectile {projectile}")
+            logging.info(f"Added projectile {projectile}")
 
     def update_client(self, addr: Addr, secure_pos: Pos):
         """
@@ -197,32 +183,24 @@ class Node:
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
 
-                # TODO: signup with uuid & username/password
                 if addr not in self.addrs:
-                    entity = self.players[addr]
-                    self.spindex.insert((PLAYER_TYPE, entity.uuid), get_bounding_box(player_pos, CLIENT_HEIGHT,
-                                                                                     CLIENT_WIDTH))
-                    entity.pos = player_pos
-                    entity.last_updated = seqn
-                    logging.info(f"[update] added new player {addr=} {entity=}")
+                    self.spindex.insert((PLAYER_TYPE, addr), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
+                    self.players[addr].pos = player_pos
 
                 entity = self.players[addr]
                 if seqn <= entity.last_updated:
-                    logging.info(f"[blocked] got outdated packet from {addr=}")
+                    logging.info(f"Got outdated packet from {addr=}")
                     continue
-                elif seqn == entity.last_updated + 1:
-                    entity.direction = attack_dir  # TODO: check if normalized
-                    secure_pos = self.update_location(player_pos, seqn, entity, addr)
 
-                    entity.slot = slot_index
-                    if attacked:
-                        self.update_hp(entity, slot_index, addr)
-                else:
-                    # if there was a packet gap, update the client to use the previous known state
-                    secure_pos = entity.pos
+                entity.direction = attack_dir  # TODO: check if normalized
+                secure_pos = self.update_location(player_pos, seqn, entity, addr)
+
+                entity.slot = slot_index
+                if attacked:
+                    self.update_hp(entity, slot_index, addr)
                 self.update_client(addr, secure_pos)
             except Exception as e:
-                logging.exception(f"[exception] {e}, {self.players=} {self.projectiles=} {self.bots=}")
+                logging.exception(e)
 
     def server_controlled_entities_update(self, s, projectiles, bots: List[Bot]):
         """
@@ -237,23 +215,27 @@ class Node:
                 for kind, identifier in intersection:
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
-                        logging.info(f"[update, action] projectile {projectile} hit a player {player}")
+                        logging.info(f"Projectile {projectile} hit a player {player}")
                         player.health -= projectile.damage
                         if player.health < MIN_HEALTH:
                             player.health = MIN_HEALTH
-                        logging.info(f"[update] updated player {identifier} health to {player.health}")
+                        logging.debug(f"Updated player {identifier} health to {player.health}")
                         to_remove.append(projectile)
                         collided = True
                         # TODO: add wall collision
             if not collided:
-                self.update_entity_position(projectile, (projectile.pos[0] +
-                                                         int(PROJECTILE_SPEED * projectile.direction[0]),
-                                                         projectile.pos[1] +
-                                                         int(PROJECTILE_SPEED * projectile.direction[1])),
-                                            PROJECTILE_TYPE, height=PROJECTILE_HEIGHT, width=PROJECTILE_WIDTH)
+                self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
+                                                                                         PROJECTILE_HEIGHT,
+                                                                                         PROJECTILE_WIDTH))
+                self.projectiles[projectile.uuid].pos = projectile.pos[0] + \
+                                                        int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[
+                                                            1] + \
+                                                        int(PROJECTILE_SPEED * projectile.direction[1])
+                self.spindex.insert((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
+                                                                                         PROJECTILE_HEIGHT,
+                                                                                         PROJECTILE_WIDTH))
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
-            logging.debug(f"[update] trying to remove projectile {projectile}")
             self.projectiles.pop(projectile.uuid)
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                      PROJECTILE_HEIGHT,
@@ -274,7 +256,7 @@ class Node:
         """
 
         self.server_sock.bind(self.address)
-        logging.info(f"[general] binded to address {self.address}")
+        logging.info(f"Binded to address {self.address}")
 
         try:
             threading.Thread(target=self.start_location_update).start()
@@ -296,6 +278,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="[%(levelname)s]:%(asctime)s:%(thread)d - %(message)s", filemode="w+",
-                        filename="server.log", level=logging.DEBUG)
-    Node(SERVER_PORT)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    Node(NODE_PORT)

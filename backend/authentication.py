@@ -2,6 +2,8 @@ import logging
 import sys
 from os import urandom
 
+from base64 import urlsafe_b64encode
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.exceptions import InvalidKey
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
@@ -11,7 +13,21 @@ sys.path.append('../')
 from database import SqlDatabase
 from database_utils import add_user_to_database, user_in_database, get_user_credentials
 from common.utils import *
-from consts import SCRYPT_KEY_LENGTH, SCRYPT_N, SCRYPT_P, SCRYPT_R
+from consts import *
+
+
+def parse_credentials(shared_key: bytes, data: bytes) -> Tuple[bool, str, bytes] | None:
+    """
+    Use: receive encrypted (by the shared key) username and password and decrypt them.
+    """
+    fernet = Fernet(urlsafe_b64encode(shared_key))
+    try:
+        login, data = bool(data[0]), data[1:]
+        username_token, password_token = data[:FERNET_TOKEN_LENGTH], data[FERNET_TOKEN_LENGTH:]
+        return login, fernet.decrypt(username_token).decode(), fernet.decrypt(password_token)
+    except InvalidToken as e:
+        logging.critical(f"Decryption of username/password failed {e=}")
+        return None
 
 
 def generate_hash_and_salt(password: bytes) -> Tuple[bytes, bytes]:
