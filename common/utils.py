@@ -25,6 +25,13 @@ def parse(parse_format: str, data: bytes) -> tuple | None:
         print(error)
         return None
 
+def valid_ip(ip: str):
+    try:
+        socket.inet_aton(ip)
+        return True;
+    except socket.error:
+        return False
+
 
 def flatten(iterable: Iterable) -> list:
     """

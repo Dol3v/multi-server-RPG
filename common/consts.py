@@ -48,14 +48,16 @@ Addr = Tuple[str, int]
 Dir = Tuple[float, float]
 
 # Server configurations
-SERVER_PORT = 42069
-SERVER_IP = "127.0.0.1"
+NODE_PORT = 42069
+DEFAULT_NODE_IP = "127.0.0.1"
 RECV_CHUNK = 1024
 THREADS_COUNT = 1
+NODE_COUNT = 1
 
 # Networking conventions
 DEFAULT_POS_MARK = (-1, -1)
 DEFAULT_DIR = (0.0, 0.0)
+DEFAULT_ADDR = (DEFAULT_NODE_IP, -1)
 
 # Useful player information
 SPEED = 5

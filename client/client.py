@@ -3,7 +3,7 @@ import os
 import sys
 
 sys.path.append('../')
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, SERVER_PORT
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT 
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
