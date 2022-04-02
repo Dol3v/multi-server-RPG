@@ -79,7 +79,11 @@ class Game:
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
 
     def receiver(self):
-        while self.can_recv:
+        print("Started receiver")
+        while not self.can_recv:
+            ...
+        print("Can recv")
+        while True:
             print(self.conn)
             self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
@@ -88,10 +92,13 @@ class Game:
         Use: communicate with the server over UDP.
         """
         # update server
+        print("Got to server update")
         self.update_player_actions()
         update_packet = generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery,
                                                 self.actions)
+        print("Sending update packet")
         self.conn.sendto(update_packet, self.server_addr)
+        print("Sent packet")
         self.seqn += 1
 
         # receive server update

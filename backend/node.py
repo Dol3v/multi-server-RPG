@@ -27,7 +27,9 @@ EntityData = Tuple[int, str, int, int, float, float, int]
 class Node:
 
     def __init__(self, port):
-        self.node_ip = socket.gethostbyname(socket.gethostname())
+        # TODO: uncomment when coding on prod
+        # self.node_ip = socket.gethostbyname(socket.gethostname())
+        self.node_ip = "127.0.0.1"
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.root_sock = socket.socket()
@@ -85,7 +87,7 @@ class Node:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
-                             int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
+            int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
         return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
@@ -133,7 +135,7 @@ class Node:
         player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
         if weapon_data['is_melee']:
             attackable_in_range = self.entities_in_melee_attack_range(player,
-                                                                      player.uuid, weapon_data['melee_attack_range'])
+                                                                      weapon_data['melee_attack_range'])
             # resetting cooldown
             player.last_time_attacked = time.time()
 
@@ -180,8 +182,6 @@ class Node:
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
-                print("Ended iter")
-                continue
 
                 self.spindex.insert((PLAYER_TYPE,), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
 
@@ -191,12 +191,12 @@ class Node:
                     continue
 
                 entity.direction = attack_dir  # TODO: check if normalized
-                secure_pos = self.update_location(player_pos, seqn, entity, addr)
+                secure_pos = self.update_location(player_pos, seqn, entity)
 
                 entity.slot = slot_index
                 if attacked:
-                    self.update_hp(entity, slot_index, addr)
-                self.update_client(addr, secure_pos)
+                    self.update_hp(entity, slot_index)
+                self.update_client(entity.uuid, secure_pos)
                 print(self.players)
             except Exception as e:
                 logging.exception(e)
@@ -227,9 +227,8 @@ class Node:
                                                                                          PROJECTILE_HEIGHT,
                                                                                          PROJECTILE_WIDTH))
                 self.projectiles[projectile.uuid].pos = projectile.pos[0] + \
-                                                        int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[
-                                                            1] + \
-                                                        int(PROJECTILE_SPEED * projectile.direction[1])
+                    int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
+                    int(PROJECTILE_SPEED * projectile.direction[1])
                 self.spindex.insert((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                          PROJECTILE_HEIGHT,
                                                                                          PROJECTILE_WIDTH))
@@ -255,8 +254,8 @@ class Node:
             shared_key, player_uuid = data[SHARED_KEY_SIZE:], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
             addr = struct.unpack(">4Bl", data[SHARED_KEY_SIZE + UUID_SIZE:])
             ip = "".join(str(ip_byte) + "." for ip_byte in addr[:-1])[:-1] # Go Spaghetti code!
-            logging.info(f"[login] notified player {player_uuid=} with addr={(ip, addr[1])} is about to join")
-            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, addr[1]))
+            logging.info(f"[login] notified player {player_uuid=} with addr={(ip, addr[-1])} is about to join")
+            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, addr[-1]))
 
     def run(self) -> None:
         """
@@ -287,5 +286,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     Node(NODE_PORT)
