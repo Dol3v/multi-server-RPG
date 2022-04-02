@@ -7,7 +7,7 @@ from base64 import urlsafe_b64encode
 from collections import defaultdict
 from threading import Thread
 from typing import Tuple, Dict, List
-from dataclasses import dataclass
+
 from authentication import login, signup
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -16,20 +16,13 @@ sys.path.append('../')
 from consts import FERNET_TOKEN_LENGTH, CREDENTIALS_PACKET_SIZE, DB_PASS
 from database import SqlDatabase
 from networking import do_ecdh
-from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT
+from common.consts import ROOT_IP, ROOT_PORT, Addr
 import uuid
 
 @dataclass
 class ClientData:
     addr: Addr
     uuid: str = uuid.uuid4()
-
-@dataclass
-class NodeData:
-    clients_info : List[ClientData]
-    conn: socket.socket
-    
-
 
 # uuid, addr
 
@@ -56,14 +49,10 @@ class EntryNode:
         self.sock = sock
         self.db_conn = db
         # addresses currently connected to a given server
-        self.servers: Dict[Addr, NodeData] = {}
+        self.servers: Dict[Addr, List[ClientData]] = defaultdict(list)
 
     def get_minimal_load_server(self):
-        """
-
-        """
-
-
+        ...
 
 
     def handle_incoming_players(self):
@@ -78,15 +67,10 @@ class EntryNode:
 
             logging.info(f"Error Msg: {error_msg}")
             # find addr entites {:client count}
-
             # uuid & addr
-            conn.send(struct.pack(REDIRECT_FORMAT, '127.0.0.1'.encode(), success, len(error_msg)) + error_msg.encode())
-            # send to the server
-            # [uuid, addr]
-            # 
+            conn.send(struct.pack(">?l", success, len(error_msg)) + error_msg.encode())
             if success:
                 # self.servers[]
-
                 ...
             conn.close()
 
@@ -99,7 +83,7 @@ class EntryNode:
         for thread in threads:
             thread.start()
 
-REDIRECT_FORMAT
+
 if __name__ == "__main__":
     logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     sock = socket.socket()
