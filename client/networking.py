@@ -29,9 +29,9 @@ def send_credentials(username: str, password: str, conn: socket.socket, shared_k
     conn.send(int(is_login).to_bytes(1, "big") + username_token + password_token)
 
 
-def get_login_response(conn: socket.socket) -> Tuple[str, bool, str]:
-    ip, success, msg_length = struct.unpack(REDIRECT_FORMAT, conn.recv(struct.calcsize(REDIRECT_FORMAT)))
-    return ip.decode().rstrip("\x00"), success, conn.recv(msg_length).decode()
+def get_login_response(conn: socket.socket) -> Tuple[str, str, bool, str]:
+    user_uuid, ip, success, msg_length = struct.unpack(REDIRECT_FORMAT, conn.recv(struct.calcsize(REDIRECT_FORMAT)))
+    return ip.decode().rstrip("\x00"), user_uuid, success, conn.recv(msg_length).decode()
 
 
 def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:

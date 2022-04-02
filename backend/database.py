@@ -3,6 +3,7 @@ import ssl
 
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, JSON, INT
 
+from common.consts import UUID_SIZE
 from consts import *
 
 

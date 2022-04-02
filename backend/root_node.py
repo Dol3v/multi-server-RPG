@@ -16,7 +16,7 @@ from consts import DB_PASS, CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT
 from authentication import login, signup, parse_credentials
 from database import SqlDatabase
 from networking import do_ecdh
-from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK
+from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID
 
 
 @dataclass
@@ -95,7 +95,7 @@ class EntryNode:
 
             if not success:
                 logging.info(f"[blocked] login/signup failed, error msg: {error_msg}")
-                conn.send(struct.pack(REDIRECT_FORMAT, "0.0.0.0".encode(), success, len(error_msg))
+                conn.send(struct.pack(REDIRECT_FORMAT, EMPTY_UUID, "0.0.0.0".encode(), success, len(error_msg))
                           + error_msg.encode())
                 conn.close()
                 continue
@@ -104,7 +104,8 @@ class EntryNode:
             # uuid & addr
             logging.info(f"client redirected to {target_node.ip}")
             conn.send(
-                struct.pack(REDIRECT_FORMAT, target_node.ip.encode(), success, len(error_msg)) + error_msg.encode())
+                struct.pack(REDIRECT_FORMAT, user_uuid.encode(), target_node.ip.encode(),
+                            success, len(error_msg)) + error_msg.encode())
 
             self.server_send_queue.put((target_node.conn, ))
 
