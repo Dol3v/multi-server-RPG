@@ -3,6 +3,7 @@ import logging
 import queue
 import sched
 import sys
+import numpy as np
 import threading
 from collections import defaultdict
 from typing import Dict
@@ -11,7 +12,6 @@ from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
 # to import from a dir
-
 sys.path.append('../')
 
 from common.consts import *
@@ -39,12 +39,13 @@ class Node:
         self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))
 
         self.players: Dict[str, Player] = {}
-        self.bots: defaultdict[str, Mob] = defaultdict(lambda: Mob())
+        self.mobs: Dict[str, Mob] = {}
         self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
         projectile/player/mob, and the uuid being, well, the uuid."""
+
 
         self.send_queue = queue.Queue()
         self.recv_queue = queue.Queue()
@@ -53,6 +54,7 @@ class Node:
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
         # Starts the node
+        self.generate_mobs()
         self.run()
 
     @functools.cached_property
@@ -61,7 +63,7 @@ class Node:
 
     @property
     def entities(self) -> defaultdict[str, Entity]:
-        return self.players | self.bots | self.projectiles
+        return self.players | self.mobs | self.projectiles
 
     def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
@@ -71,12 +73,12 @@ class Node:
         tool_id = EMPTY_SLOT
         if entity_data[0] == PLAYER_TYPE:
             tool_id = entity.tools[entity.slot]
-        elif entity_data[0] == BOT_TYPE:
+        elif entity_data[0] == MOB_TYPE:
             tool_id = entity.weapon
         return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction, tool_id
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
-        return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
+        return map(lambda data: self.mobs[data[1]] if data[0] == MOB_TYPE else self.players[data[1]],
                    filter(lambda data: data[1] != entity_uuid and data[0] != PROJECTILE_TYPE,
                           self.spindex.intersect(bbox)))
 
@@ -102,7 +104,7 @@ class Node:
             width, height = CLIENT_WIDTH, CLIENT_HEIGHT
         elif entity_type == PROJECTILE_TYPE:
             width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
-        elif entity_type == BOT_TYPE:
+        elif entity_type == MOB_TYPE:
             width, height = BOT_WIDTH, BOT_HEIGHT
         else:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
@@ -179,9 +181,7 @@ class Node:
             logging.info(f"Added projectile {projectile}")
 
     def update_client(self, player_uuid: str, secure_pos: Pos):
-        """
-        Use: sends server message to the client
-        """
+        """sends server message to the client"""
         new_chat = ""
         player = self.players[player_uuid]
         entities_array = flatten(self.entities_in_rendering_range(player))
@@ -190,9 +190,7 @@ class Node:
         self.server_sock.sendto(update_packet, player.addr)
 
     def handle_client(self):
-        """
-        Use: communicate with client
-        """
+        """communicate with client"""
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
@@ -226,9 +224,7 @@ class Node:
                 logging.exception(e)
 
     def server_controlled_entities_update(self, s, projectiles, bots: List[Mob]):
-        """
-        Use: update all projectiles and bots positions inside a loop
-        """
+        """update all projectiles and bots positions inside a loop"""
         # projectile handling
         to_remove = []
         for projectile in projectiles.values():
@@ -262,11 +258,9 @@ class Node:
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
-        """
-        Use: starts the schedular and the function
-        """
+        """starts the schedular and the function"""
         s = sched.scheduler(time.time, time.sleep)
-        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, self.projectiles, self.bots,))
+        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, self.projectiles, self.mobs,))
         s.run()
 
     def root_receiver(self):
@@ -276,7 +270,8 @@ class Node:
             shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
             ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE:])
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
-            initial_pos = (2010, 1530)  # should be received from root
+            initial_pos = self.get_available_position(PLAYER_TYPE)
+
             self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
                                                pos=initial_pos)  # TODO: refactor and find out why tf the client starts off 30 pixels off where he should
@@ -284,11 +279,29 @@ class Node:
             self.spindex.insert((PLAYER_TYPE, player_uuid),
                                 get_bounding_box(initial_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
 
-    def run(self) -> None:
-        """
-        Use: starts node threads
-        """
+    def get_available_position(self, kind: int) -> Pos:
+        """Generates a position on the map, such that the bounding box of an entity of type ``kind``
+           doesn't intersect with any existing object on the map.
 
+        :param kind: entity type
+        :returns: available position"""
+        pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH)), int(np.random.uniform(0, WORLD_HEIGHT))
+
+        while len(self.spindex.intersect(self.get_entity_bounding_box((pos_x, pos_y), kind))) != 0:
+            pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH)), int(np.random.uniform(0, WORLD_HEIGHT))
+        return pos_x, pos_y
+
+    def generate_mobs(self):
+        """Generate the mobs object with a random positions"""
+        for _ in range(MOB_COUNT):
+            mob = Mob()
+            mob.pos = self.get_available_position(MOB_TYPE)
+            self.mobs[mob.uuid] = mob
+
+        print(self.mobs)
+
+    def run(self) -> None:
+        """starts node threads"""
         self.server_sock.bind(self.address)
         logging.info(f"Binded to address {self.address}")
 
@@ -305,9 +318,7 @@ class Node:
 
 
 def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
-    """
-    Use: check if a given player movement is valid
-    """
+    """check if a given player movement is valid"""
     return entity.last_updated != -1 and not moved_reasonable_distance(
         player_pos, entity.pos, seqn - entity.last_updated)
 
