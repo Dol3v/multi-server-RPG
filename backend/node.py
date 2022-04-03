@@ -34,6 +34,8 @@ class Node:
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.root_sock = socket.socket()
+        # TODO: remove when actually deploying exe
+        time.sleep(1)
         self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))
 
         self.players: Dict[str, Player] = {}
@@ -102,6 +104,7 @@ class Node:
         otherwise.
         """
         # if the received packet is dated then update player
+        # FIXME: not working
         secure_pos = DEFAULT_POS_MARK
         if invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
             secure_pos = self.players[player.uuid].pos
@@ -111,6 +114,7 @@ class Node:
             # if packet is not outdated, update player stats
             player.pos = player_pos
             player.last_updated = seqn
+            self.players[player.uuid] = player
             self.spindex.insert((PLAYER_TYPE, player.uuid), get_bounding_box(player.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
         return secure_pos
 
@@ -186,11 +190,10 @@ class Node:
                 if not client_msg:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
+                logging.debug(f"[debug] player at {x=} {y=}")
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
-
-                self.spindex.insert((PLAYER_TYPE,), get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
 
                 entity = self.players[player_uuid]
                 if seqn <= entity.last_updated != 0:
@@ -204,7 +207,6 @@ class Node:
                 if attacked:
                     self.update_hp(entity, slot_index)
                 self.update_client(entity.uuid, secure_pos)
-                print(self.players)
             except Exception as e:
                 logging.exception(e)
 
@@ -234,8 +236,9 @@ class Node:
                                                                                          PROJECTILE_HEIGHT,
                                                                                          PROJECTILE_WIDTH))
                 self.projectiles[projectile.uuid].pos = projectile.pos[0] + \
-                    int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[1] + \
-                    int(PROJECTILE_SPEED * projectile.direction[1])
+                                                        int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[
+                                                            1] + \
+                                                        int(PROJECTILE_SPEED * projectile.direction[1])
                 self.spindex.insert((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                          PROJECTILE_HEIGHT,
                                                                                          PROJECTILE_WIDTH))
@@ -257,14 +260,18 @@ class Node:
 
     def root_receiver(self):
         while True:
+            # FIXME: possible ConnectionResetError
             data = self.root_sock.recv(RECV_CHUNK)
             shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
-            addr = struct.unpack(">4Bl", data[SHARED_KEY_SIZE + UUID_SIZE:])
-            ip = "".join(str(ip_byte) + "." for ip_byte in addr[:-1])[:-1]  # Go Spaghetti code!
-            logging.info(f"[login] notified player {player_uuid=} with addr={(ip, addr[-1])} is about to join")
-            print(len(shared_key), shared_key)
-            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, addr[-1]),
-                                               fernet=Fernet(base64.urlsafe_b64encode(shared_key)))
+            ip, port = deserialize_addr( data[SHARED_KEY_SIZE + UUID_SIZE:])
+            logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
+            initial_pos = (2010, 1530)  # should be received from root
+            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
+                                               fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                               pos=initial_pos)  # TODO: refactor and find out why tf the client starts off 30 pixels off where he should
+
+            self.spindex.insert((PLAYER_TYPE, player_uuid),
+                                get_bounding_box(initial_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
 
     def run(self) -> None:
         """

@@ -1,5 +1,5 @@
 # SqlDatabase configurations
-from common.consts import SWORD, AXE, BOW
+from common.consts import SWORD, AXE, BOW, INT_SIZE
 
 SQL_TYPE = "mysql"
 DB_PORT = 3306
@@ -28,7 +28,8 @@ USER_TABLE = "users_info"
 
 # Fernet Consts
 FERNET_TOKEN_LENGTH = 100
-CREDENTIALS_PACKET_SIZE = 1 + 2 * FERNET_TOKEN_LENGTH
+ADDR_HEADER_SIZE = 4 + INT_SIZE
+CREDENTIALS_PACKET_SIZE = ADDR_HEADER_SIZE + 1 + 2 * FERNET_TOKEN_LENGTH
 
 ARM_LENGTH_MULTIPLIER = 10
 

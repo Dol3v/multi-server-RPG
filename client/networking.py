@@ -4,7 +4,7 @@ from base64 import urlsafe_b64encode
 from cryptography.fernet import Fernet
 
 from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, MESSAGE_ENDIANESS, CLIENT_FORMAT, ENTITY_FORMAT, \
-    RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT
+    RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT, Addr
 from common.utils import *
 
 
@@ -19,15 +19,16 @@ def do_ecdh(conn: socket.socket) -> bytes | None:
     return get_shared_key(private_key, server_public_key)
 
 
-def send_credentials(username: str, password: str, conn: socket.socket, shared_key: bytes, is_login: bool = False):
+def send_credentials(username: str, password: str, conn: socket.socket, shared_key: bytes, client_game_addr: Addr,
+                     is_login: bool = False):
     """
     Use: login to the server
     """
-    print(f"len={len(shared_key)}, {shared_key=}, urlsafe={urlsafe_b64encode(shared_key) == shared_key}")
     fernet = Fernet(urlsafe_b64encode(shared_key))
     username_token = fernet.encrypt(username.encode())
     password_token = fernet.encrypt(password.encode())
-    conn.send(int(is_login).to_bytes(1, "big") + username_token + password_token)
+    conn.send(serialize_ip(client_game_addr[0]) + struct.pack(">l?", client_game_addr[1], is_login) +
+              username_token + password_token)
     return fernet
 
 

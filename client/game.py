@@ -30,8 +30,8 @@ class Game:
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
-        print(len(shared_key), shared_key)
         self.fernet = Fernet(base64.urlsafe_b64encode(shared_key))
+        print(f"{conn=}, {server_addr=}")
 
         # init sprites
         self.can_recv: bool = False
@@ -95,12 +95,9 @@ class Game:
         return self.player.rect.centery
 
     def receiver(self):
-        print("Started receiver")
         while not self.can_recv:
             ...
-        print("Can recv")
         while True:
-            print(self.conn)
             self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
     def server_update(self):
@@ -108,13 +105,10 @@ class Game:
         Use: communicate with the server over UDP.
         """
         # update server
-        print("Got to server update")
         self.update_player_actions()
         update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
                                                 self.actions, self.fernet)
-        print("Sending update packet")
         self.conn.sendto(update_packet, self.server_addr)
-        print("Sent packet")
         self.seqn += 1
 
         # receive server update
@@ -125,6 +119,7 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
+            print(*tools,  x, y, health, entities)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 

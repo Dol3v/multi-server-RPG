@@ -11,13 +11,14 @@ from threading import Thread
 from typing import List, Iterable
 
 # to import from a dir
+from common.utils import deserialize_addr, serialize_ip
+
 sys.path.append('../')
-from consts import DB_PASS, CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT
+from consts import DB_PASS, CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT, ADDR_HEADER_SIZE
 from authentication import login, signup, parse_credentials
 from database import SqlDatabase
 from networking import do_ecdh
-from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NODE_PORT, \
-    NUM_NODES
+from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NUM_NODES
 
 
 @dataclass
@@ -90,7 +91,10 @@ class EntryNode:
             conn, addr = self.sock.accept()
             logging.info(f"[update] client with {addr=} tries to login/signup")
             shared_key = do_ecdh(conn)
-            is_login, username, password = parse_credentials(shared_key, conn.recv(CREDENTIALS_PACKET_SIZE))
+            data = conn.recv(CREDENTIALS_PACKET_SIZE)
+            game_addr, data = deserialize_addr(data[:ADDR_HEADER_SIZE]), data[ADDR_HEADER_SIZE:]
+            is_login, username, password = parse_credentials(shared_key, data)
+            print(f"{game_addr=} {is_login=} {username=} {password=}")
             if is_login:
                 success, error_msg, user_uuid = login(username, password, self.db_conn)
             else:
@@ -110,8 +114,8 @@ class EntryNode:
                 struct.pack(REDIRECT_FORMAT, user_uuid.encode(), target_node.ip.encode(),
                             success, len(error_msg)) + error_msg.encode())
 
-            self.server_send_queue.put(([target_node], shared_key + user_uuid.encode() + socket.inet_aton(addr[0]) +
-                                        struct.pack(">l", addr[1])))
+            self.server_send_queue.put(([target_node], shared_key + user_uuid.encode() +
+                                        serialize_ip(game_addr[0]) + struct.pack(">l", game_addr[1])))
 
             conn.close()
 

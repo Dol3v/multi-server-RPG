@@ -32,7 +32,7 @@ class ConnectScreen:
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if platform.system() == "Windows":
-            self.sock.bind(("0.0.0.0", port))
+            self.sock.bind(("127.0.0.1", port))
         self.clock = pygame.time.Clock()
 
         self.is_login_screen = True
@@ -142,7 +142,6 @@ class ConnectScreen:
         return False
 
     def connect_to_server(self, ip, username, password, is_login: bool = False):
-        print("Got to connect")
         if not is_valid_ip(ip):
             print(f"Invalid ip {ip}")
             return
@@ -156,7 +155,7 @@ class ConnectScreen:
                 return
             self.shared_key = do_ecdh(conn)
             print(f"Did ecdh, key={self.shared_key}")
-            send_credentials(username, password, conn, self.shared_key, is_login)
+            send_credentials(username, password, conn, self.shared_key, self.sock.getsockname(), is_login)
             ip, user_uuid, success, error_message = get_login_response(conn)
             self.game_server_addr = (ip, NODE_PORT)
             self.received_player_uuid = user_uuid

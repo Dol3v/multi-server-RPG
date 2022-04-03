@@ -22,9 +22,11 @@ def parse_credentials(shared_key: bytes, data: bytes) -> Tuple[bool, str, bytes]
     Use: receive encrypted (by the shared key) username and password and decrypt them.
     """
     print(f"len={len(shared_key)}, {shared_key=}, urlsafe={urlsafe_b64encode(shared_key) == shared_key}")
+    print(data)
     fernet = Fernet(urlsafe_b64encode(shared_key))
     try:
         login, data = bool(data[0]), data[1:]
+        print(f"{login=}")
         username_token, password_token = data[:FERNET_TOKEN_LENGTH], data[FERNET_TOKEN_LENGTH:]
         return login, fernet.decrypt(username_token).decode(), fernet.decrypt(password_token)
     except InvalidToken as e:
