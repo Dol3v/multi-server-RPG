@@ -206,7 +206,6 @@ class Node:
                 if not client_msg:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
-                logging.debug(f"[debug] {x=} {y=}")
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
@@ -222,7 +221,6 @@ class Node:
                 entity.slot = slot_index
                 if attacked:
                     self.update_hp(entity, slot_index)
-                logging.debug(f"[debug] sending {secure_pos=}")
                 self.update_client(entity.uuid, secure_pos)
             except Exception as e:
                 logging.exception(e)
@@ -253,6 +251,7 @@ class Node:
                                             (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
                                              projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
                                             PROJECTILE_TYPE)
+                logging.debug(f"[debug] updated projectile {projectile.uuid} to {projectile}")
 
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
@@ -260,7 +259,6 @@ class Node:
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                      PROJECTILE_HEIGHT,
                                                                                      PROJECTILE_WIDTH))
-        logging.debug(f"[update] updated projectiles location")
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
