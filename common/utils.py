@@ -100,3 +100,7 @@ def serialize_ip(ip: str) -> bytes:
 def deserialize_addr(addr_bytes: bytes) -> Tuple[str, int]:
     components = struct.unpack(MESSAGE_ENDIANESS + "4Bl", addr_bytes)
     return "".join(str(ip_byte) + "." for ip_byte in components[:-1])[:-1], components[-1]
+
+
+def is_empty(iterator) -> bool:
+    return any()

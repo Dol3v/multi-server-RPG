@@ -5,7 +5,6 @@ import sched
 import sys
 import threading
 from collections import defaultdict
-from typing import Dict
 
 from cryptography.fernet import InvalidToken
 from pyqtree import Index
@@ -118,6 +117,10 @@ class Node:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
         return get_bounding_box(pos, height, width)
 
+    def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: int) -> Iterable[Tuple[int, str]]:
+        return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
+            self.get_entity_bounding_box(pos, kind)))
+
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
         self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
         # are both necessary? prob not, but I'm not gonna take the risk
@@ -136,13 +139,12 @@ class Node:
         """
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
+        if self.invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
             logging.info(
                 f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}, {player.last_updated=}")
             secure_pos = self.players[player.uuid].pos
         else:
             self.update_entity_location(player, player_pos, PLAYER_TYPE)
-            player.last_updated = seqn
         return secure_pos
 
     def update_hp(self, player: Player, inventory_slot: int):
@@ -232,6 +234,7 @@ class Node:
                 if attacked:
                     self.update_hp(entity, slot_index)
                 self.update_client(entity.uuid, secure_pos)
+                entity.last_updated = seqn
             except Exception as e:
                 logging.exception(e)
 
@@ -243,7 +246,7 @@ class Node:
         to_remove = []
         for projectile in projectiles.values():
             collided = False
-            intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=PROJECTILE_TYPE)
             if intersection:
                 for kind, identifier in intersection:
                     if kind == PROJECTILE_TYPE:
@@ -316,13 +319,13 @@ class Node:
         except Exception as e:
             logging.exception(f"{e}")
 
-
-def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
-    """
-    Use: check if a given player movement is valid
-    """
-    return entity.last_updated != -1 and not moved_reasonable_distance(
-        player_pos, entity.pos, seqn - entity.last_updated)
+    def invalid_movement(self, entity: Player, player_pos: Pos, seqn: int) -> bool:
+        """
+        Use: check if a given player movement is valid
+        """
+        return entity.last_updated != -1 and (not moved_reasonable_distance(
+            player_pos, entity.pos, seqn - entity.last_updated) or
+               next(self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE), None))
 
 
 if __name__ == "__main__":
