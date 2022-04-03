@@ -19,7 +19,7 @@ from graphics import ChatBox
 from common.consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
-from sprites import PlayerEntity, FollowingCameraGroup
+from sprites import PlayerEntity, FollowingCameraGroup, Entity
 from weapons import *
 from map_manager import *
 
@@ -183,17 +183,31 @@ class Game:
         """
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-            if entity_type != PLAYER_TYPE:
-                continue
+
             if entity_uuid in self.entities:
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
-                if self.entities[entity_uuid].tool_id != tool_id:
+                if entity_type == PLAYER_TYPE and self.entities[entity_uuid].tool_id != tool_id:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
-                self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
-                                                          entity_dir, tool_id, self.map_collision)
+
+                if entity_type == PLAYER_TYPE:
+                    self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
+                                                              entity_dir, tool_id, self.map_collision)
+                else:
+                    self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
+                                                        *pos, entity_dir)
+
+        # remove_entities = []
+        # for entity_uuid in self.entities.keys():
+        #    if entity_uuid not in entities:
+        #        print("kill")
+        #        self.entities[entity_uuid].kill()
+        #        remove_entities.append(entity_uuid)
+
+        # for entity_uuid in remove_entities:
+        #   self.entities.pop(entity_uuid)
 
     def run(self) -> None:
         """

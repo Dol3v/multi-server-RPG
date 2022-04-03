@@ -116,8 +116,8 @@ class RangeWeapon(Weapon):
         self.is_ranged = True
 
     def attack(self, player):
-        Projectile((*self.groups, self.obstacle_sprites), self.map_collision, player.rect.centerx, player.rect.centery,
-                   self.projectile_texture, PROJECTILE_SPEED, player.get_direction_vec(), 200)
+        # Projectile((*self.groups, self.obstacle_sprites), self.map_collision, player.rect.centerx,
+        # player.rect.centery, self.projectile_texture, PROJECTILE_SPEED, player.get_direction_vec(), 200)
         pass
 
 

@@ -77,7 +77,7 @@ class Node:
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
         return map(lambda data: self.bots[data[1]] if data[0] == BOT_TYPE else self.players[data[1]],
-                   filter(lambda data: data[1] != entity_uuid and data[0] != PROJECTILE_TYPE,
+                   filter(lambda data: data[1] != entity_uuid and data[0] != ARROW_TYPE,
                           self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
@@ -100,7 +100,7 @@ class Node:
         width, height = -1, -1
         if entity_type == PLAYER_TYPE:
             width, height = CLIENT_WIDTH, CLIENT_HEIGHT
-        elif entity_type == PROJECTILE_TYPE:
+        elif entity_type == ARROW_TYPE:
             width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
         elif entity_type == BOT_TYPE:
             width, height = BOT_WIDTH, BOT_HEIGHT
@@ -174,7 +174,7 @@ class Node:
                                          int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
                                     direction=player.direction, damage=weapon_data['damage'])
             self.projectiles[projectile.uuid] = projectile
-            self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
+            self.spindex.insert((ARROW_TYPE, projectile.uuid),
                                 get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             logging.info(f"Added projectile {projectile}")
 
@@ -252,14 +252,14 @@ class Node:
                 self.update_entity_location(projectile,
                                             (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
                                              projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
-                                            PROJECTILE_TYPE)
+                                            ARROW_TYPE)
 
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
-            self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                     PROJECTILE_HEIGHT,
-                                                                                     PROJECTILE_WIDTH))
+            self.spindex.remove((ARROW_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
+                                                                                PROJECTILE_HEIGHT,
+                                                                                PROJECTILE_WIDTH))
         logging.debug(f"[update] updated projectiles location")
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 

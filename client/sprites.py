@@ -57,16 +57,29 @@ class FollowingCameraGroup(pygame.sprite.Group):
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, groups, x, y, direction):
+    def __init__(self, groups, entity_type, x, y, direction):
         super().__init__(*groups)
         self.x = x
         self.y = y
 
+        self.entity_type = entity_type
+
         self.last_x = x
         self.last_y = y
-        self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
-        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
-                                                             self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
+
+        self.scale_size = entity_data[entity_type][3]
+
+        if entity_type == "player":
+            return
+
+        self.texture = pygame.image.load("assets/entity/" + entity_data[entity_type][0]).convert_alpha()
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * self.scale_size,
+                                                             self.texture.get_height() * self.scale_size))
+
+        self.animation = Animation(entity_data[entity_type][1], entity_data[entity_type][2])
+
+        if self.animation.is_empty():
+            self.animation = Animation([self.texture.copy()], entity_data[entity_type][2])
 
         self.original_texture = self.texture.copy()
 
@@ -79,17 +92,44 @@ class Entity(pygame.sprite.Sprite):
         self.x = x
         self.y = y
 
-    @abc.abstractmethod
     def draw_entity(self):
-        pass
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()),
+                                    pygame.SRCALPHA)
+
+        self.image.blit(self.texture, (0, 0))
+        self.rect = self.image.get_rect(center=(self.x, self.y))
 
     def update(self):
+        self.update_entity_animation()
         self.draw_entity()
+
+    def update_entity_animation(self):
+        # Movement
+
+
+        if self.last_x != self.x or self.last_y != self.y:
+            frame = self.animation.get_next_frame()
+            if self.direction[0] < 0:
+                frame = pygame.transform.flip(frame, True, False)
+            frame = pygame.transform.scale(frame, (frame.get_width() * self.scale_size,
+                                                   frame.get_height() * self.scale_size))
+            self.texture = frame
+
+            if self.entity_type == ARROW_TYPE:
+                angle = -(180 - np.rad2deg(np.arctan2(self.direction[0], self.direction[1])))
+                self.texture = pygame.transform.rotate(self.texture,angle)
+
+        else:
+            if self.entity_type != ARROW_TYPE:
+                if self.direction[0] < 0:
+                    self.texture = pygame.transform.flip(self.original_texture, True, False)
+                else:
+                    self.texture = self.original_texture
 
 
 class PlayerEntity(Entity):
     def __init__(self, groups, x, y, direction, tool_id, map_collision):
-        super().__init__(groups, x, y, direction)
+        super().__init__(groups, "player", x, y, direction, 1)
         self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
                                                              self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
@@ -116,34 +156,8 @@ class PlayerEntity(Entity):
 
         self.draw_entity()
 
-    def draw_entity(self):
-        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()),
-                                    pygame.SRCALPHA)
-
-        self.image.blit(self.texture, (0, 0))
-        self.rect = self.image.get_rect(center=(self.x, self.y))
-
     def get_direction_vec(self):
         return self.direction
-
-    def update_player_animation(self):
-        # Hand Movements
-        self.hand.draw_weapon(self)
-
-        # Movement
-        if self.last_x != self.x or self.last_y != self.y:
-            frame = self.animation.get_next_frame()
-            if self.direction[0] < 0:
-                frame = pygame.transform.flip(frame, True, False)
-            frame = pygame.transform.scale(frame, (frame.get_width() * PLAYER_SIZE_MULTIPLIER,
-                                                   frame.get_height() * PLAYER_SIZE_MULTIPLIER))
-            self.texture = frame
-
-        else:
-            if self.direction[0] < 0:
-                self.texture = pygame.transform.flip(self.original_texture, True, False)
-            else:
-                self.texture = self.original_texture
 
     def update_tool(self, tool_id):
         self.tool_id = tool_id
@@ -161,7 +175,8 @@ class PlayerEntity(Entity):
 
     def update(self):
         self.draw_entity()
-        self.update_player_animation()
+        self.hand.draw_weapon(self)
+        self.update_entity_animation()
 
 
 class EntityBoots(Entity):

@@ -1,5 +1,6 @@
 """General consts for client side"""
 # Images
+from common.consts import ARROW_TYPE
 
 PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
@@ -35,6 +36,12 @@ weapon_data = {
             "hand_position": (20, 15)}
 
 }
+
+entity_data = {
+    # (texure, [animation], frame per second, size_multiplier
+    ARROW_TYPE: ("arrow/projectile.png", [], 10, 1)
+}
+
 WORLD_MAP = [
     ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
     ['x', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'x'],
