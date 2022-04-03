@@ -79,6 +79,7 @@ class Entity(pygame.sprite.Sprite):
         self.x = x
         self.y = y
 
+    @abc.abstractmethod
     def draw_entity(self):
         pass
 

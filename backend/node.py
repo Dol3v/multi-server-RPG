@@ -95,28 +95,29 @@ class Node:
         return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
+    def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
+        self.spindex.remove((kind, entity.uuid), get_bounding_box(entity.pos, entity.height, entity.width))
+        # are both necessary? prob not, but I'm not gonna take the risk
+        entity.pos = new_location
+        self.entities[entity.uuid].pos = new_location
+        self.spindex.insert((kind, entity.uuid), get_bounding_box(entity.pos, entity.height, entity.width))
+
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
 
         :param player: player to update
         :param player_pos: position of player given by the client
         :param seqn: sequence number given by the client
-        :returns:``DEFAULT_POS_MARK`` if the client position is fine, or the server-side-calculated pos for the client
+        :returns: ``DEFAULT_POS_MARK`` if the client position is fine, or the server-side-calculated pos for the client
         otherwise.
         """
         # if the received packet is dated then update player
-        # FIXME: not working
         secure_pos = DEFAULT_POS_MARK
         if invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
             secure_pos = self.players[player.uuid].pos
         else:
-            # update player location in quadtree
-            self.spindex.remove((PLAYER_TYPE, player.uuid), get_bounding_box(player.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
-            # if packet is not outdated, update player stats
-            player.pos = player_pos
+            self.update_entity_location(player, player_pos, PLAYER_TYPE)
             player.last_updated = seqn
-            self.players[player.uuid] = player
-            self.spindex.insert((PLAYER_TYPE, player.uuid), get_bounding_box(player.pos, CLIENT_HEIGHT, CLIENT_WIDTH))
         return secure_pos
 
     def update_hp(self, player: Player, inventory_slot: int):
@@ -180,7 +181,6 @@ class Node:
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-                logging.debug(f"[debug] {addr=} sent data")
                 player_uuid = data[:UUID_SIZE].decode()
                 try:
                     data = self.players[player_uuid].fernet.decrypt(data[UUID_SIZE:])
@@ -191,7 +191,6 @@ class Node:
                 if not client_msg:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
-                logging.debug(f"[debug] player at {x=} {y=}")
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
@@ -303,5 +302,6 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG,
+                        filename="server.log", filemode="a+")
     Node(NODE_PORT)

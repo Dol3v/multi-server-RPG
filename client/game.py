@@ -132,7 +132,7 @@ class Game:
                             weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
                             if weapon.is_ranged:
                                 weapon.kill()
-                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
+                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites, self.map_collision,
                                                      weapon_type, "rare")
 
                             self.player.remove_weapon_in_slot(i)
