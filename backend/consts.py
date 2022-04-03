@@ -1,5 +1,5 @@
 # SqlDatabase configurations
-from common.consts import SWORD, AXE, BOW
+from common.consts import SWORD, AXE, BOW, INT_SIZE
 
 SQL_TYPE = "mysql"
 DB_PORT = 3306
@@ -11,6 +11,7 @@ DB_PASS = "dummyPass"
 USERNAME_COL = 0
 HASH_COL = 1
 SALT_COL = 2
+UUID_COL = 3
 
 # Scrypt Consts
 SCRYPT_KEY_LENGTH = 32
@@ -20,7 +21,6 @@ SCRYPT_P = 1
 
 # SqlDatabase tables configurations
 MAX_SIZE = 0xff
-UUID_SIZE = 36
 USERS_CREDENTIALS_TABLE = "users_creds"
 PLAYER_STATS_TABLE = "players_stats"
 CHAT_TABLE = "chat"
@@ -28,7 +28,8 @@ USER_TABLE = "users_info"
 
 # Fernet Consts
 FERNET_TOKEN_LENGTH = 100
-CREDENTIALS_PACKET_SIZE = 1 + 2 * FERNET_TOKEN_LENGTH
+ADDR_HEADER_SIZE = 4 + INT_SIZE
+CREDENTIALS_PACKET_SIZE = ADDR_HEADER_SIZE + 1 + 2 * FERNET_TOKEN_LENGTH
 
 ARM_LENGTH_MULTIPLIER = 10
 
@@ -39,5 +40,8 @@ WEAPON_DATA = {
     AXE: {'cooldown': 300, 'damage': 30, 'melee_attack_range': 150, 'is_melee': True},
     BOW: {'cooldown': 400, 'damage': 45, 'is_melee': False}
 }
-FRAME_TIME = 1 / 60
+FRAME_TIME = 1 / 75
 MAX_SLOT = 6
+
+# Server communication ports
+ROOT_SERVER2SERVER_PORT = 35000

@@ -3,12 +3,8 @@
 TODO: merge the weapon classes with the Player class
 """
 
-import pygame
-
-from weapons import *
 from graphics import Animation
-from consts import *
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+from weapons import *
 
 
 class Obstacle(pygame.sprite.Sprite):
@@ -83,6 +79,7 @@ class Entity(pygame.sprite.Sprite):
         self.x = x
         self.y = y
 
+    @abc.abstractmethod
     def draw_entity(self):
         pass
 
@@ -91,7 +88,7 @@ class Entity(pygame.sprite.Sprite):
 
 
 class PlayerEntity(Entity):
-    def __init__(self, groups, x, y, direction, tool_id):
+    def __init__(self, groups, x, y, direction, tool_id, map_collision):
         super().__init__(groups, x, y, direction)
         self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
@@ -103,6 +100,7 @@ class PlayerEntity(Entity):
         self.obstacles_sprites = (groups[0],)
         self.tool_id = 0
         self.hand = Hand(self.visible_sprites)
+        self.map_collision = map_collision
         self.update_tool(tool_id)
 
         self.groups = groups
@@ -158,8 +156,35 @@ class PlayerEntity(Entity):
             case 2:
                 self.hand = Weapon(self.visible_sprites, "axe", "rare")
             case 3:
-                self.hand = RangeWeapon(self.visible_sprites, self.obstacles_sprites, "bow", "rare")
+                self.hand = RangeWeapon(self.visible_sprites, self.obstacles_sprites, self.map_collision,
+                                        "bow", "rare")
 
     def update(self):
         self.draw_entity()
         self.update_player_animation()
+
+
+class EntityBoots(Entity):
+    def __init__(self, groups, x, y, direction):
+        super().__init__(groups, x, y, direction)
+        self.texture = pygame.image.load("assets/mobs/Big demon/big_demon_idle_anim_f0.png").convert_alpha()
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * PLAYER_SIZE_MULTIPLIER,
+                                                             self.texture.get_height() * PLAYER_SIZE_MULTIPLIER))
+        self.original_texture = self.texture.copy()
+        self.direction = direction
+
+        self.visible_sprites = (groups[1],)
+        self.obstacles_sprites = (groups[0],)
+        self.groups = groups
+
+        self.animation = Animation(
+            [
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f0.png"),
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f1.png"),
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f2.png"),
+                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f3.png")
+            ],
+            10
+        )
+
+        self.draw_entity()

@@ -1,5 +1,6 @@
 import logging
 import sys
+import uuid
 from os import urandom
 
 from base64 import urlsafe_b64encode
@@ -20,9 +21,12 @@ def parse_credentials(shared_key: bytes, data: bytes) -> Tuple[bool, str, bytes]
     """
     Use: receive encrypted (by the shared key) username and password and decrypt them.
     """
+    print(f"len={len(shared_key)}, {shared_key=}, urlsafe={urlsafe_b64encode(shared_key) == shared_key}")
+    print(data)
     fernet = Fernet(urlsafe_b64encode(shared_key))
     try:
         login, data = bool(data[0]), data[1:]
+        print(f"{login=}")
         username_token, password_token = data[:FERNET_TOKEN_LENGTH], data[FERNET_TOKEN_LENGTH:]
         return login, fernet.decrypt(username_token).decode(), fernet.decrypt(password_token)
     except InvalidToken as e:
@@ -59,12 +63,12 @@ def verify_credentials(expected_key: bytes, unverified_password: bytes, salt: by
     try:
         kdf.verify(unverified_password, expected_key)
     except InvalidKey:
-        logging.info("User login failed")
+        logging.info("[blocked] user login failed")
         return False
     return True
 
 
-def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
+def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str, str | None]:
     """
     Gets user credentials and tries to sign up. If successful, the user's credentials will be entered to the
     database, where byte data will be entered in base64 format.
@@ -75,26 +79,29 @@ def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
     :packet_id password: bytes
     :param db: database object
     :packet_id db: SqlDatabase
-    :returns: if the signup was successful, returns (True, None). Else, returns (False, err_msg)
+    :returns: if the signup was successful, returns (True, None). Else, returns (False, err_msg) also returns
+    generated uuid or None if the signup failed
     """
     if user_in_database(db, username):
-        return False, "User exists already"
-    res = add_user_to_database(db, username, *generate_hash_and_salt(password))
-    return (True, "") if res else (False, "Server encountered error while adding user to database")
+        return False, "User exists already", None
+    user_uuid = str(uuid.uuid4())
+    res = add_user_to_database(db, username, *generate_hash_and_salt(password), user_uuid=user_uuid)
+    return (True, "", user_uuid) if res else (False, "Server encountered error while adding user to database", None)
 
 
-def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str]:
+def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str, str | None]:
     """
     Verifies that the user's creds match up to existing creds in the database.
-    :returns: if the login was successful, returns (True, None). Else, returns (False, err_msg)
+    :returns: if the login was successful, returns (True, None). Else, returns (False, err_msg). Also returns the uuid
+    if the login was successful, else None
     """
     if not user_in_database(db, username):
-        return False, "User does not exist"
+        return False, "User does not exist", None
     creds = get_user_credentials(db, username)
     if not creds:
-        return False, "Server encountered error while receiving client data"
-    password_hash, salt = creds
-    print(password_hash, salt)
-    return (True, "") if verify_credentials(password_hash, password, salt) else (False, "Password does not match")
+        return False, "Server encountered error while receiving client data", None
+    password_hash, salt, user_uuid = creds
+    return (True, "", user_uuid) if verify_credentials(password_hash, password, salt) else\
+        (False, "Password does not match", None)
 
 

@@ -97,6 +97,7 @@ class Map:
 
     def add_layer(self, layer: Layer):
         self.layers.append(layer)
+        print(len(self.layers[0].layer_grid), len(self.layers[0].layer_grid))
 
     def load_collision_objects(self, map_collision: Index):
         self.collision_objects = []

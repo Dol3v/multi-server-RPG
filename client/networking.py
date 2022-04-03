@@ -4,7 +4,7 @@ from base64 import urlsafe_b64encode
 from cryptography.fernet import Fernet
 
 from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, MESSAGE_ENDIANESS, CLIENT_FORMAT, ENTITY_FORMAT, \
-    RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT
+    RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT, Addr
 from common.utils import *
 
 
@@ -19,19 +19,22 @@ def do_ecdh(conn: socket.socket) -> bytes | None:
     return get_shared_key(private_key, server_public_key)
 
 
-def send_credentials(username: str, password: str, conn: socket.socket, shared_key: bytes, is_login: bool = False):
+def send_credentials(username: str, password: str, conn: socket.socket, shared_key: bytes, client_game_addr: Addr,
+                     is_login: bool = False):
     """
     Use: login to the server
     """
     fernet = Fernet(urlsafe_b64encode(shared_key))
     username_token = fernet.encrypt(username.encode())
     password_token = fernet.encrypt(password.encode())
-    conn.send(int(is_login).to_bytes(1, "big") + username_token + password_token)
+    conn.send(serialize_ip(client_game_addr[0]) + struct.pack(">l?", client_game_addr[1], is_login) +
+              username_token + password_token)
+    return fernet
 
 
-def get_login_response(conn: socket.socket) -> Tuple[bool, str]:
-    ip, success, msg_length = struct.unpack(REDIRECT_FORMAT, conn.recv(struct.calcsize(REDIRECT_FORMAT)))
-    return ip.decode().rstrip("\x00"), success, conn.recv(msg_length).decode()
+def get_login_response(conn: socket.socket) -> Tuple[str, str, bool, str]:
+    user_uuid, ip, success, msg_length = struct.unpack(REDIRECT_FORMAT, conn.recv(struct.calcsize(REDIRECT_FORMAT)))
+    return ip.decode().rstrip("\x00"), user_uuid.decode(), success, conn.recv(msg_length).decode()
 
 
 def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
@@ -56,16 +59,16 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
 
     if raw_entities:
         entities = [
-            (raw_entities[i], raw_entities[i+1], (raw_entities[i + 2], raw_entities[i + 3]),
+            (raw_entities[i], raw_entities[i + 1], (raw_entities[i + 2], raw_entities[i + 3]),
              (raw_entities[i + 4], raw_entities[i + 5]), raw_entities[i + 6])
             for i in range(0, len(raw_entities), ENTITY_NUM_OF_FIELDS)]
 
         return player_status, entities
 
 
-def generate_client_message(seqn: int, x: int, y: int, actions: list) -> bytes | None:
+def generate_client_message(player_uuid: str, seqn: int, x: int, y: int, actions: list, fernet: Fernet) -> bytes | None:
     """
     Use: generate the client message bytes by this format
     Format: [player_pos(x, y) + (new_msg || attack || attack_directiton || equipped_id )]
     """
-    return struct.pack(CLIENT_FORMAT, seqn, x, y, *actions)
+    return player_uuid.encode() + fernet.encrypt(struct.pack(CLIENT_FORMAT, seqn, x, y, *actions))

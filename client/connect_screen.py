@@ -1,4 +1,5 @@
 """Connection screen login and signup"""
+import base64
 import socket
 import sys
 import platform
@@ -18,6 +19,7 @@ from graphics import *
 class ConnectScreen:
     def __init__(self, screen, port: int):
         """Remove port later, currently stays for debugging before login"""
+        self.received_player_uuid = None
         self.game_server_addr = None
         self.shared_key = None
         self.width = SCREEN_WIDTH
@@ -30,7 +32,7 @@ class ConnectScreen:
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if platform.system() == "Windows":
-            self.sock.bind(("0.0.0.0", port))
+            self.sock.bind(("127.0.0.1", port))
         self.clock = pygame.time.Clock()
 
         self.is_login_screen = True
@@ -147,14 +149,16 @@ class ConnectScreen:
         with socket.socket() as conn:
             try:
                 conn.connect((ip, ROOT_PORT))
+                print("Connected")
             except OSError:
                 print(f"Couldn't connect to ip {ip}")
                 return
             self.shared_key = do_ecdh(conn)
-            send_credentials(username, password, conn, self.shared_key, is_login)
-            ip, success, error_message = get_login_response(conn)
-            print(f"{ip=}")
+            print(f"Did ecdh, key={self.shared_key}")
+            send_credentials(username, password, conn, self.shared_key, self.sock.getsockname(), is_login)
+            ip, user_uuid, success, error_message = get_login_response(conn)
             self.game_server_addr = (ip, NODE_PORT)
+            self.received_player_uuid = user_uuid
 
             if not success:
                 print(error_message)

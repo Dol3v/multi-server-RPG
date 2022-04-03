@@ -1,9 +1,13 @@
+import dataclasses
 import time
 import uuid as uuid
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
-from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir
+from cryptography.fernet import Fernet
+
+from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
+    CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT
 
 
 @dataclass
@@ -30,6 +34,7 @@ class Player(Entity):
         arrow = 3
     tools: [default, tool2, tool3]
     """
+    fernet: Fernet = None
 
 
 @dataclass
@@ -38,13 +43,16 @@ class Projectile(Entity):
 
 
 @dataclass
-class Bot(Entity):
+class Mob(Entity):
     health: int = MAX_HEALTH
     weapon: int = SWORD
+    cooldown: float = -1
+    last_time_attacked: float = -1
+    weapon_data: Dict[str, float] = dataclasses.field(default_factory=lambda: {})
 
 
-ServerControlled = Projectile | Bot
+ServerControlled = Projectile | Mob
 """Entity with server-controlled movements and actions"""
 
-Attackable = Bot | Player
-"""Entity that can be attacked."""
+Attackable = Mob | Player
+"""Entity that can be attacked or can attack."""

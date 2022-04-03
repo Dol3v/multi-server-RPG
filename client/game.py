@@ -1,8 +1,11 @@
 """Game loop and communication with the server"""
+import base64
 import queue
 import socket
 import sys
 import threading
+
+from cryptography.fernet import Fernet
 from pyqtree import Index
 from common.utils import get_bounding_box
 from typing import List
@@ -22,8 +25,16 @@ from map_manager import *
 
 
 class Game:
-    def __init__(self, conn: socket.socket, server_addr: tuple, full_screen):
+    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen):
+        # misc networking
+        self.entities = {}
+        self.recv_queue = queue.Queue()
+        self.seqn = 0
+        self.fernet = Fernet(base64.urlsafe_b64encode(shared_key))
+        print(f"{conn=}, {server_addr=}")
+
         # init sprites
+        self.can_recv: bool = False
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = FollowingCameraGroup()
         self.obstacles_sprites = pygame.sprite.Group()
@@ -33,8 +44,9 @@ class Game:
                                     self.visible_sprites.floor_surface.get_height()))
 
         # player init
-        self.player = Player((1988, 1500), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+        self.player = Player((2010, 1530), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
+        self.player_uuid = player_uuid
 
         self.map = Map()
         self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
@@ -61,13 +73,10 @@ class Game:
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
+        # inventory init
         self.inv = pygame.image.load("assets/inventory.png")
         self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
         self.inv.set_alpha(150)
-
-        self.entities = {}
-        self.recv_queue = queue.Queue()
-        self.seqn = 0
 
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
         """[message, direction, did attack, attack directions, selected slot]"""
@@ -77,7 +86,17 @@ class Game:
         self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
 
+    @property
+    def x(self):
+        return self.player.rect.centerx
+
+    @property
+    def y(self):
+        return self.player.rect.centery
+
     def receiver(self):
+        while not self.can_recv:
+            ...
         while True:
             self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
@@ -87,8 +106,8 @@ class Game:
         """
         # update server
         self.update_player_actions()
-        update_packet = generate_client_message(self.seqn, self.player.rect.centerx, self.player.rect.centery,
-                                                self.actions)
+        update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
+                                                self.actions, self.fernet)
         self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
 
@@ -112,7 +131,7 @@ class Game:
                             weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
                             if weapon.is_ranged:
                                 weapon.kill()
-                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites,
+                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites, self.map_collision,
                                                      weapon_type, "rare")
 
                             self.player.remove_weapon_in_slot(i)
@@ -170,13 +189,11 @@ class Game:
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
-                print(f"{self.entities[entity_uuid].tool_id} {tool_id}")
-
                 if self.entities[entity_uuid].tool_id != tool_id:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
                 self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
-                                                          entity_dir, tool_id)
+                                                          entity_dir, tool_id, self.map_collision)
 
     def run(self) -> None:
         """
@@ -243,6 +260,7 @@ class Game:
             self.draw_chat(event_list)
             self.draw_inventory()
             self.server_update()
+            self.can_recv = True
             pygame.display.update()
             self.clock.tick(FPS)
 

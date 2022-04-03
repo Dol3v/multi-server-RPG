@@ -3,7 +3,7 @@ import os
 import sys
 
 sys.path.append('../')
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT 
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, NODE_PORT
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
@@ -25,13 +25,20 @@ def init_pygame() -> pygame.Surface:
     return screen
 
 
-if __name__ == "__main__":
+def main():
     screen = init_pygame()
 
     connection_screen = connect_screen.ConnectScreen(screen, 10001)
     connection_screen.run()
-    if not connection_screen.sock:
-        print("oof")
-    else:
-        my_game = game.Game(connection_screen.sock, connection_screen.game_server_addr, connection_screen.full_screen)
-        my_game.run()
+    if not connection_screen.received_player_uuid:
+        print("Login/Signup failed")
+        return
+
+    my_game = game.Game(connection_screen.sock, connection_screen.game_server_addr,
+                        connection_screen.received_player_uuid, connection_screen.shared_key,
+                        connection_screen.full_screen)
+    my_game.run()
+
+
+if __name__ == "__main__":
+    main()

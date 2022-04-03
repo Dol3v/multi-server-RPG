@@ -1,6 +1,9 @@
-import ssl, sqlalchemy
+import sqlalchemy
+import ssl
 
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, JSON, INT
+
+from common.consts import UUID_SIZE
 from consts import *
 
 
@@ -31,19 +34,20 @@ class SqlDatabase:
         self.creds_table = Table(USERS_CREDENTIALS_TABLE, self.metadata,
                                  Column("username", VARCHAR(MAX_SIZE), primary_key=True),
                                  Column("password", Text),
-                                 Column("salt", Text))
+                                 Column("salt", Text),
+                                 Column("uuid", VARCHAR(UUID_SIZE), primary_key=True))
         self.chat_table = Table(CHAT_TABLE, self.metadata,
                                 Column("username", VARCHAR(MAX_SIZE), primary_key=True),
                                 Column("date", Text),
                                 Column("content", Text))
         self.users_table = Table(USER_TABLE, self.metadata,
-                                Column("uuid", VARCHAR(UUID_SIZE), primary_key=True),
-                                Column("position", JSON),
-                                Column("direction", JSON),
-                                Column("last_seqn", INT),
-                                Column("health", INT),
-                                Column("slot", INT),
-                                Column("tools", JSON))
+                                 Column("uuid", VARCHAR(UUID_SIZE), primary_key=True),
+                                 Column("position", JSON),
+                                 Column("direction", JSON),
+                                 Column("last_seqn", INT),
+                                 Column("health", INT),
+                                 Column("slot", INT),
+                                 Column("tools", JSON))
 
         self.conn = self.engine.connect()
         # Generate tables
@@ -60,7 +64,6 @@ class SqlDatabase:
         ssl_args = {"ssl": ssl_context}
 
         return ssl_args
-
 
     def exec(self, statement):
         return self.conn.execute(statement)

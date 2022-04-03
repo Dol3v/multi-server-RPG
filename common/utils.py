@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos
+from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS
 
 
 def parse(parse_format: str, data: bytes) -> tuple | None:
@@ -25,10 +25,11 @@ def parse(parse_format: str, data: bytes) -> tuple | None:
         print(error)
         return None
 
+
 def valid_ip(ip: str):
     try:
         socket.inet_aton(ip)
-        return True;
+        return True
     except socket.error:
         return False
 
@@ -84,8 +85,18 @@ def deserialize_public_key(key_material: bytes) -> EllipticCurvePublicKey:
 def get_shared_key(private_key: EllipticCurvePrivateKey, peer_public_key: EllipticCurvePublicKey) -> bytes:
     """Returns shared, derived key from the private key and the peer's public key."""
     shared = private_key.exchange(ECDH(), peer_public_key)
-    return HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data").derive(shared)
+    derived = HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data").derive(shared)
+    return derived
 
 
 def get_bounding_box(pos: Pos, height: int, width: int) -> Tuple[int, int, int, int]:
     return pos[0] - width // 2, pos[1] - height // 2, pos[0] + width // 2, pos[1] + height // 2
+
+
+def serialize_ip(ip: str) -> bytes:
+    return socket.inet_aton(ip)
+
+
+def deserialize_addr(addr_bytes: bytes) -> Tuple[str, int]:
+    components = struct.unpack(MESSAGE_ENDIANESS + "4Bl", addr_bytes)
+    return "".join(str(ip_byte) + "." for ip_byte in components[:-1])[:-1], components[-1]
