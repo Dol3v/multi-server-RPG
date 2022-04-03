@@ -194,7 +194,7 @@ class Game:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
                 self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
-                                                          entity_dir, tool_id)
+                                                          entity_dir, tool_id, self.map_collision)
 
     def run(self) -> None:
         """
