@@ -5,12 +5,12 @@ import sched
 import sys
 import threading
 from collections import defaultdict
-from typing import Dict
 
 from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
 # to import from a dir
+from client.map_manager import Map, Layer, TilesetData
 
 sys.path.append('../')
 
@@ -52,6 +52,7 @@ class Node:
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
+        self.load_map()
         # Starts the node
         self.run()
 
@@ -82,7 +83,7 @@ class Node:
 
     def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
         """Returns all players that are within render distance of each other."""
-        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid,
+        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid and data[0] != OBSTACLE_TYPE,
                                                      self.spindex.intersect(
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
@@ -94,6 +95,14 @@ class Node:
                              int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
         return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
+
+    def load_map(self):
+        """Loads the map"""
+        game_map = Map()
+        game_map.add_layer(Layer("../client/assets/map/animapa_test.csv",
+                                 TilesetData("../client/assets/map/new_props.png",
+                                             "../client/assets/map/new_props.tsj")))
+        game_map.load_collision_objects_to(self.spindex)
 
     @staticmethod
     def get_entity_bounding_box(pos: Pos, entity_type: int):
@@ -107,6 +116,10 @@ class Node:
         else:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
         return get_bounding_box(pos, height, width)
+
+    def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: int) -> Iterable[Tuple[int, str]]:
+        return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
+            self.get_entity_bounding_box(pos, kind)))
 
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
         self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
@@ -126,13 +139,12 @@ class Node:
         """
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
+        if self.invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
             logging.info(
                 f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}, {player.last_updated=}")
             secure_pos = self.players[player.uuid].pos
         else:
             self.update_entity_location(player, player_pos, PLAYER_TYPE)
-            player.last_updated = seqn
         return secure_pos
 
     def update_hp(self, player: Player, inventory_slot: int):
@@ -222,6 +234,7 @@ class Node:
                 if attacked:
                     self.update_hp(entity, slot_index)
                 self.update_client(entity.uuid, secure_pos)
+                entity.last_updated = seqn
             except Exception as e:
                 logging.exception(e)
 
@@ -233,9 +246,13 @@ class Node:
         to_remove = []
         for projectile in projectiles.values():
             collided = False
-            intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=PROJECTILE_TYPE)
             if intersection:
                 for kind, identifier in intersection:
+                    if kind == PROJECTILE_TYPE:
+                        continue
+                    collided = True
+
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
                         logging.info(f"Projectile {projectile} hit a player {player}")
@@ -243,9 +260,7 @@ class Node:
                         if player.health < MIN_HEALTH:
                             player.health = MIN_HEALTH
                         logging.debug(f"Updated player {identifier} health to {player.health}")
-                        to_remove.append(projectile)
-                        collided = True
-                        # TODO: add wall collision
+                    to_remove.append(projectile)
             if not collided:
                 self.update_entity_location(projectile,
                                             (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
@@ -259,6 +274,8 @@ class Node:
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                      PROJECTILE_HEIGHT,
                                                                                      PROJECTILE_WIDTH))
+            logging.info(f"[update] removed projectile {projectile.uuid}")
+
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
@@ -271,7 +288,6 @@ class Node:
 
     def root_receiver(self):
         while True:
-            # FIXME: possible ConnectionResetError
             data = self.root_sock.recv(RECV_CHUNK)
             shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
             ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE:])
@@ -303,13 +319,13 @@ class Node:
         except Exception as e:
             logging.exception(f"{e}")
 
-
-def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
-    """
-    Use: check if a given player movement is valid
-    """
-    return entity.last_updated != -1 and not moved_reasonable_distance(
-        player_pos, entity.pos, seqn - entity.last_updated)
+    def invalid_movement(self, entity: Player, player_pos: Pos, seqn: int) -> bool:
+        """
+        Use: check if a given player movement is valid
+        """
+        return entity.last_updated != -1 and (not moved_reasonable_distance(
+            player_pos, entity.pos, seqn - entity.last_updated) or
+               next(self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE), None))
 
 
 if __name__ == "__main__":
