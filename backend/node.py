@@ -59,12 +59,8 @@ class Node:
         self.generate_mobs()
         self.run()
 
-    @functools.cached_property
-    def addrs(self) -> Iterable[Addr]:
-        return self.players.keys()
-
     @property
-    def entities(self) -> defaultdict[str, Entity]:
+    def entities(self) -> Dict[str, Entity]:
         return self.players | self.mobs | self.projectiles
 
     def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
@@ -228,7 +224,7 @@ class Node:
 
                 player.direction = attack_dir  # TODO: check if normalized
                 secure_pos = self.update_location(player_pos, seqn, player)
-                
+
                 player.slot = slot_index
                 if attacked:
                     self.attack(player, player.tools[player.slot])
@@ -237,7 +233,7 @@ class Node:
             except Exception as e:
                 logging.exception(e)
 
-    def server_controlled_entities_update(self, s, projectiles, bots: List[Mob]):
+    def server_controlled_entities_update(self, s, projectiles, bots):
         """update all projectiles and bots positions inside a loop"""
         # projectile handling
         to_remove = []
@@ -249,7 +245,6 @@ class Node:
                     if kind == PROJECTILE_TYPE:
                         continue
                     collided = True
-
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
                         logging.info(f"Projectile {projectile} hit a player {player}")
@@ -265,7 +260,6 @@ class Node:
                                             PROJECTILE_TYPE)
                 logging.debug(f"[debug] updated projectile {projectile.uuid} to {projectile}")
 
-        # print(list(self.projectiles.values()))
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
