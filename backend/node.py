@@ -11,6 +11,7 @@ from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
 # to import from a dir
+from client.map_manager import Map, Layer, TilesetData
 
 sys.path.append('../')
 
@@ -52,6 +53,7 @@ class Node:
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
+        self.load_map()
         # Starts the node
         self.run()
 
@@ -82,7 +84,7 @@ class Node:
 
     def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
         """Returns all players that are within render distance of each other."""
-        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid,
+        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid and data[0] != OBSTACLE_TYPE,
                                                      self.spindex.intersect(
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
@@ -94,6 +96,14 @@ class Node:
                              int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
         return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
+
+    def load_map(self):
+        """Loads the map"""
+        game_map = Map()
+        game_map.add_layer(Layer("../client/assets/map/animapa_test.csv",
+                                 TilesetData("../client/assets/map/new_props.png",
+                                             "../client/assets/map/new_props.tsj")))
+        game_map.load_collision_objects_to(self.spindex)
 
     @staticmethod
     def get_entity_bounding_box(pos: Pos, entity_type: int):
@@ -236,6 +246,10 @@ class Node:
             intersection = self.spindex.intersect(get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
             if intersection:
                 for kind, identifier in intersection:
+                    if kind == PROJECTILE_TYPE:
+                        continue
+                    collided = True
+
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
                         logging.info(f"Projectile {projectile} hit a player {player}")
@@ -243,9 +257,7 @@ class Node:
                         if player.health < MIN_HEALTH:
                             player.health = MIN_HEALTH
                         logging.debug(f"Updated player {identifier} health to {player.health}")
-                        to_remove.append(projectile)
-                        collided = True
-                        # TODO: add wall collision
+                    to_remove.append(projectile)
             if not collided:
                 self.update_entity_location(projectile,
                                             (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
@@ -259,6 +271,8 @@ class Node:
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                      PROJECTILE_HEIGHT,
                                                                                      PROJECTILE_WIDTH))
+            logging.info(f"[update] removed projectile {projectile.uuid}")
+
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
@@ -271,7 +285,6 @@ class Node:
 
     def root_receiver(self):
         while True:
-            # FIXME: possible ConnectionResetError
             data = self.root_sock.recv(RECV_CHUNK)
             shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
             ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE:])
