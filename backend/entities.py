@@ -1,7 +1,8 @@
+import dataclasses
 import time
 import uuid as uuid
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from cryptography.fernet import Fernet
 
@@ -42,13 +43,16 @@ class Projectile(Entity):
 
 
 @dataclass
-class Bot(Entity):
+class Mob(Entity):
     health: int = MAX_HEALTH
     weapon: int = SWORD
+    cooldown: float = -1
+    last_time_attacked: float = -1
+    weapon_data: Dict[str, float] = dataclasses.field(default_factory=lambda: {})
 
 
-ServerControlled = Projectile | Bot
+ServerControlled = Projectile | Mob
 """Entity with server-controlled movements and actions"""
 
-Attackable = Bot | Player
-"""Entity that can be attacked."""
+Attackable = Mob | Player
+"""Entity that can be attacked or can attack."""

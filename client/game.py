@@ -44,7 +44,7 @@ class Game:
                                     self.visible_sprites.floor_surface.get_height()))
 
         # player init
-        self.player = Player((1988, 1500), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+        self.player = Player((2010, 1530), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
 

@@ -39,7 +39,7 @@ class Node:
         self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))
 
         self.players: Dict[str, Player] = {}
-        self.bots: defaultdict[str, Bot] = defaultdict(lambda: Bot())
+        self.bots: defaultdict[str, Mob] = defaultdict(lambda: Mob())
         self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
 
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
@@ -61,7 +61,7 @@ class Node:
 
     @property
     def entities(self) -> defaultdict[str, Entity]:
-        return self.players | self.bots | self.players
+        return self.players | self.bots | self.projectiles
 
     def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
@@ -206,6 +206,7 @@ class Node:
                 if not client_msg:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
+                logging.debug(f"[debug] {x=} {y=}")
                 player_pos = x, y
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
@@ -226,7 +227,7 @@ class Node:
             except Exception as e:
                 logging.exception(e)
 
-    def server_controlled_entities_update(self, s, projectiles, bots: List[Bot]):
+    def server_controlled_entities_update(self, s, projectiles, bots: List[Mob]):
         """
         Use: update all projectiles and bots positions inside a loop
         """

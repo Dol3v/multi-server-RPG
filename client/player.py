@@ -27,7 +27,7 @@ class Player(pygame.sprite.Sprite):
             10
         )
 
-        self.rect = self.image.get_rect(topleft=pos)
+        self.rect = self.image.get_rect(center=pos)
 
         self.looking_direction = "RIGHT"
 
