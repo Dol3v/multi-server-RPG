@@ -1,3 +1,6 @@
+import datetime
+import time
+
 import pygame
 import numpy as np
 import abc
@@ -140,6 +143,7 @@ class Projectile(pygame.sprite.Sprite):
 
     def draw_projectile(self):
         self.rect = self.image.get_rect(center=(self.x, self.y))
+        print(f"[{datetime.datetime.now()}] drawing projectile")
 
     def check_collision(self):
         for sprite in self.groups[1]:

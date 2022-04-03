@@ -248,22 +248,18 @@ class Node:
                         collided = True
                         # TODO: add wall collision
             if not collided:
-                self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                         PROJECTILE_HEIGHT,
-                                                                                         PROJECTILE_WIDTH))
-                self.projectiles[projectile.uuid].pos = projectile.pos[0] + \
-                                                        int(PROJECTILE_SPEED * projectile.direction[0]), projectile.pos[
-                                                            1] + \
-                                                        int(PROJECTILE_SPEED * projectile.direction[1])
-                self.spindex.insert((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                         PROJECTILE_HEIGHT,
-                                                                                         PROJECTILE_WIDTH))
+                self.update_entity_location(projectile,
+                                            (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
+                                             projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
+                                            PROJECTILE_TYPE)
+
         # print(list(self.projectiles.values()))
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
             self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
                                                                                      PROJECTILE_HEIGHT,
                                                                                      PROJECTILE_WIDTH))
+        logging.debug(f"[update] updated projectiles location")
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):

@@ -40,7 +40,7 @@ WEAPON_DATA = {
     AXE: {'cooldown': 300, 'damage': 30, 'melee_attack_range': 150, 'is_melee': True},
     BOW: {'cooldown': 400, 'damage': 45, 'is_melee': False}
 }
-FRAME_TIME = 1 / 60
+FRAME_TIME = 1 / 120
 MAX_SLOT = 6
 
 # Server communication ports
