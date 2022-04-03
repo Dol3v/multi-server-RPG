@@ -1,6 +1,7 @@
 import functools
 import logging
 import queue
+import random
 import sched
 import sys
 import numpy as np
@@ -78,7 +79,7 @@ class Node:
             tool_id = entity.weapon
         return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction, tool_id
 
-    def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Attackable]:
+    def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Combatant]:
         return map(lambda data: self.mobs[data[1]] if data[0] == MOB_TYPE else self.players[data[1]],
                    filter(lambda data: data[1] != entity_uuid and data[0] != PROJECTILE_TYPE,
                           self.spindex.intersect(bbox)))
@@ -90,7 +91,7 @@ class Node:
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
     def entities_in_melee_attack_range(self, entity: Player, melee_range: int) \
-            -> Iterable[Attackable]:
+            -> Iterable[Combatant]:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
@@ -130,6 +131,49 @@ class Node:
         self.entities[entity.uuid].pos = new_location
         self.spindex.insert((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
 
+    def melee_attack(self, attacker: Combatant, weapon_data: dict):
+        attackable_in_range = self.entities_in_melee_attack_range(attacker,
+                                                                  weapon_data['melee_attack_range'])
+        # resetting cooldown
+        attacker.last_time_attacked = time.time()
+
+        for attackable in attackable_in_range:
+            attackable.health -= weapon_data['damage']
+            if attackable.health < 0:
+                attackable.health = 0
+            logging.debug(f"Updated entity health to {attackable.health}")
+
+    def ranged_attack(self, attacker: Combatant, weapon_data: dict):
+        attacker.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
+        attacker.last_time_attacked = time.time()
+        # adding into saved data
+        projectile = Projectile(pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.direction[0]),
+                                     int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.direction[1])),
+                                direction=attacker.direction, damage=weapon_data['damage'])
+        self.projectiles[projectile.uuid] = projectile
+        self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
+                            get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+        logging.info(f"Added projectile {projectile}")
+
+    def attack(self, attacker: Combatant, weapon: int):
+        """Attacks using data from ``attacker``.
+
+        :param attacker: attacker
+        :param weapon: attacking weapon id"""
+        logging.debug(f"[attack] attacker uuid={attacker.uuid} tried to attack")
+        weapon_data = WEAPON_DATA[weapon]
+        if attacker.current_cooldown != -1:
+            if attacker.current_cooldown + attacker.last_time_attacked > (new := time.time()):
+                logging.debug(f"[blocked] cooldown={attacker.current_cooldown} prevented attack by {attacker.uuid}")
+                return
+            logging.info(f"[attack] cooldown={attacker.current_cooldown} passed, {new=}")
+            attacker.current_cooldown = -1
+        attacker.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
+        if weapon_data['is_melee']:
+            self.melee_attack(attacker, weapon_data)
+        else:
+            self.ranged_attack(attacker, weapon_data)
+
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
 
@@ -148,49 +192,6 @@ class Node:
         else:
             self.update_entity_location(player, player_pos, PLAYER_TYPE)
         return secure_pos
-
-    def update_hp(self, player: Player, inventory_slot: int):
-        """Updates hp of players in case of attack.
-
-        :param player: player entity with updated position
-        :param inventory_slot: slot index of player"""
-        logging.debug(f"Player {player.addr} tried to attack")
-        # check for cooldown and update it accordingly
-        if player.current_cooldown != -1:
-            if player.current_cooldown + player.last_time_attacked > (new := time.time()):
-                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {player.uuid}")
-                return
-            logging.info(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
-            player.current_cooldown = -1
-        try:
-            tool = player.tools[inventory_slot]
-            weapon_data = WEAPON_DATA[tool]
-        except KeyError:
-            logging.info(f"Invalid slot index/tool given by {player.uuid}")
-            return
-        player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
-        if weapon_data['is_melee']:
-            attackable_in_range = self.entities_in_melee_attack_range(player,
-                                                                      weapon_data['melee_attack_range'])
-            # resetting cooldown
-            player.last_time_attacked = time.time()
-
-            for attackable in attackable_in_range:
-                attackable.health -= weapon_data['damage']
-                if attackable.health < 0:
-                    attackable.health = 0
-                logging.debug(f"Updated entity health to {attackable.health}")
-        else:
-            player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
-            player.last_time_attacked = time.time()
-            # adding into saved data
-            projectile = Projectile(pos=(int(player.pos[0] + ARROW_OFFSET_FACTOR * player.direction[0]),
-                                         int(player.pos[1] + ARROW_OFFSET_FACTOR * player.direction[1])),
-                                    direction=player.direction, damage=weapon_data['damage'])
-            self.projectiles[projectile.uuid] = projectile
-            self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
-                                get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
-            logging.info(f"Added projectile {projectile}")
 
     def update_client(self, player_uuid: str, secure_pos: Pos):
         """sends server message to the client"""
@@ -220,19 +221,19 @@ class Node:
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
 
-                entity = self.players[player_uuid]
-                if seqn <= entity.last_updated != 0:
+                player = self.players[player_uuid]
+                if seqn <= player.last_updated != 0:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
 
-                entity.direction = attack_dir  # TODO: check if normalized
-                secure_pos = self.update_location(player_pos, seqn, entity)
-
-                entity.slot = slot_index
+                player.direction = attack_dir  # TODO: check if normalized
+                secure_pos = self.update_location(player_pos, seqn, player)
+                
+                player.slot = slot_index
                 if attacked:
-                    self.update_hp(entity, slot_index)
-                self.update_client(entity.uuid, secure_pos)
-                entity.last_updated = seqn
+                    self.attack(player, player.tools[player.slot])
+                self.update_client(player.uuid, secure_pos)
+                player.last_updated = seqn
             except Exception as e:
                 logging.exception(e)
 
@@ -312,6 +313,7 @@ class Node:
         for _ in range(MOB_COUNT):
             mob = Mob()
             mob.pos = self.get_available_position(MOB_TYPE)
+            mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
             self.mobs[mob.uuid] = mob
 
         print(self.mobs)
