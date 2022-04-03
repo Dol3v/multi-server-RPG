@@ -104,3 +104,6 @@ MOB_COUNT = 1000
 # Some temporary consts
 ROOT_IP = "127.0.0.1"
 ROOT_PORT = 30000
+
+# mob consts
+MOB_SPEED = 4

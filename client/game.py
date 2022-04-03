@@ -187,7 +187,7 @@ class Game:
         """
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-            if entity_type != PLAYER_TYPE:
+            if entity_type == PROJECTILE_TYPE:
                 continue
             if entity_uuid in self.entities:
                 self.entities[entity_uuid].direction = entity_dir

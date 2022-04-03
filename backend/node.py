@@ -1,13 +1,12 @@
-import functools
 import logging
 import queue
 import random
 import sched
 import sys
-import numpy as np
 import threading
 from collections import defaultdict
 
+import numpy as np
 from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
@@ -19,7 +18,8 @@ sys.path.append('../')
 from common.consts import *
 from common.utils import *
 from collision import *
-from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT
+from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT, MOB_SIGHT_HEIGHT, \
+    MOB_SIGHT_WIDTH
 from entities import *
 from networking import generate_server_message, parse_client_message
 
@@ -63,6 +63,10 @@ class Node:
     def entities(self) -> Dict[str, Entity]:
         return self.players | self.mobs | self.projectiles
 
+    @property
+    def server_controlled(self) -> Dict[str, ServerControlled]:
+        return self.mobs | self.projectiles
+
     def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
 
@@ -95,6 +99,13 @@ class Node:
         return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
+    def players_in_range(self, pos: Pos, width: int, height: int) -> Iterable[Pos]:
+        intersecting = self.spindex.intersect(get_bounding_box(pos, height, width))
+        filtered = filter(lambda data: data[0] == PLAYER_TYPE, intersecting)
+        mapped = list(map(lambda data: self.entities[data[1]].pos, filtered))
+        logging.debug(f"[debug] {pos=} {intersecting=} filtered={list(filtered)} mapped={list(mapped)}")
+        return mapped
+
     def load_map(self):
         """Loads the map"""
         game_map = Map()
@@ -126,6 +137,16 @@ class Node:
         entity.pos = new_location
         self.entities[entity.uuid].pos = new_location
         self.spindex.insert((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
+
+    def get_mob_direction(self, mob: Mob) -> Dir:
+        in_range = self.players_in_range(mob.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT)
+        if not in_range:
+            return 0., 0.
+        nearest_player_pos = min(in_range,
+                                 key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
+        dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
+        dir_x, dir_y = normalize_vec(dir_x, dir_y)
+        return dir_x * MOB_SPEED, dir_y * MOB_SPEED
 
     def melee_attack(self, attacker: Combatant, weapon_data: dict):
         attackable_in_range = self.entities_in_melee_attack_range(attacker,
@@ -214,6 +235,7 @@ class Node:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
                 player_pos = x, y
+                logging.debug(f"[debug] {player_pos=}")
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
 
@@ -266,7 +288,18 @@ class Node:
                                                                                      PROJECTILE_HEIGHT,
                                                                                      PROJECTILE_WIDTH))
             logging.info(f"[update] removed projectile {projectile.uuid}")
-
+        for mob in self.mobs.values():
+            mob.direction = self.get_mob_direction(mob)
+            colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
+            if colliding:
+                for kind, identifier in colliding:
+                    if kind == PROJECTILE_TYPE:
+                        continue
+                    mob.direction = 0., 0.
+            self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
+                                              mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
+                                        MOB_TYPE)
+            logging.debug(f"[debug] updated position to {mob.pos=}")
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
@@ -303,14 +336,17 @@ class Node:
         return pos_x, pos_y
 
     def generate_mobs(self):
-        """Generate the mobs object with a random positions"""
-        for _ in range(MOB_COUNT):
-            mob = Mob()
-            mob.pos = self.get_available_position(MOB_TYPE)
-            mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
-            self.mobs[mob.uuid] = mob
-
-        print(self.mobs)
+        # """Generate the mobs object with a random positions"""
+        # for _ in range(MOB_COUNT):
+        #     mob = Mob()
+        #     mob.pos = self.get_available_position(MOB_TYPE)
+        #     mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+        #     self.mobs[mob.uuid] = mob
+        mob = Mob()
+        mob.pos = (2500, 1700)
+        mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+        self.mobs[mob.uuid] = mob
+        self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
     def run(self) -> None:
         """starts node threads"""
@@ -334,7 +370,7 @@ class Node:
         """
         return entity.last_updated != -1 and (not moved_reasonable_distance(
             player_pos, entity.pos, seqn - entity.last_updated) or
-               next(self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE), None))
+                            not is_empty(self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE)))
 
 
 if __name__ == "__main__":
