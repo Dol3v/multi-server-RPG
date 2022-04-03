@@ -14,8 +14,6 @@ class Entity:
     pos: Pos = DEFAULT_POS_MARK
     direction: Dir = DEFAULT_DIR
     uuid: str = str(uuid.uuid4())
-    width: int = -1
-    height: int = -1
 
 
 @dataclass
@@ -36,23 +34,17 @@ class Player(Entity):
     tools: [default, tool2, tool3]
     """
     fernet: Fernet = None
-    width = CLIENT_WIDTH
-    height = CLIENT_HEIGHT
 
 
 @dataclass
 class Projectile(Entity):
     damage: int = 0
-    width = PROJECTILE_WIDTH
-    height = PROJECTILE_HEIGHT
 
 
 @dataclass
 class Bot(Entity):
     health: int = MAX_HEALTH
     weapon: int = SWORD
-    width = BOT_WIDTH
-    height = BOT_HEIGHT
 
 
 ServerControlled = Projectile | Bot

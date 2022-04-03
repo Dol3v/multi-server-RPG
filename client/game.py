@@ -119,7 +119,6 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(*tools,  x, y, health, entities)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 

@@ -95,12 +95,25 @@ class Node:
         return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
                                                       weapon_x + melee_range // 2, weapon_y + melee_range // 2))
 
+    @staticmethod
+    def get_entity_bounding_box(pos: Pos, entity_type: int):
+        width, height = -1, -1
+        if entity_type == PLAYER_TYPE:
+            width, height = CLIENT_WIDTH, CLIENT_HEIGHT
+        elif entity_type == PROJECTILE_TYPE:
+            width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
+        elif entity_type == BOT_TYPE:
+            width, height = BOT_WIDTH, BOT_HEIGHT
+        else:
+            raise ValueError("Non-existent type entered to get_entity_bounding_box")
+        return get_bounding_box(pos, height, width)
+
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
-        self.spindex.remove((kind, entity.uuid), get_bounding_box(entity.pos, entity.height, entity.width))
+        self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
         # are both necessary? prob not, but I'm not gonna take the risk
         entity.pos = new_location
         self.entities[entity.uuid].pos = new_location
-        self.spindex.insert((kind, entity.uuid), get_bounding_box(entity.pos, entity.height, entity.width))
+        self.spindex.insert((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
 
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -114,6 +127,8 @@ class Node:
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
         if invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
+            logging.info(
+                f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}, {player.last_updated=}")
             secure_pos = self.players[player.uuid].pos
         else:
             self.update_entity_location(player, player_pos, PLAYER_TYPE)
@@ -129,7 +144,7 @@ class Node:
         # check for cooldown and update it accordingly
         if player.current_cooldown != -1:
             if player.current_cooldown + player.last_time_attacked > (new := time.time()):
-                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {uuid}")
+                logging.debug(f"COOLDOWN {player.current_cooldown} prevented attack by {player.uuid}")
                 return
             logging.info(f"COOLDOWN {player.current_cooldown} passed, {new=}, old={player.last_time_attacked}")
             player.current_cooldown = -1
@@ -137,7 +152,7 @@ class Node:
             tool = player.tools[inventory_slot]
             weapon_data = WEAPON_DATA[tool]
         except KeyError:
-            logging.info(f"Invalid slot index/tool given by {uuid}")
+            logging.info(f"Invalid slot index/tool given by {player.uuid}")
             return
         player.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
         if weapon_data['is_melee']:
@@ -206,6 +221,7 @@ class Node:
                 entity.slot = slot_index
                 if attacked:
                     self.update_hp(entity, slot_index)
+                logging.debug(f"[debug] sending {secure_pos=}")
                 self.update_client(entity.uuid, secure_pos)
             except Exception as e:
                 logging.exception(e)
@@ -263,7 +279,7 @@ class Node:
             # FIXME: possible ConnectionResetError
             data = self.root_sock.recv(RECV_CHUNK)
             shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
-            ip, port = deserialize_addr( data[SHARED_KEY_SIZE + UUID_SIZE:])
+            ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE:])
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
             initial_pos = (2010, 1530)  # should be received from root
             self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
@@ -302,6 +318,5 @@ def invalid_movement(entity: Player, player_pos: Pos, seqn: int) -> bool:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG,
-                        filename="server.log", filemode="a+")
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     Node(NODE_PORT)
