@@ -68,6 +68,7 @@ class Node:
 
         :returns: flattened tuple of kind, position and direction"""
         entity = self.entities[entity_data[1]]
+        tool_id = EMPTY_SLOT
         if entity_data[0] == PLAYER_TYPE:
             tool_id = entity.tools[entity.slot]
         elif entity_data[0] == BOT_TYPE:
