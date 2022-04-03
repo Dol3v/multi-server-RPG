@@ -102,7 +102,7 @@ class EntryNode:
 
             if not success:
                 logging.info(f"[blocked] login/signup failed, error msg: {error_msg}")
-                conn.send(struct.pack(REDIRECT_FORMAT, EMPTY_UUID, "0.0.0.0".encode(), success, len(error_msg))
+                conn.send(struct.pack(REDIRECT_FORMAT, EMPTY_UUID.encode(), "0.0.0.0".encode(), success, len(error_msg))
                           + error_msg.encode())
                 conn.close()
                 continue

@@ -14,7 +14,7 @@ from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DE
 class Entity:
     pos: Pos = DEFAULT_POS_MARK
     direction: Dir = DEFAULT_DIR
-    uuid: str = str(uuid.uuid4())
+    uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @dataclass
