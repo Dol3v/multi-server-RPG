@@ -4,6 +4,7 @@ import math
 import re
 import socket
 import struct
+from itertools import islice
 from typing import Iterable, Tuple
 
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, generate_private_key, \
@@ -102,5 +103,5 @@ def deserialize_addr(addr_bytes: bytes) -> Tuple[str, int]:
     return "".join(str(ip_byte) + "." for ip_byte in components[:-1])[:-1], components[-1]
 
 
-def is_empty(iterator) -> bool:
-    return any()
+def is_empty(iterable) -> bool:
+    return next(iterable, None) is None

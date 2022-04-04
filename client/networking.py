@@ -21,12 +21,12 @@ def do_ecdh(conn: socket.socket) -> bytes | None:
 
 def send_credentials(username: str, password: str, conn: socket.socket, shared_key: bytes, client_game_addr: Addr,
                      is_login: bool = False):
-    """
-    Use: login to the server
-    """
+    """sends shared key username password ip and """
     fernet = Fernet(urlsafe_b64encode(shared_key))
     username_token = fernet.encrypt(username.encode())
     password_token = fernet.encrypt(password.encode())
+    print(client_game_addr[0])
+    print(client_game_addr[1])
     conn.send(serialize_ip(client_game_addr[0]) + struct.pack(">l?", client_game_addr[1], is_login) +
               username_token + password_token)
     return fernet

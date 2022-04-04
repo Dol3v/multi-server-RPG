@@ -45,3 +45,7 @@ MAX_SLOT = 6
 
 # Server communication ports
 ROOT_SERVER2SERVER_PORT = 35000
+
+# other
+MOB_SIGHT_WIDTH = 700
+MOB_SIGHT_HEIGHT = 700
