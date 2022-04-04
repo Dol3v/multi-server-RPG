@@ -16,6 +16,15 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS
 
 
+def get_random_port():
+    """Find a free port for the client"""
+    sock = socket.socket()
+    sock.bind(('', 0))
+    free_port = sock.getsockname()[1]
+    sock.close()
+    return free_port
+
+
 def parse(parse_format: str, data: bytes) -> tuple | None:
     """
     Use: parse a given message by the given format
