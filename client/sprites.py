@@ -1,10 +1,10 @@
 """Every sprite or group class for the client"""
-import abc
 
+import numpy as np
 import pygame
 
 from client import consts
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, ARROW_TYPE
 
 """
 TODO: merge the weapon classes with the Player class
@@ -78,22 +78,24 @@ class Entity(pygame.sprite.Sprite):
         self.last_x = x
         self.last_y = y
 
-        self.scale_size = entity_data[entity_type][3]
+        self.scale_size = consts.ENTITY_DATA[entity_type][3]
 
         if entity_type == "player":
             return
 
-        self.texture = pygame.image.load("assets/entity/" + entity_data[entity_type][0]).convert_alpha()
+        self.texture = pygame.image.load("assets/entity/" + consts.ENTITY_DATA[entity_type][0]).convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * self.scale_size,
                                                              self.texture.get_height() * self.scale_size))
 
-        self.animation = Animation(entity_data[entity_type][1], entity_data[entity_type][2])
+        anim = []
+
+        for path in consts.ENTITY_DATA[entity_type][1]:
+            anim.append(pygame.image.load("assets/entity/" + path))
+
+        self.animation = graphics.Animation(anim, consts.ENTITY_DATA[entity_type][2])
 
         if self.animation.is_empty():
-            self.animation = Animation([self.texture.copy()], entity_data[entity_type][2])
-        self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
-        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * consts.PLAYER_SIZE_MULTIPLIER,
-                                                             self.texture.get_height() * consts.PLAYER_SIZE_MULTIPLIER))
+            self.animation = graphics.Animation([self.texture.copy()], consts.ENTITY_DATA[entity_type][2])
 
         self.original_texture = self.texture.copy()
 

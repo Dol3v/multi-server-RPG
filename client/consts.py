@@ -1,6 +1,8 @@
 """General consts for client side"""
 # Images
-from common.consts import ARROW_TYPE
+import pygame
+
+from common.consts import ARROW_TYPE, MOB_TYPE
 
 PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
@@ -38,9 +40,10 @@ weapon_data = {
     'potion': {"id": 4, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20)}
 }
 
-entity_data = {
+ENTITY_DATA = {
     # (texure, [animation], frame per second, size_multiplier
-    ARROW_TYPE: ("arrow/projectile.png", [], 10, 1)
+    ARROW_TYPE: ("arrow/projectile.png", [], 10, 1),
+    MOB_TYPE: ("dino/lizard.png", ["dino/lizard.png"], 10, 3)
 }
 
 # Actions format

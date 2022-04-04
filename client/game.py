@@ -4,11 +4,9 @@ import queue
 import socket
 import sys
 import threading
+from typing import List
 
 from cryptography.fernet import Fernet
-from pyqtree import Index
-from common.utils import get_bounding_box
-from typing import List
 
 import weapons
 
@@ -55,7 +53,7 @@ class Game:
         self.map = Map()
         self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
                                                                             "assets/map/new_props.tsj")))
-        self.map.load_collision_objects(self.map_collision)
+        self.map.load_collision_objects_to(self.map_collision)
 
         self.full_screen = full_screen
         self.running = False
@@ -179,16 +177,11 @@ class Game:
     def render_clients(self, entities: List[Tuple[int, str, tuple, tuple, int]]) -> None:
         """
         Use: prints the other clients by the given info about them
-
-        #TODO: Remove players that died (or left if player)
-                (For server, add "died" flag)
-                [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
-                [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
 
-            if entity_uuid in self.entities:
+            if entity_uuid in self.entities.keys():
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
@@ -202,23 +195,24 @@ class Game:
                 else:
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
-
+        #
         # remove_entities = []
+        #
         # for entity_uuid in self.entities.keys():
-        #    if entity_uuid not in entities:
-        #        print("kill")
-        #        self.entities[entity_uuid].kill()
-        #        remove_entities.append(entity_uuid)
-
+        #     if entity_uuid not in entities:
+        #         print(entity_uuid)
+        #         self.entities[entity_uuid].kill()
+        #         remove_entities.append(entity_uuid)
+        #
         # for entity_uuid in remove_entities:
-        #   self.entities.pop(entity_uuid)
+        #     self.entities.pop(entity_uuid)
 
     def run(self) -> None:
         """
         Use: game loop
         """
         self.running = True
-        # starts the receiving thread 
+        # starts the receiving thread
         recv_thread = threading.Thread(target=self.receiver)
         recv_thread.start()
         self.draw_map()

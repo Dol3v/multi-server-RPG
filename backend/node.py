@@ -67,6 +67,12 @@ class Node:
     def server_controlled(self) -> Dict[str, ServerControlled]:
         return self.mobs | self.projectiles
 
+    @staticmethod
+    def get_mob_stop_distance(mob: Mob) -> float:
+        if mob.weapon != ARROW_TYPE:
+            return 0.5 * (np.sqrt(BOT_HEIGHT ** 2 + BOT_WIDTH ** 2) + np.sqrt(CLIENT_HEIGHT ** 2 + CLIENT_WIDTH ** 2))
+        return 200.
+
     def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
 
@@ -81,7 +87,7 @@ class Node:
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Combatant]:
         return map(lambda data: self.mobs[data[1]] if data[0] == MOB_TYPE else self.players[data[1]],
-                   filter(lambda data: data[1] != entity_uuid and data[0] != PROJECTILE_TYPE,
+                   filter(lambda data: data[1] != entity_uuid and data[0] != ARROW_TYPE,
                           self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
@@ -144,6 +150,9 @@ class Node:
             return 0., 0.
         nearest_player_pos = min(in_range,
                                  key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
+        if np.sqrt(((mob.pos[0] - nearest_player_pos[0]) ** 2 + (mob.pos[1] - nearest_player_pos[1]) ** 2)) <= \
+                self.get_mob_stop_distance(mob) + 20:
+            return 0.0, 0.0
         dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
         return dir_x * MOB_SPEED, dir_y * MOB_SPEED
@@ -168,7 +177,7 @@ class Node:
                                      int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.direction[1])),
                                 direction=attacker.direction, damage=weapon_data['damage'])
         self.projectiles[projectile.uuid] = projectile
-        self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
+        self.spindex.insert((ARROW_TYPE, projectile.uuid),
                             get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
         logging.info(f"Added projectile {projectile}")
 
@@ -261,10 +270,10 @@ class Node:
         to_remove = []
         for projectile in projectiles.values():
             collided = False
-            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=PROJECTILE_TYPE)
+            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
             if intersection:
                 for kind, identifier in intersection:
-                    if kind == PROJECTILE_TYPE:
+                    if kind == ARROW_TYPE:
                         continue
                     collided = True
                     if kind == PLAYER_TYPE:
@@ -277,22 +286,23 @@ class Node:
                     to_remove.append(projectile)
             if not collided:
                 self.update_entity_location(projectile,
-                                            (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),                            projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
-                                            PROJECTILE_TYPE)
+                                            (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
+                                             projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
+                                            ARROW_TYPE)
                 logging.debug(f"[debug] updated projectile {projectile.uuid} to {projectile}")
 
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
-            self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                     PROJECTILE_HEIGHT,
-                                                                                     PROJECTILE_WIDTH))
+            self.spindex.remove((ARROW_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
+                                                                                PROJECTILE_HEIGHT,
+                                                                                PROJECTILE_WIDTH))
             logging.info(f"[update] removed projectile {projectile.uuid}")
         for mob in self.mobs.values():
             mob.direction = self.get_mob_direction(mob)
             colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
             if colliding:
                 for kind, identifier in colliding:
-                    if kind == PROJECTILE_TYPE:
+                    if kind == ARROW_TYPE:
                         continue
                     mob.direction = 0., 0.
             self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
@@ -369,7 +379,8 @@ class Node:
         """
         return entity.last_updated != -1 and (not moved_reasonable_distance(
             player_pos, entity.pos, seqn - entity.last_updated) or
-                            not is_empty(self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE)))
+                                              not is_empty(
+                                                  self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE)))
 
 
 if __name__ == "__main__":
