@@ -96,7 +96,7 @@ class Node:
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Tuple[int, Combatant]]:
         return map(lambda data: (data[0], self.entities[data[1]]),
-                   filter(lambda data: data[1] != entity_uuid and data[0] != ARROW_TYPE,
+                   filter(lambda data: data[1] != entity_uuid and data[0] != ARROW_TYPE and data[0] != OBSTACLE_TYPE,
                           self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
