@@ -192,10 +192,12 @@ class Game:
         """
         Use: prints the other clients by the given info about them
         """
+        print("-" * 10)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-
+            print(f"received entity {entity_uuid=} {entity_type=} {pos=} {entity_dir=} {tool_id=}")
             if entity_uuid in self.entities.keys():
+                print("entity in keys, updating")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
@@ -203,17 +205,21 @@ class Game:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
                 if entity_type == PLAYER_TYPE:
+                    print("creating player")
                     self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
                                                               entity_dir, tool_id, self.map_collision)
                 else:
+                    print(f"creating entity of type={entity_type}")
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info[1], entities))
-
+        print(f"{received_uuids=}")
+        print(f"keys={self.entities.keys()}")
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
+                print(f"killing uuid={entity_uuid}")
                 self.entities[entity_uuid].kill()
                 remove_entities.append(entity_uuid)
 

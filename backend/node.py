@@ -217,6 +217,8 @@ class Node:
 
         :param attacker: attacker
         :param weapon: attacking weapon id"""
+        if attacker.uuid in self.players.keys():
+            logging.debug("[debug] player is attacking")
         weapon_data = WEAPON_DATA[weapon]
         if attacker.current_cooldown != -1:
             if attacker.current_cooldown + attacker.last_time_attacked > (new := time.time()):
@@ -317,15 +319,15 @@ class Node:
                     continue
 
                 intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
-                should_remove = True
+                should_remove = False
                 if intersection:
                     for kind, identifier in intersection:
                         if kind == ARROW_TYPE:
-                            should_remove = False
                             continue
                         if kind == PLAYER_TYPE or kind == MOB_TYPE:
                             combatant: Combatant = self.entities[identifier]
                             logging.info(f"Projectile {projectile} hit {combatant}")
+                            should_remove = True
                             combatant.health -= projectile.damage
                             if combatant.health <= MIN_HEALTH:
                                 logging.info(f"[update] killed {combatant=}")
@@ -334,7 +336,7 @@ class Node:
                     if should_remove:
                         to_remove.append(projectile)
                         logging.debug(f"[debug] gonna remove uuid={projectile.uuid}, nonzero intersection")
-                    continue
+                        continue
 
                 self.update_entity_location(projectile,
                                             (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
@@ -400,7 +402,8 @@ class Node:
         for _ in range(MOB_COUNT):
             mob = Mob()
             mob.pos = self.get_available_position(MOB_TYPE)
-            mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+            # mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+            mob.weapon = SWORD
             self.mobs[mob.uuid] = mob
             self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
