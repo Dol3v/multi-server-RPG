@@ -1,6 +1,5 @@
 import logging
 import queue
-import random
 import sched
 import sys
 import threading
