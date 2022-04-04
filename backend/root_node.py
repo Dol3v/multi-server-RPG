@@ -128,10 +128,10 @@ class EntryNode:
 
     def init_nodes(self):
         """Initializes nodes' data based on user input."""
-        for map_id in range(NUM_NODES):
-            ip = enter_ip(f"Enter node {map_id} IP: ")
-            self.servers_white_list.append(ip)
-
+        # for map_id in range(NUM_NODES):
+        #     ip = enter_ip(f"Enter node {map_id} IP: ")
+        #     self.servers_white_list.append(ip)
+        self.servers_white_list.append("127.0.0.1")
         self.server2server.listen()
         map_id = 0
 

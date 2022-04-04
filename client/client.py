@@ -29,7 +29,7 @@ def init_pygame() -> pygame.Surface:
 def main():
     screen = init_pygame()
 
-    connection_screen = connect_screen.ConnectScreen(screen, get_random_port())
+    connection_screen = connect_screen.ConnectScreen(screen, 10000)
     connection_screen.run()
     if not connection_screen.sock:
         print("Login/Signup failed")
