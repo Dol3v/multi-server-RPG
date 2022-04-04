@@ -40,8 +40,9 @@ class Node:
         self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_sock = socket.socket()
         # TODO: remove when actually deploying exe
-        time.sleep(1)
-        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))
+        root_ip = enter_ip("Enter root's IP: ")
+
+        self.root_sock.connect((root_ip, ROOT_SERVER2SERVER_PORT))
 
         self.players: Dict[str, Player] = {}
         self.mobs: Dict[str, Mob] = {}

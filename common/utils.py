@@ -15,6 +15,14 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS
 
 
+def enter_ip(enter_string: str):
+    """enter ip only if valid"""
+    ip = input(enter_string)
+    while not valid_ip(ip):
+        ip = input(enter_string)
+    return ip
+
+
 def get_random_port():
     """Find a free port for the client"""
     sock = socket.socket()

@@ -16,7 +16,7 @@ import numpy as np
 
 sys.path.append('../')
 
-from common.utils import deserialize_addr, serialize_ip
+from common.utils import deserialize_addr, serialize_ip, valid_ip, enter_ip
 from consts import DB_PASS, CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT, ADDR_HEADER_SIZE
 from authentication import login, signup, parse_credentials
 from database import SqlDatabase
@@ -34,6 +34,7 @@ class ClientData:
 @dataclass
 class NodeData:
     ip: str
+    map_id: int
     clients_info: List[ClientData]
     conn: socket.socket
 
@@ -44,6 +45,7 @@ class EntryNode:
     client_thread_count = 1
 
     def __init__(self, db: SqlDatabase, sock: socket.socket):
+        self.servers_white_list = []
         self.sock = sock
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((ROOT_IP, ROOT_PORT))
@@ -126,14 +128,24 @@ class EntryNode:
 
     def init_nodes(self):
         """Initializes nodes' data based on user input."""
-        # TODO: actually make this secure lmao
+        for map_id in range(NUM_NODES):
+            ip = enter_ip(f"Enter node {map_id} IP: ")
+            self.servers_white_list.append(ip)
+
         self.server2server.listen()
-        for node_id in range(NUM_NODES):
+        map_id = 0
+
+        while map_id < NUM_NODES:
             conn, addr = self.server2server.accept()
+            if addr[0] not in self.servers_white_list:
+                logging.warning(f"unauthorized server is trying to talk with root")
+                continue
+
             logging.info(f"[update] accepted one server connection with {addr=}")
 
-
-            self.nodes.append(NodeData(addr[0], [], conn))
+            # conn.send(struct.pack(map_id, ))
+            self.nodes.append(NodeData(addr[0], map_id, [], conn))
+            map_id += 1
         # TODO: send here the generated SQL password for user
         # self.server_send_queue.put()
 
