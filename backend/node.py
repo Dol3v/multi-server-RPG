@@ -109,7 +109,6 @@ class Node:
         intersecting = self.spindex.intersect(get_bounding_box(pos, height, width))
         filtered = filter(lambda data: data[0] == PLAYER_TYPE, intersecting)
         mapped = list(map(lambda data: self.entities[data[1]].pos, filtered))
-        logging.debug(f"[debug] {pos=} {intersecting=} filtered={list(filtered)} mapped={list(mapped)}")
         return mapped
 
     def load_map(self):
@@ -147,9 +146,11 @@ class Node:
     def get_mob_direction(self, mob: Mob) -> Dir:
         in_range = self.players_in_range(mob.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT)
         if not in_range:
+            mob.on_player = False
             return 0., 0.
         nearest_player_pos = min(in_range,
                                  key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
+        mob.on_player = True
         if np.sqrt(((mob.pos[0] - nearest_player_pos[0]) ** 2 + (mob.pos[1] - nearest_player_pos[1]) ** 2)) <= \
                 self.get_mob_stop_distance(mob) + MOB_ERROR_TERM:
             return 0.0, 0.0
@@ -244,7 +245,6 @@ class Node:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
                 player_pos = x, y
-                logging.debug(f"[debug] {player_pos=}")
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
 
@@ -270,6 +270,10 @@ class Node:
         to_remove = []
         for projectile in projectiles.values():
             collided = False
+            projectile.ttl -= 1
+            if projectile.ttl == 0:
+                collided = True
+                to_remove.append(projectile)
             intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
             if intersection:
                 for kind, identifier in intersection:
@@ -289,8 +293,6 @@ class Node:
                                             (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
                                              projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
                                             ARROW_TYPE)
-                logging.debug(f"[debug] updated projectile {projectile.uuid} to {projectile}")
-
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
             self.spindex.remove((ARROW_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
@@ -305,10 +307,11 @@ class Node:
                     if kind == ARROW_TYPE:
                         continue
                     mob.direction = 0., 0.
+            if mob.on_player:
+                self.attack(mob, mob.weapon)
             self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
                                               mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
                                         MOB_TYPE)
-            logging.debug(f"[debug] updated position to {mob.pos=}")
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):

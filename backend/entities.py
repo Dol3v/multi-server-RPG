@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict
 from cryptography.fernet import Fernet
 
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
-    CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT
+    CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT, PROJECTILE_TTL
 
 
 @dataclass
@@ -40,15 +40,17 @@ class Player(Entity):
 @dataclass
 class Projectile(Entity):
     damage: int = 0
+    ttl: int = PROJECTILE_TTL
 
 
 @dataclass
 class Mob(Entity):
     health: int = MAX_HEALTH
     weapon: int = SWORD
-    cooldown: float = -1
+    current_cooldown: float = -1
     last_time_attacked: float = -1
     weapon_data: Dict[str, float] = dataclasses.field(default_factory=lambda: {})
+    on_player: bool = False
 
 
 ServerControlled = Projectile | Mob

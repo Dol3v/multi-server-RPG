@@ -41,9 +41,10 @@ weapon_data = {
 }
 
 ENTITY_DATA = {
-    # (texure, [animation], frame per second, size_multiplier
+    # (texture, [animation], frame per second, size_multiplier
     ARROW_TYPE: ("arrow/projectile.png", [], 10, 1),
-    MOB_TYPE: ("dino/lizard.png", ["dino/lizard.png"], 10, 3)
+    MOB_TYPE: ("dino/lizard.png", ["dino/lizard.png", "dino/lizard_run_0.png", "dino/lizard_run_1.png",
+                                   "dino/lizard_run_2.png", "dino/lizard_run_3.png"], 1, 3)
 }
 
 # Actions format
