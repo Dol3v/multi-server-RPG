@@ -122,7 +122,6 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(f"{entities=}, {chat_msg=}")
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -166,6 +165,11 @@ class Game:
 
         if health >= MIN_HEALTH:
             self.player.current_health = health
+        else:
+            print("ded")
+            self.running = False
+            pygame.quit()
+            sys.exit(0)
 
         chat_new_msg = msg_bytes.decode().rstrip("\x00")
 
@@ -189,12 +193,10 @@ class Game:
         """
         Use: prints the other clients by the given info about them
         """
-        #print("-" * 10)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-            #print(f"{entity_uuid=} {entity_type=} {entity_dir=} {pos=} {tool_id=}")
+
             if entity_uuid in self.entities.keys():
-                #print(f"updating uuid={entity_uuid} with direction={entity_dir} and new_pos={pos}")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
@@ -202,23 +204,19 @@ class Game:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
                 if entity_type == PLAYER_TYPE:
-                    #print(f"Added uuid={entity_uuid} as a player")
                     self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
                                                               entity_dir, tool_id, self.map_collision)
                 else:
-                    #print(f"Added uuid={entity_uuid} as a {entity_type}")
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info[1], entities))
-        #print(f"received uuids {list(received_uuids)}")
-        #print(f"keys: {self.entities.keys()}")
+
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
                 self.entities[entity_uuid].kill()
                 remove_entities.append(entity_uuid)
-                #print(f"removed uuid={entity_uuid}")
 
         for entity_uuid in remove_entities:
             self.entities.pop(entity_uuid)

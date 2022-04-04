@@ -6,7 +6,7 @@ import threading
 import time
 import random
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Set
 
 import numpy as np
 from cryptography.fernet import InvalidToken
@@ -55,6 +55,8 @@ class Node:
 
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
+
+        self.died_clients: Set[str] = set()
 
         self.load_map()
         # Starts the node
@@ -133,6 +135,13 @@ class Node:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
         return get_bounding_box(pos, height, width)
 
+    def remove_entity(self, entity: Entity, kind: int):
+        if kind == PLAYER_TYPE:
+            self.died_clients.add(entity.uuid)
+            self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
+        self.entities.pop(entity.uuid)
+        self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
+
     def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: int) -> Iterable[Tuple[int, str]]:
         return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
             self.get_entity_bounding_box(pos, kind)))
@@ -152,13 +161,13 @@ class Node:
             mob.on_player = False
             mob.direction = 0.0, 0.0
             return
-        #print("on player")
+
         nearest_player_pos = min(in_range,
                                  key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
         mob.on_player = True
         if np.sqrt(((mob.pos[0] - nearest_player_pos[0]) ** 2 + (mob.pos[1] - nearest_player_pos[1]) ** 2)) <= \
                 self.get_mob_stop_distance(mob) + MOB_ERROR_TERM:
-            #print(f"mob uuid={mob.uuid} is within stop distance")
+
             mob.direction = 0.0, 0.0
         dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
@@ -174,8 +183,9 @@ class Node:
 
         for attackable in attackable_in_range:
             attackable.health -= weapon_data['damage']
-            if attackable.health < 0:
-                attackable.health = 0
+            if attackable.health <= MIN_HEALTH:
+                print("Should die")
+                # self.remove_entity(attackable, )
             logging.debug(f"Updated entity health to {attackable.health}")
 
     def ranged_attack(self, attacker: Combatant, weapon_data: dict):
@@ -243,11 +253,13 @@ class Node:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
 
                 player_uuid = data[:UUID_SIZE].decode()
-                #print(f"{player_uuid=}")
+
                 try:
                     data = self.players[player_uuid].fernet.decrypt(data[UUID_SIZE:])
                 except InvalidToken:
                     logging.warning(f"[security] player {addr=} sent non-matching uuid={player_uuid}")
+                    continue
+                if player_uuid in self.died_clients:
                     continue
                 client_msg = parse_client_message(data)
                 if not client_msg:
@@ -271,8 +283,6 @@ class Node:
                     self.attack(player, player.tools[player.slot])
 
                 self.broadcast_clients(player.uuid)
-                if player.incoming_message:
-                    print(player.uuid, player.incoming_message)
                 self.update_client(player.uuid, secure_pos)
                 player.last_updated = seqn
             except Exception as e:
@@ -289,13 +299,14 @@ class Node:
                 for kind, identifier in intersection:
                     if kind == ARROW_TYPE:
                         continue
-                    if kind == PLAYER_TYPE:
-                        player = self.players[identifier]
-                        logging.info(f"Projectile {projectile} hit a player {player}")
-                        player.health -= projectile.damage
-                        if player.health < MIN_HEALTH:
-                            player.health = MIN_HEALTH
-                        logging.debug(f"Updated player {identifier} health to {player.health}")
+                    if kind == PLAYER_TYPE or kind == MOB_TYPE:
+                        combatant: Combatant = self.entities[identifier]
+                        logging.info(f"Projectile {projectile} hit {combatant}")
+                        combatant.health -= projectile.damage
+                        if combatant.health <= MIN_HEALTH:
+                            logging.info(f"[update] killed {combatant=}")
+                            self.remove_entity(combatant, kind)
+                        logging.debug(f"Updated player {identifier} health to {combatant.health}")
                     to_remove.append(projectile)
                     break
             if projectile.ttl == 0:
@@ -403,5 +414,5 @@ class Node:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNINGd)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
     Node(NODE_PORT)
