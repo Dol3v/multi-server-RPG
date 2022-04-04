@@ -1,10 +1,11 @@
 import logging
 import queue
-import random
 import sched
 import sys
 import threading
+import time
 from collections import defaultdict
+from typing import Dict
 
 import numpy as np
 from cryptography.fernet import InvalidToken
@@ -19,7 +20,7 @@ from common.consts import *
 from common.utils import *
 from collision import *
 from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT, MOB_SIGHT_HEIGHT, \
-    MOB_SIGHT_WIDTH
+    MOB_SIGHT_WIDTH, MOB_ERROR_TERM, RANGED_OFFSET
 from entities import *
 from networking import generate_server_message, parse_client_message
 
@@ -67,6 +68,11 @@ class Node:
     def server_controlled(self) -> Dict[str, ServerControlled]:
         return self.mobs | self.projectiles
 
+    @staticmethod
+    def get_mob_stop_distance(mob: Mob) -> float:
+        return 0.5 * (np.sqrt(BOT_HEIGHT ** 2 + BOT_WIDTH ** 2) + np.sqrt(CLIENT_HEIGHT ** 2 + CLIENT_WIDTH ** 2)) + \
+               (RANGED_OFFSET if mob.weapon == BOW else 0)
+
     def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
 
@@ -81,7 +87,7 @@ class Node:
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Combatant]:
         return map(lambda data: self.mobs[data[1]] if data[0] == MOB_TYPE else self.players[data[1]],
-                   filter(lambda data: data[1] != entity_uuid and data[0] != PROJECTILE_TYPE,
+                   filter(lambda data: data[1] != entity_uuid and data[0] != ARROW_TYPE,
                           self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
@@ -90,7 +96,7 @@ class Node:
                                                      self.spindex.intersect(
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
-    def entities_in_melee_attack_range(self, entity: Player, melee_range: int) \
+    def entities_in_melee_attack_range(self, entity: Combatant, melee_range: int) \
             -> Iterable[Combatant]:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
@@ -103,7 +109,6 @@ class Node:
         intersecting = self.spindex.intersect(get_bounding_box(pos, height, width))
         filtered = filter(lambda data: data[0] == PLAYER_TYPE, intersecting)
         mapped = list(map(lambda data: self.entities[data[1]].pos, filtered))
-        logging.debug(f"[debug] {pos=} {intersecting=} filtered={list(filtered)} mapped={list(mapped)}")
         return mapped
 
     def load_map(self):
@@ -119,7 +124,7 @@ class Node:
         width, height = -1, -1
         if entity_type == PLAYER_TYPE:
             width, height = CLIENT_WIDTH, CLIENT_HEIGHT
-        elif entity_type == PROJECTILE_TYPE:
+        elif entity_type == ARROW_TYPE:
             width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
         elif entity_type == MOB_TYPE:
             width, height = BOT_WIDTH, BOT_HEIGHT
@@ -138,15 +143,27 @@ class Node:
         self.entities[entity.uuid].pos = new_location
         self.spindex.insert((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
 
-    def get_mob_direction(self, mob: Mob) -> Dir:
+    def update_mob_directions(self, mob: Mob):
+        """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = self.players_in_range(mob.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT)
+        mob.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
-            return 0., 0.
+            mob.on_player = False
+            mob.direction = 0.0, 0.0
+            return
+        print("on player")
         nearest_player_pos = min(in_range,
                                  key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
+        mob.on_player = True
+        if np.sqrt(((mob.pos[0] - nearest_player_pos[0]) ** 2 + (mob.pos[1] - nearest_player_pos[1]) ** 2)) <= \
+                self.get_mob_stop_distance(mob) + MOB_ERROR_TERM:
+            print(f"mob uuid={mob.uuid} is within stop distance")
+            mob.direction = 0.0, 0.0
         dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
-        return dir_x * MOB_SPEED, dir_y * MOB_SPEED
+        mob.attacking_direction = dir_x, dir_y
+        if mob.direction != (0., 0.):
+            mob.direction = dir_x * MOB_SPEED, dir_y * MOB_SPEED
 
     def melee_attack(self, attacker: Combatant, weapon_data: dict):
         attackable_in_range = self.entities_in_melee_attack_range(attacker,
@@ -164,11 +181,11 @@ class Node:
         attacker.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
         attacker.last_time_attacked = time.time()
         # adding into saved data
-        projectile = Projectile(pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.direction[0]),
-                                     int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.direction[1])),
-                                direction=attacker.direction, damage=weapon_data['damage'])
+        projectile = Projectile(pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
+                                     int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
+                                direction=attacker.attacking_direction, damage=weapon_data['damage'])
         self.projectiles[projectile.uuid] = projectile
-        self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
+        self.spindex.insert((ARROW_TYPE, projectile.uuid),
                             get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
         logging.info(f"Added projectile {projectile}")
 
@@ -177,11 +194,9 @@ class Node:
 
         :param attacker: attacker
         :param weapon: attacking weapon id"""
-        logging.debug(f"[attack] attacker uuid={attacker.uuid} tried to attack")
         weapon_data = WEAPON_DATA[weapon]
         if attacker.current_cooldown != -1:
             if attacker.current_cooldown + attacker.last_time_attacked > (new := time.time()):
-                logging.debug(f"[blocked] cooldown={attacker.current_cooldown} prevented attack by {attacker.uuid}")
                 return
             logging.info(f"[attack] cooldown={attacker.current_cooldown} passed, {new=}")
             attacker.current_cooldown = -1
@@ -235,7 +250,6 @@ class Node:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
                 player_pos = x, y
-                logging.debug(f"[debug] {player_pos=}")
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
 
@@ -244,7 +258,7 @@ class Node:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
 
-                player.direction = attack_dir  # TODO: check if normalized
+                player.attacking_direction = attack_dir  # TODO: check if normalized
                 secure_pos = self.update_location(player_pos, seqn, player)
 
                 player.slot = slot_index
@@ -260,13 +274,12 @@ class Node:
         # projectile handling
         to_remove = []
         for projectile in projectiles.values():
-            collided = False
-            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=PROJECTILE_TYPE)
+            projectile.ttl -= 1
+            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
             if intersection:
                 for kind, identifier in intersection:
-                    if kind == PROJECTILE_TYPE:
+                    if kind == ARROW_TYPE:
                         continue
-                    collided = True
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
                         logging.info(f"Projectile {projectile} hit a player {player}")
@@ -275,31 +288,34 @@ class Node:
                             player.health = MIN_HEALTH
                         logging.debug(f"Updated player {identifier} health to {player.health}")
                     to_remove.append(projectile)
-            if not collided:
-                self.update_entity_location(projectile,
-                                            (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
-                                             projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
-                                            PROJECTILE_TYPE)
-                logging.debug(f"[debug] updated projectile {projectile.uuid} to {projectile}")
+                    break
+            if projectile.ttl == 0:
+                to_remove.append(projectile)
+                continue
 
+            self.update_entity_location(projectile,
+                                        (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
+                                         projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
+                                        ARROW_TYPE)
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
-            self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                     PROJECTILE_HEIGHT,
-                                                                                     PROJECTILE_WIDTH))
+            self.spindex.remove((ARROW_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
+                                                                                PROJECTILE_HEIGHT,
+                                                                                PROJECTILE_WIDTH))
             logging.info(f"[update] removed projectile {projectile.uuid}")
         for mob in self.mobs.values():
-            mob.direction = self.get_mob_direction(mob)
+            self.update_mob_directions(mob)
             colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
             if colliding:
                 for kind, identifier in colliding:
-                    if kind == PROJECTILE_TYPE:
+                    if kind == ARROW_TYPE:
                         continue
-                    mob.direction = 0., 0.
+                    mob.direction = 0., 0.  # TODO: refactor a bit into update_mob_directions
+            if mob.on_player:
+                self.attack(mob, mob.weapon)
             self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
                                               mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
                                         MOB_TYPE)
-            logging.debug(f"[debug] updated position to {mob.pos=}")
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
 
     def start_location_update(self):
@@ -318,7 +334,7 @@ class Node:
 
             self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                               pos=initial_pos)  # TODO: refactor and find out why tf the client starts off 30 pixels off where he should
+                                               pos=initial_pos)
 
             self.spindex.insert((PLAYER_TYPE, player_uuid),
                                 get_bounding_box(initial_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
@@ -344,7 +360,8 @@ class Node:
         #     self.mobs[mob.uuid] = mob
         mob = Mob()
         mob.pos = (2500, 1700)
-        mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+        # mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+        mob.weapon = AXE
         self.mobs[mob.uuid] = mob
         self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
@@ -370,9 +387,10 @@ class Node:
         """
         return entity.last_updated != -1 and (not moved_reasonable_distance(
             player_pos, entity.pos, seqn - entity.last_updated) or
-                            not is_empty(self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE)))
+                                              not is_empty(
+                                                  self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE)))
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
     Node(NODE_PORT)

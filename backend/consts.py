@@ -1,4 +1,6 @@
 # SqlDatabase configurations
+import numpy as np
+
 from common.consts import SWORD, AXE, BOW, INT_SIZE
 
 SQL_TYPE = "mysql"
@@ -40,7 +42,7 @@ WEAPON_DATA = {
     AXE: {'cooldown': 75, 'damage': 30, 'melee_attack_range': 150, 'is_melee': True},
     BOW: {'cooldown': 100, 'damage': 45, 'is_melee': False}
 }
-FRAME_TIME = 1 / 75
+FRAME_TIME = 1 / 60
 MAX_SLOT = 6
 
 # Server communication ports
@@ -49,3 +51,5 @@ ROOT_SERVER2SERVER_PORT = 35000
 # other
 MOB_SIGHT_WIDTH = 700
 MOB_SIGHT_HEIGHT = 700
+MOB_ERROR_TERM = 30
+RANGED_OFFSET = 270

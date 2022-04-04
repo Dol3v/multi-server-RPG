@@ -182,6 +182,9 @@ class Animation:
         self.loop_count = 0
         self.done = False
 
+    def is_empty(self):
+        return len(self.frames) == 0
+
 
 class TipBox(pygame.sprite.Sprite):
     def __init__(self, x, y, font, seconds_per_tip):
