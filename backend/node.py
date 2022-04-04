@@ -1,6 +1,5 @@
 import logging
 import queue
-import random
 import sched
 import sys
 import threading
@@ -19,7 +18,7 @@ from common.consts import *
 from common.utils import *
 from collision import *
 from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT, MOB_SIGHT_HEIGHT, \
-    MOB_SIGHT_WIDTH, MOB_ERROR_TERM
+    MOB_SIGHT_WIDTH, MOB_ERROR_TERM, RANGED_OFFSET
 from entities import *
 from networking import generate_server_message, parse_client_message
 
@@ -69,9 +68,8 @@ class Node:
 
     @staticmethod
     def get_mob_stop_distance(mob: Mob) -> float:
-        if mob.weapon != ARROW_TYPE:
-            return 0.5 * (np.sqrt(BOT_HEIGHT ** 2 + BOT_WIDTH ** 2) + np.sqrt(CLIENT_HEIGHT ** 2 + CLIENT_WIDTH ** 2))
-        return 200.
+        return 0.5 * (np.sqrt(BOT_HEIGHT ** 2 + BOT_WIDTH ** 2) + np.sqrt(CLIENT_HEIGHT ** 2 + CLIENT_WIDTH ** 2)) + \
+               (RANGED_OFFSET if mob.weapon == BOW else 0)
 
     def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
         """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
@@ -153,6 +151,7 @@ class Node:
         mob.on_player = True
         if np.sqrt(((mob.pos[0] - nearest_player_pos[0]) ** 2 + (mob.pos[1] - nearest_player_pos[1]) ** 2)) <= \
                 self.get_mob_stop_distance(mob) + MOB_ERROR_TERM:
+            print(f"mob uuid={mob.uuid} is within stop distance")
             return 0.0, 0.0
         dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
@@ -385,5 +384,5 @@ class Node:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
     Node(NODE_PORT)
