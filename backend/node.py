@@ -336,17 +336,16 @@ class Node:
         return pos_x, pos_y
 
     def generate_mobs(self):
-        # """Generate the mobs object with a random positions"""
-        # for _ in range(MOB_COUNT):
-        #     mob = Mob()
-        #     mob.pos = self.get_available_position(MOB_TYPE)
-        #     mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
-        #     self.mobs[mob.uuid] = mob
-        mob = Mob()
-        mob.pos = (2500, 1700)
-        mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
-        self.mobs[mob.uuid] = mob
-        self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
+        """Generate the mobs object with a random positions"""
+        
+        for _ in range(MOB_COUNT):
+            mob = Mob()
+            mob.pos = (2500, 1700) # self.get_available_position(MOB_TYPE)
+            mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+            self.mobs[mob.uuid] = mob
+            self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
+
+        print(f"{self.mobs=}")
 
     def run(self) -> None:
         """starts node threads"""
@@ -374,5 +373,5 @@ class Node:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(NODE_PORT)
