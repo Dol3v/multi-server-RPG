@@ -144,8 +144,9 @@ class Node:
         self.spindex.insert((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
 
     def update_mob_directions(self, mob: Mob):
-        """Updates mob's attacking/movement directions, and updates whether or not he is currently tracking a player."""
+        """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = self.players_in_range(mob.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT)
+        mob.direction = -1, -1 # used to reset calculations each iteration
         if not in_range:
             mob.on_player = False
             mob.direction = 0.0, 0.0
