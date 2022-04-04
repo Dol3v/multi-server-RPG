@@ -25,8 +25,10 @@ from map_manager import *
 
 
 class Game:
-    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen):
+    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen,
+                 username : str):
         # misc networking
+        self.username = username
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
@@ -85,7 +87,7 @@ class Game:
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
         """[message, direction, did attack, attack directions, selected slot]"""
 
-        self.chat_msg = ""
+        self.chat_msg = self.username + ": "
 
         self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
@@ -234,7 +236,7 @@ class Game:
 
                         elif event.key == pygame.K_RETURN:  # Check if enter is clicked and sends the message
                             self.chat.add_message(self.chat_msg)
-                            self.chat_msg = ""
+                            self.chat_msg = self.username + ": "
                             self.player.is_typing = not self.player.is_typing
 
                         elif event.key == pygame.K_BACKSPACE:
