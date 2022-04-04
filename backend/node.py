@@ -361,7 +361,7 @@ class Node:
         mob = Mob()
         mob.pos = (2500, 1700)
         # mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
-        mob.weapon = BOW
+        mob.weapon = AXE
         self.mobs[mob.uuid] = mob
         self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
