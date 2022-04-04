@@ -4,7 +4,7 @@ import numpy as np
 import pygame
 
 from client import consts
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, ARROW_TYPE
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, ARROW_TYPE, PLAYER_TYPE
 
 """
 TODO: merge the weapon classes with the Player class
@@ -83,14 +83,14 @@ class Entity(pygame.sprite.Sprite):
         if entity_type == "player":
             return
 
-        self.texture = pygame.image.load("assets/entity/" + consts.ENTITY_DATA[entity_type][0]).convert_alpha()
+        self.texture = pygame.image.load("assets/" + consts.ENTITY_DATA[entity_type][0]).convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * self.scale_size,
                                                              self.texture.get_height() * self.scale_size))
 
         anim = []
 
         for path in consts.ENTITY_DATA[entity_type][1]:
-            anim.append(pygame.image.load("assets/entity/" + path))
+            anim.append(pygame.image.load("assets/" + path))
 
         self.animation = graphics.Animation(anim, consts.ENTITY_DATA[entity_type][2])
 
@@ -143,7 +143,7 @@ class Entity(pygame.sprite.Sprite):
 
 class PlayerEntity(Entity):
     def __init__(self, groups, x, y, direction, tool_id, map_collision):
-        super().__init__(groups, "player", x, y, direction, 1)
+        super().__init__(groups, PLAYER_TYPE, x, y, direction)
         self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * consts.PLAYER_SIZE_MULTIPLIER,
                                                              self.texture.get_height() * consts.PLAYER_SIZE_MULTIPLIER))

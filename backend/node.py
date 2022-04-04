@@ -267,17 +267,12 @@ class Node:
         # projectile handling
         to_remove = []
         for projectile in projectiles.values():
-            collided = False
             projectile.ttl -= 1
-            if projectile.ttl == 0:
-                collided = True
-                to_remove.append(projectile)
             intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
             if intersection:
                 for kind, identifier in intersection:
                     if kind == ARROW_TYPE:
                         continue
-                    collided = True
                     if kind == PLAYER_TYPE:
                         player = self.players[identifier]
                         logging.info(f"Projectile {projectile} hit a player {player}")
@@ -286,11 +281,15 @@ class Node:
                             player.health = MIN_HEALTH
                         logging.debug(f"Updated player {identifier} health to {player.health}")
                     to_remove.append(projectile)
-            if not collided:
-                self.update_entity_location(projectile,
-                                            (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
-                                             projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
-                                            ARROW_TYPE)
+                    break
+            if projectile.ttl == 0:
+                to_remove.append(projectile)
+                continue
+
+            self.update_entity_location(projectile,
+                                        (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
+                                         projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
+                                        ARROW_TYPE)
         for projectile in to_remove:
             self.projectiles.pop(projectile.uuid)
             self.spindex.remove((ARROW_TYPE, projectile.uuid), get_bounding_box(projectile.pos,

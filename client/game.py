@@ -178,9 +178,10 @@ class Game:
         """
         Use: prints the other clients by the given info about them
         """
+        print("-" * 10)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-
+            print(f"{entity_uuid=} {entity_type=} {entity_dir=} {pos=} {tool_id=}")
             if entity_uuid in self.entities.keys():
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
@@ -203,6 +204,7 @@ class Game:
             if entity_uuid not in received_uuids:
                 self.entities[entity_uuid].kill()
                 remove_entities.append(entity_uuid)
+                print(f"removed uuid={entity_uuid}")
 
         for entity_uuid in remove_entities:
             self.entities.pop(entity_uuid)
