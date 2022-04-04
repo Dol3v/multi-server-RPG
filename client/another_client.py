@@ -37,7 +37,7 @@ def main():
 
     my_game = game.Game(connection_screen.sock, connection_screen.game_server_addr,
                         connection_screen.received_player_uuid, connection_screen.shared_key,
-                        connection_screen.full_screen, connection_screen.username)
+                        connection_screen.full_screen, connection_screen.initial_pos)
     my_game.run()
 
 

@@ -39,7 +39,7 @@ class ConnectScreen:
         self.is_login_screen = True
 
         self.username = None
-
+        self.initial_pos = ()
         big_font = pygame.font.SysFont("arial", 45)
         big_font.set_bold(True)
 
@@ -159,7 +159,8 @@ class ConnectScreen:
             self.shared_key = do_ecdh(conn)
             print(f"Did ecdh, key={self.shared_key}")
             send_credentials(username, password, conn, self.shared_key, self.sock.getsockname(), is_login)
-            ip, user_uuid, success, error_message = get_login_response(conn)
+            ip, self.initial_pos, user_uuid, success, error_message = get_login_response(conn)
+            print(self.initial_pos)
             self.game_server_addr = (ip, NODE_PORT)
             self.received_player_uuid = user_uuid
 

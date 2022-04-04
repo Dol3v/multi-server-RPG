@@ -4,7 +4,6 @@ import math
 import re
 import socket
 import struct
-from itertools import islice
 from typing import Iterable, Tuple
 
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, generate_private_key, \

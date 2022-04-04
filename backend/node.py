@@ -37,6 +37,7 @@ class Node:
         self.node_ip = "127.0.0.1"
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_sock = socket.socket()
         # TODO: remove when actually deploying exe
         time.sleep(1)
@@ -348,9 +349,10 @@ class Node:
         while True:
             data = self.root_sock.recv(RECV_CHUNK)
             shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
-            ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE:])
+            initial_pos = struct.unpack(POSITION_FORMAT, data[SHARED_KEY_SIZE + UUID_SIZE:SHARED_KEY_SIZE +
+                                                                                          UUID_SIZE + INT_SIZE * 4])
+            ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE + + INT_SIZE * 4:])
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
-            initial_pos = self.get_available_position(PLAYER_TYPE)
 
             self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
@@ -365,10 +367,10 @@ class Node:
 
         :param kind: entity type
         :returns: available position"""
-        pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH)), int(np.random.uniform(0, WORLD_HEIGHT))
+        pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
 
         while len(self.spindex.intersect(self.get_entity_bounding_box((pos_x, pos_y), kind))) != 0:
-            pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH)), int(np.random.uniform(0, WORLD_HEIGHT))
+            pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
         return pos_x, pos_y
 
     def generate_mobs(self):

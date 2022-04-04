@@ -24,14 +24,12 @@ from map_manager import *
 
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen,
-                 username : str):
+                 initial_pos: tuple):
         # misc networking
-        self.username = username
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
         self.fernet = Fernet(base64.urlsafe_b64encode(shared_key))
-        print(f"{conn=}, {server_addr=}")
 
         # init sprites
         self.can_recv: bool = False
@@ -48,7 +46,8 @@ class Game:
         self.map.load_collision_objects_to(self.map_collision)
 
         # player init
-        self.player = Player((2010, 1530), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+
+        self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
 
