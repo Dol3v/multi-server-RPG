@@ -45,7 +45,7 @@ class Player(pygame.sprite.Sprite):
 
         self.hotbar: List[Weapon | None] = [None] * 6
         self.current_slot = 0
-        # self.hotbar[0] = Weapon(groups, "sword", "rare")
+        self.hotbar[3] = Potion((groups[0], ))
         # self.hotbar[1] = Weapon(groups, "axe", "rare")
         # self.hotbar[2] = RangeWeapon(groups, obstacle_sprites, "bow", "rare")
 
@@ -158,7 +158,7 @@ class Player(pygame.sprite.Sprite):
         else:
             self.hand.draw_weapon(self)
 
-    def set_weapon_in_slot(self, slot, weapon: Weapon):
+    def set_weapon_in_slot(self, slot, weapon):
         self.hotbar[slot] = weapon
 
     def get_weapon_in_slot(self, slot) -> Weapon:

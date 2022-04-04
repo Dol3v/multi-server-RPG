@@ -33,8 +33,9 @@ weapon_data = {
             "hand_position": (15, 40)},
 
     'bow': {"id": 3, "is_ranged": True, 'cooldown': 400, 'damage': 40, 'graphics': "assets/weapons/bow/full.png",
-            "hand_position": (20, 15)}
+            "hand_position": (20, 15)},
 
+    'potion': {"id": 4, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20)}
 }
 
 entity_data = {
@@ -48,5 +49,3 @@ ATTACK = 2
 ATTACK_DIR_X = 3
 ATTACK_DIR_Y = 4
 SELECTED_SLOT = 5
-
-

@@ -27,7 +27,7 @@ class Hand(pygame.sprite.Sprite):
                                               )
         self.original_texture = self.texture.copy()
 
-        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()))
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
         self.original_image = self.image.copy()
 
         self.rect = self.image.get_rect()
@@ -37,6 +37,44 @@ class Hand(pygame.sprite.Sprite):
 
         angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
 
+        self.image = pygame.transform.rotate(self.original_image, angle)
+        self.image.blit(pygame.transform.rotate(self.texture, angle), (0, 0))
+        self.rect = self.image.get_rect(
+            center=player.rect.center + pygame.math.Vector2(45 * vec[0], (45 * vec[1] + 3)))
+
+    def hide(self):
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+
+
+class Potion(pygame.sprite.Sprite):
+    def __init__(self, groups):
+        super().__init__(*groups)
+        self.texture = pygame.image.load("assets/weapons/health_potion/health_potion.png")
+        self.icon = pygame.transform.scale(self.texture, (32, 32))
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * 3,
+                                                             self.texture.get_height() * 3))
+
+        hand = pygame.image.load("assets/character/knight/knight_hand.png")
+        hand = pygame.transform.scale(hand, (hand.get_width() * (PLAYER_SIZE_MULTIPLIER - 0.5),
+                                             hand.get_height() * (PLAYER_SIZE_MULTIPLIER - 0.5)))
+        data = weapon_data.get("potion")
+
+        hand_position = data.get("hand_position")
+
+        self.texture.blit(hand, (hand_position[0], hand_position[1]))
+        self.original_texture = self.texture.copy()
+
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
+        self.original_image = self.image.copy()
+        self.is_ranged = False
+        self.rect = self.image.get_rect()
+
+    def draw_weapon(self, player):
+        vec = player.get_direction_vec()
+
+        angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
+        self.texture = pygame.transform.rotate(self.original_texture, angle)
         self.image = pygame.transform.rotate(self.original_image, angle)
         self.image.blit(self.texture, (0, 0))
         self.rect = self.image.get_rect(
