@@ -183,23 +183,26 @@ class Game:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
             print(f"{entity_uuid=} {entity_type=} {entity_dir=} {pos=} {tool_id=}")
             if entity_uuid in self.entities.keys():
+                print(f"updating uuid={entity_uuid} with direction={entity_dir} and new_pos={pos}")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
                 if entity_type == PLAYER_TYPE and self.entities[entity_uuid].tool_id != tool_id:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
-
                 if entity_type == PLAYER_TYPE:
+                    print(f"Added uuid={entity_uuid} as a player")
                     self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
                                                               entity_dir, tool_id, self.map_collision)
                 else:
+                    print(f"Added uuid={entity_uuid} as a {entity_type}")
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
 
         remove_entities = []
-        received_uuids = map(lambda info: info[1], entities)
-
+        received_uuids = list(map(lambda info: info[1], entities))
+        print(f"received uuids {list(received_uuids)}")
+        print(f"keys: {self.entities.keys()}")
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
                 self.entities[entity_uuid].kill()
