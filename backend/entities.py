@@ -19,6 +19,7 @@ class Entity:
 @dataclass
 class Combatant(Entity):
     attacking_direction: Dir = DEFAULT_DIR
+
     is_attacking: bool = False
     last_time_attacked: float = -1
     current_cooldown: float = -1
@@ -27,6 +28,8 @@ class Combatant(Entity):
 
 @dataclass
 class Player(Combatant):
+    new_message: str = ""
+    incoming_message: str = ""  # List[str] = field(default_factory=lambda: [])
     addr: Addr = ("127.0.0.1", 10000)
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0

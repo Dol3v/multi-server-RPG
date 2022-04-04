@@ -4,6 +4,7 @@ import sched
 import sys
 import threading
 import time
+import random
 from collections import defaultdict
 from typing import Dict
 
@@ -24,8 +25,8 @@ from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROO
 from entities import *
 from networking import generate_server_message, parse_client_message
 
-EntityData = Tuple[int, str, int, int, float, float, int]
-"""type, uuid, x, y, direction in x, direction in y"""
+EntityData = Tuple[int, str, int, int, float, float, int, str]
+"""type, uuid, x, y, direction in x, direction in y, new_message"""
 
 
 class Node:
@@ -151,13 +152,13 @@ class Node:
             mob.on_player = False
             mob.direction = 0.0, 0.0
             return
-        print("on player")
+        #print("on player")
         nearest_player_pos = min(in_range,
                                  key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
         mob.on_player = True
         if np.sqrt(((mob.pos[0] - nearest_player_pos[0]) ** 2 + (mob.pos[1] - nearest_player_pos[1]) ** 2)) <= \
                 self.get_mob_stop_distance(mob) + MOB_ERROR_TERM:
-            print(f"mob uuid={mob.uuid} is within stop distance")
+            #print(f"mob uuid={mob.uuid} is within stop distance")
             mob.direction = 0.0, 0.0
         dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
@@ -219,7 +220,8 @@ class Node:
         secure_pos = DEFAULT_POS_MARK
         if self.invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
             logging.info(
-                f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}, {player.last_updated=}")
+                f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}"
+                f", {player.last_updated=}")
             secure_pos = self.players[player.uuid].pos
         else:
             self.update_entity_location(player, player_pos, PLAYER_TYPE)
@@ -227,11 +229,11 @@ class Node:
 
     def update_client(self, player_uuid: str, secure_pos: Pos):
         """sends server message to the client"""
-        new_chat = ""
         player = self.players[player_uuid]
         entities_array = flatten(self.entities_in_rendering_range(player))
         # generate and send message
-        update_packet = generate_server_message(player.tools, new_chat, secure_pos, player.health, entities_array)
+        update_packet = generate_server_message(player.tools, player.incoming_message, secure_pos, player.health,
+                                                entities_array)
         self.server_sock.sendto(update_packet, player.addr)
 
     def handle_client(self):
@@ -239,7 +241,9 @@ class Node:
         while True:
             try:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
+
                 player_uuid = data[:UUID_SIZE].decode()
+                #print(f"{player_uuid=}")
                 try:
                     data = self.players[player_uuid].fernet.decrypt(data[UUID_SIZE:])
                 except InvalidToken:
@@ -259,11 +263,16 @@ class Node:
                     continue
 
                 player.attacking_direction = attack_dir  # TODO: check if normalized
+                player.new_message = chat.decode()
                 secure_pos = self.update_location(player_pos, seqn, player)
 
                 player.slot = slot_index
                 if attacked:
                     self.attack(player, player.tools[player.slot])
+
+                self.broadcast_clients(player.uuid)
+                if player.incoming_message:
+                    print(player.uuid, player.incoming_message)
                 self.update_client(player.uuid, secure_pos)
                 player.last_updated = seqn
             except Exception as e:
@@ -356,10 +365,16 @@ class Node:
         
         for _ in range(MOB_COUNT):
             mob = Mob()
-            mob.pos = (2500, 1700) # self.get_available_position(MOB_TYPE)
+            mob.pos = self.get_available_position(MOB_TYPE)
             mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
             self.mobs[mob.uuid] = mob
             self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
+
+    def broadcast_clients(self, player_uuid: str):
+        """broadcast clients new messages to each other."""
+        for uuid_to_broadcast in self.players:
+            if player_uuid != uuid_to_broadcast:
+                self.players[uuid_to_broadcast].incoming_message = self.players[player_uuid].new_message
 
     def run(self) -> None:
         """starts node threads"""
@@ -388,5 +403,5 @@ class Node:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNINGd)
     Node(NODE_PORT)

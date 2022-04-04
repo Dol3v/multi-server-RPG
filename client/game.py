@@ -85,7 +85,8 @@ class Game:
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
         """[message, direction, did attack, attack directions, selected slot]"""
 
-        self.chat_msg = self.username + ": "
+        self.chat_msg = ""
+        self.msg_to_send = ""
 
         self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
@@ -105,10 +106,8 @@ class Game:
             self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
     def server_update(self):
-        """
-        Use: communicate with the server over UDP.
-        """
-        # update server
+        """communicate with the server over UDP."""
+
         self.update_player_actions()
         update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
                                                 self.actions, self.fernet)
@@ -123,6 +122,7 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
+            print(f"{entities=}, {chat_msg=}")
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -152,13 +152,13 @@ class Game:
                     self.player.set_weapon_in_slot(i, None)
 
             # update graphics and status
-            self.render_clients(entities)
-            self.update_player_status(tools, (x, y), health)
 
-    def update_player_status(self, tools: list, valid_pos: Pos, health: int) -> None:
-        """
-        Use: update player status by the server message
-        """
+            self.render_clients(entities)
+            self.update_player_status(chat_msg, (x, y), health)
+
+    def update_player_status(self, msg_bytes: bytes, valid_pos: Pos, health: int) -> None:
+        """update player status by the server message"""
+
         # update client position only when the server says so
         if valid_pos != DEFAULT_POS_MARK:
             self.player.rect.centerx = valid_pos[0]
@@ -167,11 +167,20 @@ class Game:
         if health >= MIN_HEALTH:
             self.player.current_health = health
 
+        chat_new_msg = msg_bytes.decode().rstrip("\x00")
+
+        if chat_new_msg:
+            self.chat.add_message(chat_new_msg)
+
     def update_player_actions(self) -> None:
-        """
-        Use: update player actions to send
-        """
-        self.actions[CHAT] = self.chat_msg.encode()
+        """update player actions to send"""
+        chat_msg = ""
+
+        if self.msg_to_send:
+            chat_msg = self.msg_to_send
+            self.msg_to_send = ""
+
+        self.actions[CHAT] = chat_msg.encode()
         self.actions[ATTACK] = self.player.attacking
         self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
         self.actions[SELECTED_SLOT] = self.player.current_slot
@@ -180,12 +189,12 @@ class Game:
         """
         Use: prints the other clients by the given info about them
         """
-        print("-" * 10)
+        #print("-" * 10)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-            print(f"{entity_uuid=} {entity_type=} {entity_dir=} {pos=} {tool_id=}")
+            #print(f"{entity_uuid=} {entity_type=} {entity_dir=} {pos=} {tool_id=}")
             if entity_uuid in self.entities.keys():
-                print(f"updating uuid={entity_uuid} with direction={entity_dir} and new_pos={pos}")
+                #print(f"updating uuid={entity_uuid} with direction={entity_dir} and new_pos={pos}")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
@@ -193,23 +202,23 @@ class Game:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
                 if entity_type == PLAYER_TYPE:
-                    print(f"Added uuid={entity_uuid} as a player")
+                    #print(f"Added uuid={entity_uuid} as a player")
                     self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
                                                               entity_dir, tool_id, self.map_collision)
                 else:
-                    print(f"Added uuid={entity_uuid} as a {entity_type}")
+                    #print(f"Added uuid={entity_uuid} as a {entity_type}")
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info[1], entities))
-        print(f"received uuids {list(received_uuids)}")
-        print(f"keys: {self.entities.keys()}")
+        #print(f"received uuids {list(received_uuids)}")
+        #print(f"keys: {self.entities.keys()}")
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
                 self.entities[entity_uuid].kill()
                 remove_entities.append(entity_uuid)
-                print(f"removed uuid={entity_uuid}")
+                #print(f"removed uuid={entity_uuid}")
 
         for entity_uuid in remove_entities:
             self.entities.pop(entity_uuid)
@@ -249,7 +258,8 @@ class Game:
 
                         elif event.key == pygame.K_RETURN:  # Check if enter is clicked and sends the message
                             self.chat.add_message(self.chat_msg)
-                            self.chat_msg = self.username + ": "
+                            self.msg_to_send = self.chat_msg
+                            self.chat_msg = ""
                             self.player.is_typing = not self.player.is_typing
 
                         elif event.key == pygame.K_BACKSPACE:
