@@ -19,7 +19,7 @@ from common.consts import *
 from common.utils import *
 from collision import *
 from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT, MOB_SIGHT_HEIGHT, \
-    MOB_SIGHT_WIDTH
+    MOB_SIGHT_WIDTH, MOB_ERROR_TERM
 from entities import *
 from networking import generate_server_message, parse_client_message
 
@@ -151,7 +151,7 @@ class Node:
         nearest_player_pos = min(in_range,
                                  key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
         if np.sqrt(((mob.pos[0] - nearest_player_pos[0]) ** 2 + (mob.pos[1] - nearest_player_pos[1]) ** 2)) <= \
-                self.get_mob_stop_distance(mob) + 20:
+                self.get_mob_stop_distance(mob) + MOB_ERROR_TERM:
             return 0.0, 0.0
         dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
