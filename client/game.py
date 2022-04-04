@@ -23,8 +23,10 @@ from map_manager import *
 
 
 class Game:
-    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen):
+    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen,
+                 username : str):
         # misc networking
+        self.username = username
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
@@ -84,6 +86,7 @@ class Game:
         """[message, direction, did attack, attack directions, selected slot]"""
 
         self.chat_msg = ""
+        self.msg_to_send = ""
 
         self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
@@ -103,10 +106,8 @@ class Game:
             self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
 
     def server_update(self):
-        """
-        Use: communicate with the server over UDP.
-        """
-        # update server
+        """communicate with the server over UDP."""
+
         self.update_player_actions()
         update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
                                                 self.actions, self.fernet)
@@ -121,7 +122,6 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(health)
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -151,13 +151,13 @@ class Game:
                     self.player.set_weapon_in_slot(i, None)
 
             # update graphics and status
-            self.render_clients(entities)
-            self.update_player_status(tools, (x, y), health)
 
-    def update_player_status(self, tools: list, valid_pos: Pos, health: int) -> None:
-        """
-        Use: update player status by the server message
-        """
+            self.render_clients(entities)
+            self.update_player_status(chat_msg, (x, y), health)
+
+    def update_player_status(self, msg_bytes: bytes, valid_pos: Pos, health: int) -> None:
+        """update player status by the server message"""
+
         # update client position only when the server says so
         if valid_pos != DEFAULT_POS_MARK:
             self.player.rect.centerx = valid_pos[0]
@@ -171,11 +171,20 @@ class Game:
             pygame.quit()
             sys.exit(0)
 
+        chat_new_msg = msg_bytes.decode().rstrip("\x00")
+
+        if chat_new_msg:
+            self.chat.add_message(chat_new_msg)
+
     def update_player_actions(self) -> None:
-        """
-        Use: update player actions to send
-        """
-        self.actions[CHAT] = self.chat_msg.encode()
+        """update player actions to send"""
+        chat_msg = ""
+
+        if self.msg_to_send:
+            chat_msg = self.msg_to_send
+            self.msg_to_send = ""
+
+        self.actions[CHAT] = chat_msg.encode()
         self.actions[ATTACK] = self.player.attacking
         self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
         self.actions[SELECTED_SLOT] = self.player.current_slot
@@ -184,9 +193,9 @@ class Game:
         """
         Use: prints the other clients by the given info about them
         """
-        print("-" * 10)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
+
             if entity_uuid in self.entities.keys():
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
@@ -203,6 +212,7 @@ class Game:
 
         remove_entities = []
         received_uuids = list(map(lambda info: info[1], entities))
+
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
                 self.entities[entity_uuid].kill()
@@ -246,6 +256,7 @@ class Game:
 
                         elif event.key == pygame.K_RETURN:  # Check if enter is clicked and sends the message
                             self.chat.add_message(self.chat_msg)
+                            self.msg_to_send = self.chat_msg
                             self.chat_msg = ""
                             self.player.is_typing = not self.player.is_typing
 

@@ -38,6 +38,8 @@ class ConnectScreen:
 
         self.is_login_screen = True
 
+        self.username = None
+
         big_font = pygame.font.SysFont("arial", 45)
         big_font.set_bold(True)
 
@@ -181,6 +183,7 @@ class ConnectButton(Button):
                     ip = self.connect_screen.get_sprite_by_position(2).text
                     username = self.connect_screen.get_sprite_by_position(4).text
                     password = self.connect_screen.get_sprite_by_position(6).text
+                    self.connect_screen.username = username
                     if ip == "":
                         ip = '127.0.0.1'
                         self.connect_screen.running = False  # Debug TODO remove this shit later
@@ -202,6 +205,8 @@ class RegisterButton(Button):
                     ip = self.connect_screen.get_sprite_by_position(2).text
                     username = self.connect_screen.get_sprite_by_position(4).text
                     password = self.connect_screen.get_sprite_by_position(6).text
+                    self.connect_screen.username = username
+
                     if ip == "":
                         ip = '127.0.0.1'
                     # Send register packet to the server and wait for response
