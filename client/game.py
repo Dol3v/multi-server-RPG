@@ -201,7 +201,6 @@ class Game:
 
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
-                print(entity_uuid)
                 self.entities[entity_uuid].kill()
                 remove_entities.append(entity_uuid)
 

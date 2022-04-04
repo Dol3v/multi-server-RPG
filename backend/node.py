@@ -187,11 +187,9 @@ class Node:
 
         :param attacker: attacker
         :param weapon: attacking weapon id"""
-        logging.debug(f"[attack] attacker uuid={attacker.uuid} tried to attack")
         weapon_data = WEAPON_DATA[weapon]
         if attacker.current_cooldown != -1:
             if attacker.current_cooldown + attacker.last_time_attacked > (new := time.time()):
-                logging.debug(f"[blocked] cooldown={attacker.current_cooldown} prevented attack by {attacker.uuid}")
                 return
             logging.info(f"[attack] cooldown={attacker.current_cooldown} passed, {new=}")
             attacker.current_cooldown = -1
@@ -330,7 +328,7 @@ class Node:
 
             self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                               pos=initial_pos)  # TODO: refactor and find out why tf the client starts off 30 pixels off where he should
+                                               pos=initial_pos)
 
             self.spindex.insert((PLAYER_TYPE, player_uuid),
                                 get_bounding_box(initial_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
@@ -356,7 +354,8 @@ class Node:
         #     self.mobs[mob.uuid] = mob
         mob = Mob()
         mob.pos = (2500, 1700)
-        mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+        # mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+        mob.weapon = BOW
         self.mobs[mob.uuid] = mob
         self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
