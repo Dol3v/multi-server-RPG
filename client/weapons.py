@@ -181,13 +181,12 @@ class Projectile(pygame.sprite.Sprite):
 
     def draw_projectile(self):
         self.rect = self.image.get_rect(center=(self.x, self.y))
-        print(f"[{datetime.datetime.now()}] drawing projectile")
 
     def check_collision(self):
         for sprite in self.groups[1]:
             if sprite != self and sprite.rect.colliderect(self.rect) and not isinstance(sprite, Projectile):
                 self.kill()
-        for rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
+        for _, rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
                                                                   SCREEN_HEIGHT, SCREEN_WIDTH)):
             if rect.colliderect(self.rect):
                 self.kill()

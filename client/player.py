@@ -122,7 +122,7 @@ class Player(pygame.sprite.Sprite):
                         self.rect.right = sprite.rect.left
                     if self.direction.x < 0:  # moving left
                         self.rect.left = sprite.rect.right
-            for rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
+            for _, rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
                                                                       SCREEN_HEIGHT, SCREEN_WIDTH)):
                 if rect.colliderect(self.rect):
                     if self.direction.x > 0:  # moving right
@@ -137,7 +137,7 @@ class Player(pygame.sprite.Sprite):
                         self.rect.bottom = sprite.rect.top
                     if self.direction.y < 0:  # moving up
                         self.rect.top = sprite.rect.bottom
-            for rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
+            for _, rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
                                                                       SCREEN_HEIGHT, SCREEN_WIDTH)):
                 if rect.colliderect(self.rect):
                     if self.direction.y > 0:  # moving down

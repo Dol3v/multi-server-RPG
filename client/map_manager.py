@@ -1,10 +1,17 @@
-import pygame
 import json
 from csv import reader
-from consts import TILE_SIZE
-from sprites import Tile, Obstacle
+
+import pygame
 from pyqtree import Index
+
+from client import consts
 from common.utils import get_bounding_box
+from common.consts import OBSTACLE_TYPE
+
+try:
+    from sprites import Tile
+except ModuleNotFoundError:
+    from client.sprites import Tile
 
 
 def import_csv_layer(path):
@@ -77,8 +84,8 @@ class Layer:
                     tile = self.tileset.get_tile(tile_id)
                     if tile.has_collision:
                         for rect in tile.get_collision_objects():
-                            rect.x += x * TILE_SIZE
-                            rect.y += y * TILE_SIZE
+                            rect.x += x * consts.TILE_SIZE
+                            rect.y += y * consts.TILE_SIZE
                             self.collision_objects.append(rect)
 
     def draw_layer(self, visible_sprites):
@@ -87,7 +94,7 @@ class Layer:
                 tile_id = int(self.layer_grid[y][x])
                 if tile_id != -1:
                     tile = self.tileset.get_tile(tile_id)
-                    Tile((visible_sprites,), (x * TILE_SIZE, y * TILE_SIZE), tile.image)
+                    Tile((visible_sprites,), (x * consts.TILE_SIZE, y * consts.TILE_SIZE), tile.image)
 
 
 class Map:
@@ -97,13 +104,12 @@ class Map:
 
     def add_layer(self, layer: Layer):
         self.layers.append(layer)
-        print(len(self.layers[0].layer_grid), len(self.layers[0].layer_grid))
 
-    def load_collision_objects(self, map_collision: Index):
+    def load_collision_objects_to(self, quadtree: Index):
         self.collision_objects = []
         for layer in self.layers:
             layer.load_collision_objects()
             self.collision_objects.extend(layer.collision_objects)
 
             for obj in layer.collision_objects:
-                map_collision.insert(obj, get_bounding_box((obj.x, obj.y), obj.height, obj.width))
+                quadtree.insert((OBSTACLE_TYPE, obj), get_bounding_box((obj.x, obj.y), obj.height, obj.width))

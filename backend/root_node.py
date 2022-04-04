@@ -6,14 +6,15 @@ import socket
 import struct
 import sys
 import uuid
+import platform
 from dataclasses import dataclass
 from threading import Thread
 from typing import List, Iterable
 
 # to import from a dir
-from common.utils import deserialize_addr, serialize_ip
-
 sys.path.append('../')
+
+from common.utils import deserialize_addr, serialize_ip
 from consts import DB_PASS, CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT, ADDR_HEADER_SIZE
 from authentication import login, signup, parse_credentials
 from database import SqlDatabase
@@ -60,9 +61,7 @@ class EntryNode:
         return map(lambda data: data.conn, self.nodes)
 
     def get_minimal_load_server(self):
-        """
-        get the Node with the smallest number of clients
-        """
+        """get the Node with the smallest number of clients"""
         return min(self.nodes, key=lambda n: len(n.clients_info))
 
     def sender(self):
@@ -120,10 +119,8 @@ class EntryNode:
             conn.close()
 
     def init_nodes(self):
-        """
-        Initializes nodes' data based on user input.
-        """
-        # # TODO: actually make this secure lmao
+        """Initializes nodes' data based on user input."""
+        # TODO: actually make this secure lmao
         self.server2server.listen()
         for _ in range(NUM_NODES):
             conn, addr = self.server2server.accept()

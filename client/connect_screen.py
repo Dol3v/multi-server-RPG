@@ -25,6 +25,7 @@ class ConnectScreen:
         self.width = SCREEN_WIDTH
         self.height = SCREEN_HEIGHT
         self.screen = screen
+        self.addr = ("127.0.0.1", port)
         self.login_bg = pygame.transform.scale(pygame.image.load(LOGIN_BACKGROUND), (SCREEN_WIDTH, SCREEN_HEIGHT))
         self.register_bg = pygame.transform.scale(pygame.image.load(REGISTER_BACKGROUND), (SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -32,7 +33,7 @@ class ConnectScreen:
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if platform.system() == "Windows":
-            self.sock.bind(("127.0.0.1", port))
+            self.sock.bind(self.addr)
         self.clock = pygame.time.Clock()
 
         self.is_login_screen = True

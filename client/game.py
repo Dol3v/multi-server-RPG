@@ -40,8 +40,12 @@ class Game:
         self.obstacles_sprites = pygame.sprite.Group()
         self.attack_sprite = None
 
+        self.map = Map()
+        self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
+                                                                            "assets/map/new_props.tsj")))
         self.map_collision = Index((0, 0, self.visible_sprites.floor_surface.get_width(),
                                     self.visible_sprites.floor_surface.get_height()))
+        self.map.load_collision_objects_to(self.map_collision)
 
         # player init
         self.player = Player((2010, 1530), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)

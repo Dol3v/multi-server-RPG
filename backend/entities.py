@@ -54,5 +54,5 @@ class Mob(Entity):
 ServerControlled = Projectile | Mob
 """Entity with server-controlled movements and actions"""
 
-Attackable = Mob | Player
+Combatant = Mob | Player
 """Entity that can be attacked or can attack."""
