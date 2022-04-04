@@ -4,11 +4,9 @@ import queue
 import socket
 import sys
 import threading
+from typing import List
 
 from cryptography.fernet import Fernet
-from pyqtree import Index
-from common.utils import get_bounding_box
-from typing import List
 
 import weapons
 
@@ -19,7 +17,7 @@ from graphics import ChatBox
 from common.consts import *
 from networking import generate_client_message, parse_server_message
 from player import Player
-from sprites import PlayerEntity, FollowingCameraGroup
+from sprites import PlayerEntity, FollowingCameraGroup, Entity
 from weapons import *
 from map_manager import *
 
@@ -54,10 +52,10 @@ class Game:
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
 
-        # self.map = Map()
-        # self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
-        #                                                                     "assets/map/new_props.tsj")))
-        # self.map.load_collision_objects_to(self.map_collision)
+        self.map = Map()
+        self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
+                                                                            "assets/map/new_props.tsj")))
+        self.map.load_collision_objects_to(self.map_collision)
 
         self.full_screen = full_screen
         self.running = False
@@ -181,32 +179,47 @@ class Game:
     def render_clients(self, entities: List[Tuple[int, str, tuple, tuple, int]]) -> None:
         """
         Use: prints the other clients by the given info about them
-
-        #TODO: Remove players that died (or left if player)
-                (For server, add "died" flag)
-                [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
-                [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
+        print("-" * 10)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-            if entity_type == PROJECTILE_TYPE:
-                continue
-            if entity_uuid in self.entities:
+            print(f"{entity_uuid=} {entity_type=} {entity_dir=} {pos=} {tool_id=}")
+            if entity_uuid in self.entities.keys():
+                print(f"updating uuid={entity_uuid} with direction={entity_dir} and new_pos={pos}")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
-                if self.entities[entity_uuid].tool_id != tool_id:
+                if entity_type == PLAYER_TYPE and self.entities[entity_uuid].tool_id != tool_id:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
-                self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
-                                                          entity_dir, tool_id, self.map_collision)
+                if entity_type == PLAYER_TYPE:
+                    print(f"Added uuid={entity_uuid} as a player")
+                    self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
+                                                              entity_dir, tool_id, self.map_collision)
+                else:
+                    print(f"Added uuid={entity_uuid} as a {entity_type}")
+                    self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
+                                                        *pos, entity_dir)
+
+        remove_entities = []
+        received_uuids = list(map(lambda info: info[1], entities))
+        print(f"received uuids {list(received_uuids)}")
+        print(f"keys: {self.entities.keys()}")
+        for entity_uuid in self.entities.keys():
+            if entity_uuid not in received_uuids:
+                self.entities[entity_uuid].kill()
+                remove_entities.append(entity_uuid)
+                print(f"removed uuid={entity_uuid}")
+
+        for entity_uuid in remove_entities:
+            self.entities.pop(entity_uuid)
 
     def run(self) -> None:
         """
         Use: game loop
         """
         self.running = True
-        # starts the receiving thread 
+        # starts the receiving thread
         recv_thread = threading.Thread(target=self.receiver)
         recv_thread.start()
         self.draw_map()
