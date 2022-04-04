@@ -3,7 +3,8 @@ import os
 import sys
 
 sys.path.append('../')
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, NODE_PORT
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+from common.utils import get_random_port
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
@@ -28,7 +29,7 @@ def init_pygame() -> pygame.Surface:
 def main():
     screen = init_pygame()
 
-    connection_screen = connect_screen.ConnectScreen(screen, 10001)
+    connection_screen = connect_screen.ConnectScreen(screen, get_random_port())
     connection_screen.run()
     if not connection_screen.sock:
         print("Login/Signup failed")
