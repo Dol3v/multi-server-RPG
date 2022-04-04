@@ -5,7 +5,7 @@ import sys
 import threading
 import time
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Set
 
 import numpy as np
 from cryptography.fernet import InvalidToken
@@ -54,6 +54,8 @@ class Node:
 
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
+
+        self.died_clients: Set[str] = set()
 
         self.load_map()
         # Starts the node
@@ -132,6 +134,13 @@ class Node:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
         return get_bounding_box(pos, height, width)
 
+    def remove_entity(self, entity: Entity, kind: int):
+        if kind == PLAYER_TYPE:
+            self.died_clients.add(entity.uuid)
+            self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
+        self.entities.pop(entity.uuid)
+        self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
+
     def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: int) -> Iterable[Tuple[int, str]]:
         return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
             self.get_entity_bounding_box(pos, kind)))
@@ -173,8 +182,9 @@ class Node:
 
         for attackable in attackable_in_range:
             attackable.health -= weapon_data['damage']
-            if attackable.health < 0:
-                attackable.health = 0
+            if attackable.health <= MIN_HEALTH:
+                print("Should die")
+                # self.remove_entity(attackable, )
             logging.debug(f"Updated entity health to {attackable.health}")
 
     def ranged_attack(self, attacker: Combatant, weapon_data: dict):
@@ -245,6 +255,8 @@ class Node:
                 except InvalidToken:
                     logging.warning(f"[security] player {addr=} sent non-matching uuid={player_uuid}")
                     continue
+                if player_uuid in self.died_clients:
+                    continue
                 client_msg = parse_client_message(data)
                 if not client_msg:
                     continue
@@ -280,13 +292,14 @@ class Node:
                 for kind, identifier in intersection:
                     if kind == ARROW_TYPE:
                         continue
-                    if kind == PLAYER_TYPE:
-                        player = self.players[identifier]
-                        logging.info(f"Projectile {projectile} hit a player {player}")
-                        player.health -= projectile.damage
-                        if player.health < MIN_HEALTH:
-                            player.health = MIN_HEALTH
-                        logging.debug(f"Updated player {identifier} health to {player.health}")
+                    if kind == PLAYER_TYPE or kind == MOB_TYPE:
+                        combatant: Combatant = self.entities[identifier]
+                        logging.info(f"Projectile {projectile} hit {combatant}")
+                        combatant.health -= projectile.damage
+                        if combatant.health <= MIN_HEALTH:
+                            logging.info(f"[update] killed {combatant=}")
+                            self.remove_entity(combatant, kind)
+                        logging.debug(f"Updated player {identifier} health to {combatant.health}")
                     to_remove.append(projectile)
                     break
             if projectile.ttl == 0:
@@ -361,7 +374,7 @@ class Node:
         mob = Mob()
         mob.pos = (2500, 1700)
         # mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
-        mob.weapon = AXE
+        mob.weapon = BOW
         self.mobs[mob.uuid] = mob
         self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
@@ -392,5 +405,5 @@ class Node:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.WARNING)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(NODE_PORT)
