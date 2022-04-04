@@ -195,17 +195,18 @@ class Game:
                 else:
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
-        #
-        # remove_entities = []
-        #
-        # for entity_uuid in self.entities.keys():
-        #     if entity_uuid not in entities:
-        #         print(entity_uuid)
-        #         self.entities[entity_uuid].kill()
-        #         remove_entities.append(entity_uuid)
-        #
-        # for entity_uuid in remove_entities:
-        #     self.entities.pop(entity_uuid)
+
+        remove_entities = []
+        received_uuids = map(lambda info: info[1], entities)
+
+        for entity_uuid in self.entities.keys():
+            if entity_uuid not in received_uuids:
+                print(entity_uuid)
+                self.entities[entity_uuid].kill()
+                remove_entities.append(entity_uuid)
+
+        for entity_uuid in remove_entities:
+            self.entities.pop(entity_uuid)
 
     def run(self) -> None:
         """
