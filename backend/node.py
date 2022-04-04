@@ -48,6 +48,9 @@ class Node:
         self.mobs: Dict[str, Mob] = {}
         self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
 
+        self.mob_lock = threading.Lock()
+        self.projectile_lock = threading.Lock()
+
         self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
         projectile/player/mob, and the uuid being, well, the uuid."""
@@ -103,7 +106,7 @@ class Node:
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
     def entities_in_melee_attack_range(self, entity: Combatant, melee_range: int) \
-            ->  Iterable[Tuple[int, Combatant]]:
+            -> Iterable[Tuple[int, Combatant]]:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
@@ -144,7 +147,8 @@ class Node:
             self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
             self.players.pop(entity.uuid)
         elif kind == MOB_TYPE:
-            self.mobs.pop(entity.uuid)
+            with self.mob_lock:
+                self.mobs.pop(entity.uuid)
         elif kind == ARROW_TYPE:
             self.projectiles.pop(entity.uuid)
         self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
@@ -202,9 +206,10 @@ class Node:
         projectile = Projectile(pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
                                      int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
                                 direction=attacker.attacking_direction, damage=weapon_data['damage'])
-        self.projectiles[projectile.uuid] = projectile
         self.spindex.insert((ARROW_TYPE, projectile.uuid),
                             get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
+        with self.projectile_lock:
+            self.projectiles[projectile.uuid] = projectile
         logging.info(f"Added projectile {projectile}")
 
     def attack(self, attacker: Combatant, weapon: int):
@@ -302,55 +307,60 @@ class Node:
     def server_controlled_entities_update(self, s):
         """update all projectiles and bots positions inside a loop"""
         # projectile handling
-        to_remove = []
-        for projectile in self.projectiles.values():
-            projectile.ttl -= 1
-            if projectile.ttl == 0:
-                logging.debug(f"[debug] gonna remove uuid={projectile.uuid}, ttl=0")
-                to_remove.append(projectile)
-                continue
-
-            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
-            should_remove = True
-            if intersection:
-                for kind, identifier in intersection:
-                    if kind == ARROW_TYPE:
-                        should_remove = False
-                        continue
-                    if kind == PLAYER_TYPE or kind == MOB_TYPE:
-                        combatant: Combatant = self.entities[identifier]
-                        logging.info(f"Projectile {projectile} hit {combatant}")
-                        combatant.health -= projectile.damage
-                        if combatant.health <= MIN_HEALTH:
-                            logging.info(f"[update] killed {combatant=}")
-                            self.remove_entity(combatant, kind)
-                        logging.debug(f"Updated player {identifier} health to {combatant.health}")
-                if should_remove:
+        if self.projectile_lock.acquire(blocking=True, timeout=0.02):
+            to_remove = []
+            for projectile in self.projectiles.values():
+                projectile.ttl -= 1
+                if projectile.ttl == 0:
+                    logging.debug(f"[debug] gonna remove uuid={projectile.uuid}, ttl=0")
                     to_remove.append(projectile)
-                    logging.debug(f"[debug] gonna remove uuid={projectile.uuid}, nonzero intersection")
-                continue
+                    continue
 
-            self.update_entity_location(projectile,
-                                        (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
-                                         projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
-                                        ARROW_TYPE)
-        for projectile in to_remove:
-            self.remove_entity(projectile, ARROW_TYPE)
-            logging.info(f"[update] removed projectile {projectile.uuid}")
+                intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
+                should_remove = True
+                if intersection:
+                    for kind, identifier in intersection:
+                        if kind == ARROW_TYPE:
+                            should_remove = False
+                            continue
+                        if kind == PLAYER_TYPE or kind == MOB_TYPE:
+                            combatant: Combatant = self.entities[identifier]
+                            logging.info(f"Projectile {projectile} hit {combatant}")
+                            combatant.health -= projectile.damage
+                            if combatant.health <= MIN_HEALTH:
+                                logging.info(f"[update] killed {combatant=}")
+                                self.remove_entity(combatant, kind)
+                            logging.debug(f"Updated player {identifier} health to {combatant.health}")
+                    if should_remove:
+                        to_remove.append(projectile)
+                        logging.debug(f"[debug] gonna remove uuid={projectile.uuid}, nonzero intersection")
+                    continue
 
-        for mob in self.mobs.values():
-            self.update_mob_directions(mob)
-            colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
-            if colliding:
-                for kind, identifier in colliding:
-                    if kind == ARROW_TYPE:
-                        continue
-                    mob.direction = 0., 0.  # TODO: refactor a bit into update_mob_directions
-            if mob.on_player:
-                self.attack(mob, mob.weapon)
-            self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
-                                              mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
-                                        MOB_TYPE)
+                self.update_entity_location(projectile,
+                                            (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
+                                             projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
+                                            ARROW_TYPE)
+            for projectile in to_remove:
+                self.remove_entity(projectile, ARROW_TYPE)
+                logging.info(f"[update] removed projectile {projectile.uuid}")
+            self.projectile_lock.release()
+
+        if self.mob_lock.acquire(blocking=True, timeout=.02):
+            for mob in self.mobs.values():
+                self.update_mob_directions(mob)
+                colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
+                if colliding:
+                    for kind, identifier in colliding:
+                        if kind == ARROW_TYPE:
+                            continue
+                        mob.direction = 0., 0.  # TODO: refactor a bit into update_mob_directions
+                if mob.on_player:
+                    self.attack(mob, mob.weapon)
+                self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
+                                                  mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
+                                            MOB_TYPE)
+            self.mob_lock.release()
+
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s,))
 
     def start_location_update(self):
