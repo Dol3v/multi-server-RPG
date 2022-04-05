@@ -3,15 +3,19 @@ import os
 import sys
 
 sys.path.append('../')
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
-from common.utils import get_random_port
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
-import pygame
-import game
-import connect_screen
-import consts
+try:
+    import pygame
+    import game
+    import connect_screen
+    import consts
+    from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+except ModuleNotFoundError:
+    from client import game
+    from client import connect_screen
+    from client import consts
 
 
 def init_pygame() -> pygame.Surface:
@@ -29,7 +33,7 @@ def init_pygame() -> pygame.Surface:
 def main():
     screen = init_pygame()
 
-    connection_screen = connect_screen.ConnectScreen(screen, get_random_port())
+    connection_screen = connect_screen.ConnectScreen(screen, 10000)
     connection_screen.run()
     if not connection_screen.sock:
         print("Login/Signup failed")
@@ -37,7 +41,7 @@ def main():
 
     my_game = game.Game(connection_screen.sock, connection_screen.game_server_addr,
                         connection_screen.received_player_uuid, connection_screen.shared_key,
-                        connection_screen.full_screen, connection_screen.username)
+                        connection_screen.full_screen, connection_screen.initial_pos)
     my_game.run()
 
 

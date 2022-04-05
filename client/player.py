@@ -45,9 +45,8 @@ class Player(pygame.sprite.Sprite):
 
         self.hotbar: List[Weapon | None] = [None] * 6
         self.current_slot = 0
-        self.hotbar[3] = Potion((groups[0], ))
-        # self.hotbar[1] = Weapon(groups, "axe", "rare")
-        # self.hotbar[2] = RangeWeapon(groups, obstacle_sprites, "bow", "rare")
+        self.hotbar[1] = Weapon(groups, "axe", "rare")
+        self.hotbar[2] = RangeWeapon(groups, obstacle_sprites, self.map_collision, "bow", "rare")
 
     def input(self):
         if self.is_typing:

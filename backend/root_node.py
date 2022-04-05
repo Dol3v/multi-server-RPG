@@ -12,14 +12,17 @@ from threading import Thread
 from typing import List, Iterable
 
 # to import from a dir
+import numpy as np
+
 sys.path.append('../')
 
-from common.utils import deserialize_addr, serialize_ip
+from common.utils import deserialize_addr, serialize_ip, valid_ip, enter_ip
 from consts import DB_PASS, CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT, ADDR_HEADER_SIZE
 from authentication import login, signup, parse_credentials
 from database import SqlDatabase
 from networking import do_ecdh
-from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NUM_NODES
+from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NUM_NODES, \
+    WORLD_WIDTH, WORLD_HEIGHT, POSITION_FORMAT
 
 
 @dataclass
@@ -31,6 +34,7 @@ class ClientData:
 @dataclass
 class NodeData:
     ip: str
+    map_id: int
     clients_info: List[ClientData]
     conn: socket.socket
 
@@ -41,7 +45,9 @@ class EntryNode:
     client_thread_count = 1
 
     def __init__(self, db: SqlDatabase, sock: socket.socket):
+        self.servers_white_list = []
         self.sock = sock
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((ROOT_IP, ROOT_PORT))
 
         self.db_conn = db
@@ -94,6 +100,7 @@ class EntryNode:
             game_addr, data = deserialize_addr(data[:ADDR_HEADER_SIZE]), data[ADDR_HEADER_SIZE:]
             is_login, username, password = parse_credentials(shared_key, data)
             print(f"{game_addr=} {is_login=} {username=} {password=}")
+            initial_pos = self.get_initial_position()
             if is_login:
                 success, error_msg, user_uuid = login(username, password, self.db_conn)
             else:
@@ -101,8 +108,8 @@ class EntryNode:
 
             if not success:
                 logging.info(f"[blocked] login/signup failed, error msg: {error_msg}")
-                conn.send(struct.pack(REDIRECT_FORMAT, EMPTY_UUID.encode(), "0.0.0.0".encode(), success, len(error_msg))
-                          + error_msg.encode())
+                conn.send(struct.pack(REDIRECT_FORMAT, EMPTY_UUID.encode(), *initial_pos, "0.0.0.0".encode(),
+                                      success, len(error_msg)) + error_msg.encode())
                 conn.close()
                 continue
 
@@ -110,28 +117,43 @@ class EntryNode:
             # uuid & addr
             logging.info(f"client redirected to {target_node.ip}")
             conn.send(
-                struct.pack(REDIRECT_FORMAT, user_uuid.encode(), target_node.ip.encode(),
+                struct.pack(REDIRECT_FORMAT, user_uuid.encode(), *initial_pos, target_node.ip.encode(),
                             success, len(error_msg)) + error_msg.encode())
 
             self.server_send_queue.put(([target_node], shared_key + user_uuid.encode() +
+                                        struct.pack(POSITION_FORMAT, *initial_pos) +
                                         serialize_ip(game_addr[0]) + struct.pack(">l", game_addr[1])))
 
             conn.close()
 
     def init_nodes(self):
         """Initializes nodes' data based on user input."""
-        # TODO: actually make this secure lmao
+        # for map_id in range(NUM_NODES):
+        #     ip = enter_ip(f"Enter node {map_id} IP: ")
+        #     self.servers_white_list.append(ip)
+        self.servers_white_list.append("127.0.0.1")
         self.server2server.listen()
-        for _ in range(NUM_NODES):
-            conn, addr = self.server2server.accept()
-            logging.info(f"[update] accepted one server connection with {addr=}")
-            # while addr[1] != NODE_PORT: - doesn't work, need to use more thorough check, prob
-            # like manually whitelisting servers using input()
-            #     conn, addr = self.server2server.accept()
+        map_id = 0
 
-            self.nodes.append(NodeData(addr[0], [], conn))
+        while map_id < NUM_NODES:
+            conn, addr = self.server2server.accept()
+            if addr[0] not in self.servers_white_list:
+                logging.warning(f"unauthorized server is trying to talk with root")
+                continue
+
+            logging.info(f"[update] accepted one server connection with {addr=}")
+
+            # conn.send(struct.pack(map_id, ))
+            self.nodes.append(NodeData(addr[0], map_id, [], conn))
+            map_id += 1
         # TODO: send here the generated SQL password for user
         # self.server_send_queue.put()
+
+    @staticmethod
+    def get_initial_position():
+        """Gets an initial position for the player,
+        MAP NOTE: the function is in range but pygame didn't load the map for all places, so I will shrink the range """
+        return int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
 
     def run(self):
         self.init_nodes()

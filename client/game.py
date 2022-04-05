@@ -13,25 +13,32 @@ import weapons
 # to import from a dir
 sys.path.append('../')
 
-from graphics import ChatBox
-from common.consts import *
-from networking import generate_client_message, parse_server_message
-from player import Player
-from sprites import PlayerEntity, FollowingCameraGroup, Entity
-from weapons import *
-from map_manager import *
+try:
+    from graphics import ChatBox
+    from common.consts import *
+    from networking import generate_client_message, parse_server_message
+    from player import Player
+    from sprites import PlayerEntity, FollowingCameraGroup, Entity
+    from weapons import *
+    from map_manager import *
+except ModuleNotFoundError:
+    from client.graphics import ChatBox
+    from common.consts import *
+    from client.networking import generate_client_message, parse_server_message
+    from client.player import Player
+    from client.sprites import PlayerEntity, FollowingCameraGroup, Entity
+    from client.weapons import *
+    from client.map_manager import *
 
 
 class Game:
     def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen,
-                 username : str):
+                 initial_pos: tuple):
         # misc networking
-        self.username = username
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
         self.fernet = Fernet(base64.urlsafe_b64encode(shared_key))
-        print(f"{conn=}, {server_addr=}")
 
         # init sprites
         self.can_recv: bool = False
@@ -48,7 +55,8 @@ class Game:
         self.map.load_collision_objects_to(self.map_collision)
 
         # player init
-        self.player = Player((2010, 1530), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+
+        self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
 
@@ -122,6 +130,7 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
+            print(f"{x=} {y=} {health=} {tools=}")
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
                 weapon_type = weapons.get_weapon_type(tool_id)
 
@@ -193,10 +202,12 @@ class Game:
         """
         Use: prints the other clients by the given info about them
         """
+        print("-" * 10)
         for entity_info in entities:
             entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-
+            print(f"received entity {entity_uuid=} {entity_type=} {pos=} {entity_dir=} {tool_id=}")
             if entity_uuid in self.entities.keys():
+                print("entity in keys, updating")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
@@ -204,24 +215,28 @@ class Game:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
                 if entity_type == PLAYER_TYPE:
+                    print("creating player")
                     self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
                                                               entity_dir, tool_id, self.map_collision)
                 else:
+                    print(f"creating entity of type={entity_type}")
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info[1], entities))
-
+        print(f"{received_uuids=}")
+        print(f"keys={self.entities.keys()}")
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
+                print(f"killing uuid={entity_uuid}")
                 self.entities[entity_uuid].kill()
                 remove_entities.append(entity_uuid)
 
         for entity_uuid in remove_entities:
             self.entities.pop(entity_uuid)
 
-    def run(self) -> None:
+    def run(self):
         """
         Use: game loop
         """
@@ -285,7 +300,6 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
-            self.draw_inventory()
             self.server_update()
             self.can_recv = True
             pygame.display.update()

@@ -4,7 +4,6 @@ import math
 import re
 import socket
 import struct
-from itertools import islice
 from typing import Iterable, Tuple
 
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, generate_private_key, \
@@ -14,6 +13,14 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS
+
+
+def enter_ip(enter_string: str):
+    """enter ip only if valid"""
+    ip = input(enter_string)
+    while not valid_ip(ip):
+        ip = input(enter_string)
+    return ip
 
 
 def get_random_port():
