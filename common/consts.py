@@ -1,5 +1,6 @@
 """General Common consts"""
 import struct
+import socket
 from typing import Tuple
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
@@ -66,6 +67,7 @@ Dir = Tuple[float, float]
 NODE_PORT = 42069
 DEFAULT_NODE_IP = "127.0.0.1"
 RECV_CHUNK = 1024
+UDP_RECV_CHUNK = socket.socket(socket.AF_INET,socket.SOCK_DGRAM).getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
 THREADS_COUNT = 1
 NODE_COUNT = 1
 
@@ -78,7 +80,7 @@ DEFAULT_ADDR = (DEFAULT_NODE_IP, -1)
 SPEED = 5
 MAX_HEALTH = 100
 MIN_HEALTH = 0
-PROJECTILE_SPEED = 10
+PROJECTILE_SPEED = 40
 ARROW_OFFSET_FACTOR = 75
 
 # Tools
@@ -100,11 +102,11 @@ COMPRESSED_POINT_SIZE = 49
 ELLIPTIC_CURVE = SECP384R1()
 SHARED_KEY_SIZE = 32
 
-MOB_COUNT = 100
+MOB_COUNT = 200
 PROJECTILE_TTL = 120
 # Some temporary consts
 ROOT_IP = "127.0.0.1"
 ROOT_PORT = 30000
 
 # mob consts
-MOB_SPEED = 4
+MOB_SPEED = 3
