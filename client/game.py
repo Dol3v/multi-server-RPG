@@ -299,7 +299,6 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
-            self.draw_inventory()
             self.server_update()
             self.can_recv = True
             pygame.display.update()
