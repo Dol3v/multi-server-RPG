@@ -111,7 +111,7 @@ class Game:
         while not self.can_recv:
             ...
         while True:
-            self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
+            self.recv_queue.put(self.conn.recvfrom(UDP_RECV_CHUNK))
 
     def server_update(self):
         """communicate with the server over UDP."""
@@ -177,6 +177,7 @@ class Game:
         else:
             print("ded")
             self.running = False
+            # TODO: start here login screen
             pygame.quit()
             sys.exit(0)
 

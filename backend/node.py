@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 from collections import defaultdict
+import random
 from typing import Dict, Set
 
 import numpy as np
@@ -411,8 +412,7 @@ class Node:
         for _ in range(MOB_COUNT):
             mob = Mob()
             mob.pos = self.get_available_position(MOB_TYPE)
-            # mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
-            mob.weapon = SWORD
+            mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
             self.mobs[mob.uuid] = mob
             self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
