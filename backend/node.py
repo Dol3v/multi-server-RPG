@@ -359,12 +359,12 @@ class Node:
         if self.mob_lock.acquire(blocking=True, timeout=.02):
             for mob in self.mobs.values():
                 self.update_mob_directions(mob)
-                colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
-                if colliding:
-                    for kind, identifier in colliding:
-                        if kind == ARROW_TYPE:
-                            continue
-                        mob.direction = 0., 0.  # TODO: refactor a bit into update_mob_directions
+                # colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
+                # if colliding:
+                #     for kind, identifier in colliding:
+                #         if kind == ARROW_TYPE:
+                #             continue
+                #         mob.direction = 0., 0.  # TODO: refactor a bit into update_mob_directions
                 if mob.on_player:
                     self.attack(mob, mob.weapon)
                 self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
@@ -445,7 +445,9 @@ class Node:
         return entity.last_updated != -1 and (not moved_reasonable_distance(
             player_pos, entity.pos, seqn - entity.last_updated) or
                                               not is_empty(
-                                                  self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE)))
+                                                  self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE))
+                                              or not (0 <= player_pos[0] <= WORLD_WIDTH)
+                                              or not (0 <= player_pos[1] <= WORLD_HEIGHT))
 
 
 if __name__ == "__main__":
