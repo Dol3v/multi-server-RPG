@@ -296,7 +296,10 @@ class Node:
                     logging.info(f"Got outdated packet from {addr=}")
                     continue
 
-                player.attacking_direction = attack_dir  # TODO: check if normalized
+                if attack_dir != normalize_vec(*attack_dir):
+                    continue
+
+                player.attacking_direction = attack_dir
                 player.new_message = chat.decode()
                 secure_pos = self.update_location(player_pos, seqn, player)
 
