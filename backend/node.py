@@ -87,11 +87,16 @@ class Node:
         :returns: flattened tuple of kind, position and direction"""
         entity = self.entities[entity_data[1]]
         tool_id = EMPTY_SLOT
+        direction = DEFAULT_DIR
         if entity_data[0] == PLAYER_TYPE:
             tool_id = entity.tools[entity.slot]
+            direction = entity.attacking_direction
         elif entity_data[0] == MOB_TYPE:
             tool_id = entity.weapon
-        return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction, tool_id
+            direction = entity.attacking_direction
+        elif entity_data[0] == ARROW_TYPE:
+            direction = entity.direction
+        return entity_data[0], entity.uuid.encode(), *entity.pos, *direction, tool_id
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Tuple[int, Combatant]]:
         return map(lambda data: (data[0], self.entities[data[1]]),
