@@ -145,7 +145,7 @@ class Node:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
         return get_bounding_box(pos, height, width)
 
-    def remove_entity(self, entity: Entity, kind: int, *, attacker):
+    def remove_entity(self, entity: Entity, kind: int):
         if kind == PLAYER_TYPE:
             self.died_clients.add(entity.uuid)
             self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
@@ -266,6 +266,7 @@ class Node:
         update_packet = generate_server_message(player.tools, player.incoming_message, secure_pos, player.health,
                                                 entities_array)
         self.server_sock.sendto(update_packet, player.addr)
+        logging.debug(f"[debug] sent message to client {player.uuid=}")
 
     def handle_client(self):
         """communicate with client"""
@@ -284,11 +285,13 @@ class Node:
                 if not client_msg:
                     continue
                 seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
+                logging.debug(f"[debug] received data {seqn=} {x=} {y=} {attacked=} {attack_dir=} {slot_index=}")
                 player_pos = x, y
                 if player_uuid in self.should_join:
                     self.spindex.insert((PLAYER_TYPE, player_uuid),
                                         get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
                     self.should_join.remove(player_uuid)
+                    logging.info(f"[joined] player={self.players[player_uuid]} joined")
 
                 if slot_index > MAX_SLOT or slot_index < 0:
                     continue
@@ -296,9 +299,6 @@ class Node:
                 player = self.players[player_uuid]
                 if seqn <= player.last_updated != 0:
                     logging.info(f"Got outdated packet from {addr=}")
-                    continue
-
-                if attack_dir != normalize_vec(*attack_dir):
                     continue
 
                 player.attacking_direction = attack_dir
@@ -422,7 +422,7 @@ class Node:
             if player_uuid != uuid_to_broadcast:
                 self.players[uuid_to_broadcast].incoming_message = self.players[player_uuid].new_message
 
-    def run(self) -> None:
+    def run(self):
         """starts node threads"""
         self.server_sock.bind(self.address)
         logging.info(f"Binded to address {self.address}")
