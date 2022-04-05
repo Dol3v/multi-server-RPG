@@ -250,6 +250,7 @@ class Game:
         # Game loop
         while self.running:
             event_list = pygame.event.get()
+            self.draw_chat(event_list)
             for event in event_list:
                 if event.type == pygame.MOUSEWHEEL:
                     if event.y > 0:
