@@ -150,6 +150,7 @@ class Node:
             self.died_clients.add(entity.uuid)
             self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
             self.players.pop(entity.uuid)
+
         elif kind == MOB_TYPE:
             with self.mob_lock:
                 self.mobs.pop(entity.uuid)
