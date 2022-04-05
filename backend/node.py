@@ -145,7 +145,7 @@ class Node:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
         return get_bounding_box(pos, height, width)
 
-    def remove_entity(self, entity: Entity, kind: int):
+    def remove_entity(self, entity: Entity, kind: int, *, attacker):
         if kind == PLAYER_TYPE:
             self.died_clients.add(entity.uuid)
             self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
@@ -153,6 +153,7 @@ class Node:
         elif kind == MOB_TYPE:
             with self.mob_lock:
                 self.mobs.pop(entity.uuid)
+
         elif kind == ARROW_TYPE:
             self.projectiles.pop(entity.uuid)
         self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
