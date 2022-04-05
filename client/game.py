@@ -13,13 +13,22 @@ import weapons
 # to import from a dir
 sys.path.append('../')
 
-from graphics import ChatBox
-from common.consts import *
-from networking import generate_client_message, parse_server_message
-from player import Player
-from sprites import PlayerEntity, FollowingCameraGroup, Entity
-from weapons import *
-from map_manager import *
+try:
+    from graphics import ChatBox
+    from common.consts import *
+    from networking import generate_client_message, parse_server_message
+    from player import Player
+    from sprites import PlayerEntity, FollowingCameraGroup, Entity
+    from weapons import *
+    from map_manager import *
+except ModuleNotFoundError:
+    from client.graphics import ChatBox
+    from common.consts import *
+    from client.networking import generate_client_message, parse_server_message
+    from client.player import Player
+    from client.sprites import PlayerEntity, FollowingCameraGroup, Entity
+    from client.weapons import *
+    from client.map_manager import *
 
 
 class Game:

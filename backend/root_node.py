@@ -152,7 +152,6 @@ class EntryNode:
     @staticmethod
     def get_initial_position():
         """Gets an initial position for the player,
-        SECURITY NOTE: doesn't include objects and other mobs
         MAP NOTE: the function is in range but pygame didn't load the map for all places, so I will shrink the range """
         return int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
 
