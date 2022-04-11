@@ -42,7 +42,7 @@ class Node:
         # TODO: remove when actually deploying exe
         # root_ip = enter_ip("Enter root's IP: ")
 
-        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))
+
 
         self.players: Dict[str, Player] = {}
         self.mobs: Dict[str, Mob] = {}
@@ -269,7 +269,7 @@ class Node:
         self.server_sock.sendto(update_packet, player.addr)
         logging.debug(f"[debug] sent message to client {player.uuid=}")
 
-    def handle_client(self):
+    def client_handler(self):
         """communicate with client"""
         while True:
             try:
@@ -375,13 +375,26 @@ class Node:
 
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s,))
 
-    def start_location_update(self):
-        """starts the schedular and the function"""
+    def invalid_movement(self, entity: Player, player_pos: Pos, seqn: int) -> bool:
+        """check if a given player movement is valid"""
+        return entity.last_updated != -1 and (not moved_reasonable_distance(
+            player_pos, entity.pos, seqn - entity.last_updated) or
+                                              not is_empty(
+                                                  self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE))
+                                              or not (0 <= player_pos[0] <= WORLD_WIDTH)
+                                              or not (0 <= player_pos[1] <= WORLD_HEIGHT))
+
+    def server_entities_handler(self):
+        """Starts the schedular and update entities functions"""
         s = sched.scheduler(time.time, time.sleep)
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s,))
         s.run()
 
-    def root_receiver(self):
+    def root_handler(self):
+        """Receive new clients from the root infinitely
+        TODO: make this function use networking.py
+        NOTE: change function so it can receive more then just player initial stats
+        """
         while True:
             data = self.root_sock.recv(RECV_CHUNK)
             shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
@@ -417,37 +430,24 @@ class Node:
             self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
     def broadcast_clients(self, player_uuid: str):
-        """broadcast clients new messages to each other."""
+        """Broadcast clients new messages to each other."""
         for uuid_to_broadcast in self.players:
             if player_uuid != uuid_to_broadcast:
                 self.players[uuid_to_broadcast].incoming_message = self.players[player_uuid].new_message
 
     def run(self):
-        """starts node threads"""
+        """Starts node threads and bind & connect sockets"""
+        # bind UCDH socket
         self.server_sock.bind(self.address)
+        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT)) # may case the bug
         logging.info(f"Binded to address {self.address}")
 
-        try:
-            threading.Thread(target=self.start_location_update).start()
-            threading.Thread(target=self.root_receiver).start()
-            for _ in range(THREADS_COUNT):
-                # starts handlers threads
-                client_thread = threading.Thread(target=self.handle_client)
-                client_thread.start()
-
-        except Exception as e:
-            logging.exception(f"{e}")
-
-    def invalid_movement(self, entity: Player, player_pos: Pos, seqn: int) -> bool:
-        """
-        Use: check if a given player movement is valid
-        """
-        return entity.last_updated != -1 and (not moved_reasonable_distance(
-            player_pos, entity.pos, seqn - entity.last_updated) or
-                                              not is_empty(
-                                                  self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE))
-                                              or not (0 <= player_pos[0] <= WORLD_WIDTH)
-                                              or not (0 <= player_pos[1] <= WORLD_HEIGHT))
+        threading.Thread(target=self.server_entities_handler).start()
+        threading.Thread(target=self.root_handler).start()
+        for _ in range(THREADS_COUNT):
+            # starts handlers threads
+            client_thread = threading.Thread(target=self.client_handler)
+            client_thread.start()
 
 
 if __name__ == "__main__":
