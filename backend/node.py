@@ -19,18 +19,18 @@ sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
-from collision import *
+from backend.logic.collision import *
 from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT, MOB_SIGHT_HEIGHT, \
     MOB_SIGHT_WIDTH, MOB_ERROR_TERM, RANGED_OFFSET
-from entities import *
-from networking import generate_server_message, parse_client_message
+from backend.logic.entities import *
+from backend.networks.networking import generate_server_message, parse_client_message
 
 EntityData = Tuple[int, str, int, int, float, float, int, str]
 """type, uuid, x, y, direction in x, direction in y, new_message"""
 
 
 class Node:
-
+    """Server that receive and transfer data to the clients and root server"""
     def __init__(self, port):
         # TODO: uncomment when coding on prod
         # self.node_ip = socket.gethostbyname(socket.gethostname())
@@ -41,8 +41,6 @@ class Node:
         self.root_sock = socket.socket()
         # TODO: remove when actually deploying exe
         # root_ip = enter_ip("Enter root's IP: ")
-
-
 
         self.players: Dict[str, Player] = {}
         self.mobs: Dict[str, Mob] = {}
@@ -282,6 +280,7 @@ class Node:
                     continue
                 if player_uuid in self.died_clients:
                     continue
+                # this is a weird check
                 client_msg = parse_client_message(data)
                 if not client_msg:
                     continue
@@ -361,7 +360,7 @@ class Node:
             for mob in self.mobs.values():
                 self.update_mob_directions(mob)
                 # colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
-                # if colliding:
+                # if colliding:''
                 #     for kind, identifier in colliding:
                 #         if kind == ARROW_TYPE:
                 #             continue
@@ -437,10 +436,9 @@ class Node:
 
     def run(self):
         """Starts node threads and bind & connect sockets"""
-        # bind UCDH socket
         self.server_sock.bind(self.address)
         self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT)) # may case the bug
-        logging.info(f"Binded to address {self.address}")
+        logging.info(f"bound to address {self.address}")
 
         threading.Thread(target=self.server_entities_handler).start()
         threading.Thread(target=self.root_handler).start()

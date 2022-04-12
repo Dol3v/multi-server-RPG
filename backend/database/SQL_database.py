@@ -2,9 +2,9 @@ import sqlalchemy
 import ssl
 
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, JSON, INT
-
+from backend.database.consts import SQL_TYPE, DB_USERNAME, DB_PORT, DB_NAME, USERS_CREDENTIALS_TABLE, MAX_SIZE, \
+    CHAT_TABLE, USER_TABLE
 from common.consts import UUID_SIZE
-from consts import *
 
 
 class SqlDatabase:
