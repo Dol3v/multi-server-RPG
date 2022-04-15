@@ -1,7 +1,7 @@
 """General consts for client side"""
 # Images
 
-from common.consts import ARROW_TYPE, MOB_TYPE, PLAYER_TYPE
+from common.consts import EntityType
 
 PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
@@ -41,11 +41,11 @@ weapon_data = {
 
 ENTITY_DATA = {
     # (texture, [animation], frame per second, size_multiplier
-    ARROW_TYPE: ("entity/arrow/projectile.png", [], 10, 1),
-    MOB_TYPE: ("entity/dino/lizard.png", ["entity/dino/lizard.png", "entity/dino/lizard_run_0.png",
+    EntityType.ARROW: ("entity/arrow/projectile.png", [], 10, 1),
+    EntityType.MOB: ("entity/dino/lizard.png", ["entity/dino/lizard.png", "entity/dino/lizard_run_0.png",
                                           "entity/dino/lizard_run_1.png",
                                           "entity/dino/lizard_run_2.png", "entity/dino/lizard_run_3.png"], 1, 4),
-    PLAYER_TYPE: ("character/knight/knight.png", ["character/knight/move_0.png",
+    EntityType.PLAYER: ("character/knight/knight.png", ["character/knight/move_0.png",
                                                   "character/knight/move_1.png", "character/knight/move_2.png"],
                   10, PLAYER_SIZE_MULTIPLIER)
 }

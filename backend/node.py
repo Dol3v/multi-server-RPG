@@ -87,24 +87,26 @@ class Node:
         entity = self.entities[entity_data[1]]
         tool_id = EMPTY_SLOT
         direction = DEFAULT_DIR
-        if entity_data[0] == PLAYER_TYPE:
-            tool_id = entity.tools[entity.slot]
-            direction = entity.attacking_direction
-        elif entity_data[0] == MOB_TYPE:
-            tool_id = entity.weapon
-            direction = entity.attacking_direction
-        elif entity_data[0] == ARROW_TYPE:
-            direction = entity.direction
+        match entity_data[0]:
+            case EntityType.PLAYER:
+                tool_id = entity.tools[entity.slot]
+                direction = entity.attacking_direction
+            case EntityType.MOB:
+                tool_id = entity.weapon
+                direction = entity.attacking_direction
+            case EntityType.ARROW:
+                direction = entity.direction
+
         return entity_data[0], entity.uuid.encode(), *entity.pos, *direction, tool_id
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Tuple[int, Combatant]]:
         return map(lambda data: (data[0], self.entities[data[1]]),
-                   filter(lambda data: data[1] != entity_uuid and data[0] != ARROW_TYPE and data[0] != OBSTACLE_TYPE,
+                   filter(lambda data: data[1] != entity_uuid and data[0] != EntityType.ARROW and data[0] != EntityType.OBSTACLE,
                           self.spindex.intersect(bbox)))
 
     def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
         """Returns all players that are within render distance of each other."""
-        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid and data[0] != OBSTACLE_TYPE,
+        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid and data[0] != EntityType.OBSTACLE,
                                                      self.spindex.intersect(
                                                          get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
@@ -119,7 +121,7 @@ class Node:
 
     def players_in_range(self, pos: Pos, width: int, height: int) -> Iterable[Pos]:
         intersecting = self.spindex.intersect(get_bounding_box(pos, height, width))
-        filtered = filter(lambda data: data[0] == PLAYER_TYPE, intersecting)
+        filtered = filter(lambda data: data[0] == EntityType.PLAYER, intersecting)
         mapped = list(map(lambda data: self.entities[data[1]].pos, filtered))
         return mapped
 
@@ -131,44 +133,33 @@ class Node:
                                              "../client/assets/map/new_props.tsj")))
         game_map.load_collision_objects_to(self.spindex)
 
-    @staticmethod
-    def get_entity_bounding_box(pos: Pos, entity_type: int):
-        width, height = -1, -1
-        if entity_type == PLAYER_TYPE:
-            width, height = CLIENT_WIDTH, CLIENT_HEIGHT
-        elif entity_type == ARROW_TYPE:
-            width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
-        elif entity_type == MOB_TYPE:
-            width, height = BOT_WIDTH, BOT_HEIGHT
-        else:
-            raise ValueError("Non-existent type entered to get_entity_bounding_box")
-        return get_bounding_box(pos, height, width)
-
     def remove_entity(self, entity: Entity, kind: int):
-        if kind == PLAYER_TYPE:
-            self.died_clients.add(entity.uuid)
-            self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
-            self.players.pop(entity.uuid)
+        match kind:
+            case EntityType.PLAYER:
+                self.died_clients.add(entity.uuid)
+                self.update_client(entity.uuid, DEFAULT_POS_MARK)  # sending message with negative hp
+                self.players.pop(entity.uuid)
 
-        elif kind == MOB_TYPE:
-            with self.mob_lock:
-                self.mobs.pop(entity.uuid)
+            case EntityType.MOB:
+                with self.mob_lock:
+                    self.mobs.pop(entity.uuid)
 
-        elif kind == ARROW_TYPE:
-            self.projectiles.pop(entity.uuid)
-        self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
+            case EntityType.ARROW:
+                self.projectiles.pop(entity.uuid)
+
+        self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
 
     def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: int) -> Iterable[Tuple[int, str]]:
         return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
-            self.get_entity_bounding_box(pos, kind)))
+            get_entity_bounding_box(pos, kind)))
 
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
         logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
-        self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
+        self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
         # are both necessary? prob not, but I'm not gonna take the risk
         entity.pos = new_location
         self.entities[entity.uuid].pos = new_location
-        self.spindex.insert((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
+        self.spindex.insert((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
 
     def update_mob_directions(self, mob: Mob):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
@@ -211,7 +202,7 @@ class Node:
         projectile = Projectile(pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
                                      int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
                                 direction=attacker.attacking_direction, damage=weapon_data['damage'])
-        self.spindex.insert((ARROW_TYPE, projectile.uuid),
+        self.spindex.insert((EntityType.ARROW, projectile.uuid),
                             get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
         with self.projectile_lock:
             self.projectiles[projectile.uuid] = projectile
@@ -254,7 +245,7 @@ class Node:
                 f", {player.last_updated=}")
             secure_pos = self.players[player.uuid].pos
         else:
-            self.update_entity_location(player, player_pos, PLAYER_TYPE)
+            self.update_entity_location(player, player_pos, EntityType.PLAYER)
         return secure_pos
 
     def update_client(self, player_uuid: str, secure_pos: Pos):
@@ -292,7 +283,7 @@ class Node:
                 logging.debug(f"[debug] received data {seqn=} {x=} {y=} {attacked=} {attack_dir=} {slot_index=}")
                 player_pos = x, y
                 if player_uuid in self.should_join:
-                    self.spindex.insert((PLAYER_TYPE, player_uuid),
+                    self.spindex.insert((EntityType.PLAYER, player_uuid),
                                         get_bounding_box(player_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
                     self.should_join.remove(player_uuid)
                     logging.info(f"[joined] player={self.players[player_uuid]} joined")
@@ -331,13 +322,13 @@ class Node:
                     to_remove.append(projectile)
                     continue
 
-                intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=ARROW_TYPE)
+                intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=EntityType.ARROW)
                 should_remove = False
                 if intersection:
                     for kind, identifier in intersection:
-                        if kind == ARROW_TYPE:
+                        if kind == EntityType.ARROW:
                             continue
-                        if kind == PLAYER_TYPE or kind == MOB_TYPE:
+                        if kind == EntityType.PLAYER or kind == EntityType.MOB:
                             combatant: Combatant = self.entities[identifier]
                             logging.info(f"Projectile {projectile} hit {combatant}")
                             should_remove = True
@@ -355,9 +346,9 @@ class Node:
                 self.update_entity_location(projectile,
                                             (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
                                              projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
-                                            ARROW_TYPE)
+                                            EntityType.ARROW)
             for projectile in to_remove:
-                self.remove_entity(projectile, ARROW_TYPE)
+                self.remove_entity(projectile, EntityType.ARROW)
                 logging.info(f"[update] removed projectile {projectile.uuid}")
 
         with self.mob_lock:
@@ -373,7 +364,7 @@ class Node:
                     self.attack(mob, mob.weapon)
                 self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
                                                   mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
-                                            MOB_TYPE)
+                                            EntityType.MOB)
 
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s,))
 
@@ -382,7 +373,7 @@ class Node:
         return entity.last_updated != -1 and (not moved_reasonable_distance(
             player_pos, entity.pos, seqn - entity.last_updated) or
                                               not is_empty(
-                                                  self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE))
+                                                  self.get_collidables_with(player_pos, entity.uuid, kind=EntityType.PLAYER))
                                               or not (0 <= player_pos[0] <= WORLD_WIDTH)
                                               or not (0 <= player_pos[1] <= WORLD_HEIGHT))
 
@@ -418,7 +409,7 @@ class Node:
         :returns: available position"""
         pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
 
-        while len(self.spindex.intersect(self.get_entity_bounding_box((pos_x, pos_y), kind))) != 0:
+        while len(self.spindex.intersect(get_entity_bounding_box((pos_x, pos_y), kind))) != 0:
             pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
         return pos_x, pos_y
 
@@ -426,10 +417,10 @@ class Node:
         """Generate the mobs object with a random positions"""
         for _ in range(MOB_COUNT):
             mob = Mob()
-            mob.pos = self.get_available_position(MOB_TYPE)
+            mob.pos = self.get_available_position(EntityType.MOB)
             mob.weapon = 1 # random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
             self.mobs[mob.uuid] = mob
-            self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
+            self.spindex.insert((EntityType.MOB, mob.uuid), get_entity_bounding_box(mob.pos, EntityType.MOB))
 
     def broadcast_clients(self, player_uuid: str):
         """Broadcast clients new messages to each other."""
