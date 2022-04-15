@@ -274,9 +274,13 @@ class Node:
                 data, addr = self.server_sock.recvfrom(RECV_CHUNK)
                 player_uuid = data[:UUID_SIZE].decode()
                 try:
+                    # problematic
                     data = self.players[player_uuid].fernet.decrypt(data[UUID_SIZE:])
                 except InvalidToken:
                     logging.warning(f"[security] player {addr=} sent non-matching uuid={player_uuid}")
+                    continue
+                except KeyError:
+                    logging.warning(f"{data=}")
                     continue
                 if player_uuid in self.died_clients:
                     continue
@@ -317,9 +321,9 @@ class Node:
 
     def server_controlled_entities_update(self, s):
         """update all projectiles and bots positions inside a loop"""
-        # projectile handling
-        if self.projectile_lock.acquire(blocking=True, timeout=0.02):
-            to_remove = []
+        # BUGFIX: sometimes this functions just freezes s
+        to_remove = []
+        with self.projectile_lock:
             for projectile in self.projectiles.values():
                 projectile.ttl -= 1
                 if projectile.ttl == 0:
@@ -340,6 +344,7 @@ class Node:
                             combatant.health -= projectile.damage
                             if combatant.health <= MIN_HEALTH:
                                 logging.info(f"[update] killed {combatant=}")
+                                # remove entity on
                                 self.remove_entity(combatant, kind)
                             logging.debug(f"Updated player {identifier} health to {combatant.health}")
                     if should_remove:
@@ -354,9 +359,8 @@ class Node:
             for projectile in to_remove:
                 self.remove_entity(projectile, ARROW_TYPE)
                 logging.info(f"[update] removed projectile {projectile.uuid}")
-            self.projectile_lock.release()
 
-        if self.mob_lock.acquire(blocking=True, timeout=.02):
+        with self.mob_lock:
             for mob in self.mobs.values():
                 self.update_mob_directions(mob)
                 # colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
@@ -370,7 +374,6 @@ class Node:
                 self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
                                                   mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
                                             MOB_TYPE)
-            self.mob_lock.release()
 
         s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s,))
 
@@ -392,7 +395,7 @@ class Node:
     def root_handler(self):
         """Receive new clients from the root infinitely
         TODO: make this function use networking.py
-        NOTE: change function so it can receive more then just player initial stats
+        NOTE: add msg_type
         """
         while True:
             data = self.root_sock.recv(RECV_CHUNK)
@@ -424,7 +427,7 @@ class Node:
         for _ in range(MOB_COUNT):
             mob = Mob()
             mob.pos = self.get_available_position(MOB_TYPE)
-            mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+            mob.weapon = 1 # random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
             self.mobs[mob.uuid] = mob
             self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
 
@@ -449,5 +452,5 @@ class Node:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(NODE_PORT)
