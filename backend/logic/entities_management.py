@@ -83,7 +83,6 @@ class EntityManager:
                           self.spindex.intersect(
                               get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH)))))
 
-
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
         logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
         self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))

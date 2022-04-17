@@ -14,11 +14,12 @@ def melee_attack(entities_manager: EntityManager, attacker: Combatant, weapon_da
     attacker.last_time_attacked = time.time()
 
     for kind, attackable in attackable_in_range:
-        attackable.health -= weapon_data['damage']
-        if attackable.health <= MIN_HEALTH:
-            entities_manager.remove_entity(attackable, kind)
-            logging.debug(f"[debug] killed {attackable=}")
-        logging.debug(f"Updated entity health to {attackable.health}")
+        if not kind == EntityType.MOB and attacker.kind == EntityType.MOB:
+            attackable.health -= weapon_data['damage']
+            if attackable.health <= MIN_HEALTH:
+                entities_manager.remove_entity(attackable, kind)
+                logging.debug(f"[debug] killed {attackable=}")
+            logging.debug(f"Updated entity health to {attackable.health}")
 
 
 def ranged_attack(entities_manager: EntityManager, attacker: Combatant, weapon_data: dict):
