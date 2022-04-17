@@ -100,7 +100,7 @@ class Node:
     def client_handler(self):
         """Communicate with client"""
         while True:
-            data, adder = self.server_sock.recvfrom(RECV_CHUNK)
+            data, addr = self.server_sock.recvfrom(RECV_CHUNK)
             player_uuid = data[:UUID_SIZE].decode()
             data = self.receive_client_packet(player_uuid, data)
             if not data:
@@ -118,7 +118,7 @@ class Node:
 
             player = self.entities_manager.players[player_uuid]
             if seqn <= player.last_updated != 0:
-                logging.info(f"Got outdated packet from {adder=}")
+                logging.info(f"Got outdated packet from {addr=}")
                 continue
 
             player.attacking_direction = attack_dir

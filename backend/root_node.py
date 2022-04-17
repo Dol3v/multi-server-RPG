@@ -21,11 +21,9 @@ from networks import login, signup, parse_credentials
 from networks import do_ecdh
 
 from common.utils import deserialize_addr, serialize_ip
-from consts import CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT, ADDR_HEADER_SIZE
-
-
 from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NUM_NODES, \
     WORLD_WIDTH, WORLD_HEIGHT, POSITION_FORMAT
+from consts import CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT, ADDR_HEADER_SIZE
 
 
 @dataclass
