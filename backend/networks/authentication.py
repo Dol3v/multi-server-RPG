@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 # to import from a dir
 sys.path.append('../../')
 
-from backend.database.SQL_database import SqlDatabase
+from backend.database.sql_database import SqlDatabase
 from backend.database.database_utils import add_user_to_database, user_in_database, get_user_credentials
 from common.utils import *
 from consts import *

@@ -39,5 +39,6 @@ def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, heal
     data.append(health)
     data.append(entities_count)
     data += flattened_entities_in_range
+    # entity format shouldn't be with uuid right?
     packet_format = SERVER_HEADER_FORMAT + ENTITY_FORMAT * entities_count
     return struct.pack(packet_format, *data)

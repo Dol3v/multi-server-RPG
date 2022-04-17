@@ -1,7 +1,7 @@
 """utils for database, using SqlDatabase class"""
 from sqlalchemy import select, insert, delete
 from common.utils import *
-from backend.database.SQL_database import SqlDatabase
+from backend.database.sql_database import SqlDatabase
 from backend.database.consts import USERNAME_COL, HASH_COL, SALT_COL, UUID_COL
 from backend.logic.entities import Player
 

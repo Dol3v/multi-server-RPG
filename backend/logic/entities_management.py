@@ -19,13 +19,13 @@ from typing import Dict, Iterable, Tuple, Any, List
 
 
 class EntityManager:
-
-    def __init__(self):
+    """Use to control and access all game entities"""
+    def __init__(self, world_width: int, world_height: int):
         self.players: Dict[str, Player] = {}
         self.mobs: Dict[str, Mob] = {}
         self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
 
-        self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
+        self.spindex = Index(bbox=(0, 0, world_width, world_height))
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
         projectile/player/mob, and the uuid being, well, the uuid."""
 

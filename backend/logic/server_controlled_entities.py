@@ -11,7 +11,18 @@ from common.consts import EntityType, MIN_HEALTH, PROJECTILE_SPEED, MOB_SPEED
 
 def server_controlled_entities_update(entities_manager: EntityManager, s):
     """update all projectiles and bots positions inside a loop"""
-    # BUGFIX: sometimes this functions just freezes
+    # BUGFIX: deadlock when two mobs merge
+    update_projectiles(entities_manager)
+    update_mobs(entities_manager)
+    s.enter(FRAME_TIME, 1, server_controlled_entities_update, (entities_manager, s,))
+
+
+def update_projectiles(entities_manager: EntityManager):
+    """Update projectile position, ttl and existence.
+       In addition, lowers entities HP, and kill them if needed
+
+       NOTE: maybe split these parts...
+       """
     to_remove = []
     with entities_manager.projectile_lock:
         for projectile in entities_manager.projectiles.values():
@@ -43,13 +54,18 @@ def server_controlled_entities_update(entities_manager: EntityManager, s):
                     continue
 
             entities_manager.update_entity_location(projectile,
-                                                    (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
-                                         projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
+                                                    (
+                                                    projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
+                                                    projectile.pos[1] + int(
+                                                        PROJECTILE_SPEED * projectile.direction[1])),
                                                     EntityType.ARROW)
     for projectile in to_remove:
         entities_manager.remove_entity(projectile, EntityType.ARROW)
         logging.info(f"[update] removed projectile {projectile.uuid}")
 
+
+def update_mobs(entities_manager: EntityManager):
+    """Update mobs position. In addition, attack if mob is locked on target"""
     with entities_manager.mob_lock:
         for mob in entities_manager.mobs.values():
             entities_manager.update_mob_directions(mob)
@@ -65,8 +81,6 @@ def server_controlled_entities_update(entities_manager: EntityManager, s):
             entities_manager.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
                                                           mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
                                                     EntityType.MOB)
-
-    s.enter(FRAME_TIME, 1, server_controlled_entities_update, (entities_manager, s,))
 
 
 def server_entities_handler(entities_manager):

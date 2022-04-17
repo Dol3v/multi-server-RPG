@@ -36,7 +36,13 @@ def ranged_attack(entities_manager: EntityManager, attacker: Combatant, weapon_d
 
 
 def attack(entities_manager: EntityManager, attacker: Combatant, weapon: int):
-    """Attacks using data from `attacker`."""
+    """Attacks using data from `attacker`.
+
+    :param entities_manager: object with all players and server entity data
+    :param attacker: the attacking entity data
+    :param weapon: the weapon the attacker using
+    NOTE: the attacker can be an arrow (that's why we use weapon: int)
+    """
 
     if attacker.uuid in entities_manager.players.keys():
         logging.debug("[debug] player is attacking")

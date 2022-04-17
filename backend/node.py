@@ -46,7 +46,7 @@ class Node:
         self.died_clients: Set[str] = set()
         self.should_join: Set[str] = set()
 
-        self.entities_manager = EntityManager()
+        self.entities_manager = EntityManager(WORLD_WIDTH, WORLD_HEIGHT)
         # Starts the node
         self.run()
 
