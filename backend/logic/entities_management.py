@@ -8,24 +8,23 @@ from backend.consts import MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, MOB_ERROR_TERM, RA
     ARM_LENGTH_MULTIPLIER
 
 from backend.logic.collision import moved_reasonable_distance
-from client.map_manager import Map, Layer, TilesetData
 from common.consts import WORLD_WIDTH, WORLD_HEIGHT, MOB_COUNT, Pos, EntityType, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, \
     CLIENT_HEIGHT, CLIENT_WIDTH, BOW, EMPTY_SLOT, DEFAULT_DIR, \
     SCREEN_HEIGHT, SCREEN_WIDTH, Dir
 from common.utils import get_entity_bounding_box, is_empty, normalize_vec, get_bounding_box
 from backend.logic.entities import Projectile, Player, Mob, Entity, Combatant
 from collections import defaultdict
-from typing import Dict, Iterable, Tuple, Any, List
+from typing import Dict, Iterable, Tuple, Any
 
 
 class EntityManager:
     """Use to control and access all game entities"""
-    def __init__(self, world_width: int, world_height: int):
+    def __init__(self, spindex: Index):
         self.players: Dict[str, Player] = {}
         self.mobs: Dict[str, Mob] = {}
         self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
 
-        self.spindex = Index(bbox=(0, 0, world_width, world_height))
+        self.spindex = spindex
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
         projectile/player/mob, and the uuid being, well, the uuid."""
 
@@ -84,13 +83,6 @@ class EntityManager:
                           self.spindex.intersect(
                               get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH)))))
 
-    def load_map(self):
-        """Loads the map"""
-        game_map = Map()
-        game_map.add_layer(Layer("../client/assets/map/animapa_test.csv",
-                                 TilesetData("../client/assets/map/new_props.png",
-                                             "../client/assets/map/new_props.tsj")))
-        game_map.load_collision_objects_to(self.spindex)
 
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
         logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")

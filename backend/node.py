@@ -12,6 +12,7 @@ from pyqtree import Index
 # to import from a dir
 from backend.logic.attacks import attack
 from backend.logic.server_controlled_entities import server_entities_handler
+from client.map_manager import Map, Layer, TilesetData
 
 sys.path.append('../')
 
@@ -46,7 +47,7 @@ class Node:
         self.died_clients: Set[str] = set()
         self.should_join: Set[str] = set()
 
-        self.entities_manager = EntityManager(WORLD_WIDTH, WORLD_HEIGHT)
+        self.entities_manager = EntityManager(create_map())
         # Starts the node
         self.run()
 
@@ -170,6 +171,21 @@ class Node:
             # starts handlers threads
             client_thread = threading.Thread(target=self.client_handler)
             client_thread.start()
+
+
+def create_map():
+    """Create a new quadtree and loads the map
+
+    :returns: spindex: the quadtree
+    """
+    spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
+    game_map = Map()
+    game_map.add_layer(Layer("../client/assets/map/animapa_test.csv",
+                             TilesetData("../client/assets/map/new_props.png",
+                                         "../client/assets/map/new_props.tsj")))
+    game_map.load_collision_objects_to(spindex)
+
+    return spindex
 
 
 if __name__ == "__main__":
