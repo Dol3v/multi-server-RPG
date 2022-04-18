@@ -43,10 +43,8 @@ class Player(pygame.sprite.Sprite):
 
         self.hand = Hand(groups)
 
-        self.hotbar: List[Weapon | None] = [None] * 6
+        self.hotbar: List[Item | None] = [None] * 6
         self.current_slot = 0
-        self.hotbar[1] = Weapon(groups, "axe", "rare")
-        self.hotbar[2] = RangeWeapon(groups, obstacle_sprites, self.map_collision, "bow", "rare")
 
     def input(self):
         if self.is_typing:
@@ -87,11 +85,11 @@ class Player(pygame.sprite.Sprite):
         if pygame.mouse.get_pressed()[0]:  # Check if the mouse is clicked
             if not self.hotbar[self.current_slot]:
                 return
-            weapon = self.hotbar[self.current_slot]
+            item = self.hotbar[self.current_slot]
             if not self.attacking:
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.attacking = True
-                    self.attack_cooldown = pygame.time.get_ticks() + weapon.cooldown
+                    self.attack_cooldown = pygame.time.get_ticks() + item.cooldown
                     if self.hotbar[self.current_slot]:
                         self.hotbar[self.current_slot].attack(self)
         else:
@@ -149,29 +147,29 @@ class Player(pygame.sprite.Sprite):
         half_height = SCREEN_HEIGHT / 2
         return [self.rect.centerx - half_width, self.rect.centery - half_height]
 
-    def draw_main_weapon(self):
-        weapon = self.hotbar[self.current_slot]
-        if weapon:
-            weapon.draw_weapon(self)
+    def draw_main_item(self):
+        item = self.hotbar[self.current_slot]
+        if item:
+            item.draw_item(self)
             self.hand.hide()
         else:
-            self.hand.draw_weapon(self)
+            self.hand.draw_hand(self)
 
-    def set_weapon_in_slot(self, slot, weapon):
-        self.hotbar[slot] = weapon
+    def set_item_in_slot(self, slot, item):
+        self.hotbar[slot] = item
 
-    def get_weapon_in_slot(self, slot) -> Weapon:
+    def get_item_in_slot(self, slot) -> Item:
         return self.hotbar[slot]
 
-    def remove_weapon_in_slot(self, slot):
+    def remove_item_in_slot(self, slot):
         if self.hotbar[slot]:
             self.hotbar[slot].kill()
             self.hotbar[slot] = None
 
     def next_slot(self):
-        current_weapon = self.hotbar[self.current_slot]
-        if current_weapon:
-            current_weapon.hide()
+        current_item = self.hotbar[self.current_slot]
+        if current_item:
+            current_item.hide()
 
         if self.current_slot + 1 < len(self.hotbar):
             self.current_slot += 1
@@ -179,9 +177,9 @@ class Player(pygame.sprite.Sprite):
             self.current_slot = 0
 
     def previous_slot(self):
-        current_weapon = self.hotbar[self.current_slot]
-        if current_weapon:
-            current_weapon.hide()
+        current_item = self.hotbar[self.current_slot]
+        if current_item:
+            current_item.hide()
 
         if self.current_slot - 1 > -1:
             self.current_slot -= 1
@@ -237,6 +235,6 @@ class Player(pygame.sprite.Sprite):
     def update(self):
         self.input()
         self.move(self.speed)
-        self.draw_main_weapon()
+        self.draw_main_item()
         self.update_looking_direction()
         self.update_player_animation()

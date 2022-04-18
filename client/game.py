@@ -60,11 +60,6 @@ class Game:
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
 
-        self.map = Map()
-        self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
-                                                                            "assets/map/new_props.tsj")))
-        self.map.load_collision_objects_to(self.map_collision)
-
         self.full_screen = full_screen
         self.running = False
         self.clock = pygame.time.Clock()
@@ -87,7 +82,7 @@ class Game:
 
         # inventory init
         self.inv = pygame.image.load("assets/inventory.png")
-        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
+        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 3, self.inv.get_height() * 3))
         self.inv.set_alpha(150)
 
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
@@ -135,29 +130,19 @@ class Game:
                 weapon_type = weapons.get_weapon_type(tool_id)
 
                 if weapon_type:
-                    player_weapon = self.player.get_weapon_in_slot(i)
+                    player_weapon = self.player.get_item_in_slot(i)
 
                     if player_weapon:
                         if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
 
-                            weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
-                            if weapon.is_ranged:
-                                weapon.kill()
-                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites, self.map_collision,
-                                                     weapon_type, "rare")
-
-                            self.player.remove_weapon_in_slot(i)
-                            self.player.set_weapon_in_slot(i, weapon)
+                            weapon = Item((self.visible_sprites,), weapon_type, "rare")
+                            self.player.remove_item_in_slot(i)
+                            self.player.set_item_in_slot(i, weapon)
                     else:
-                        weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
-                        if weapon.is_ranged:
-                            weapon.kill()
-                            weapon = RangeWeapon((self.visible_sprites,), self.obstacles_sprites, self.map_collision,
-                                                 weapon_type, "rare")
-
-                        self.player.set_weapon_in_slot(i, weapon)
+                        weapon = Item((self.visible_sprites,), weapon_type, "rare")
+                        self.player.set_item_in_slot(i, weapon)
                 else:
-                    self.player.set_weapon_in_slot(i, None)
+                    self.player.set_item_in_slot(i, None)
 
             # update graphics and status
 
@@ -302,6 +287,7 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
+            self.draw_inventory()
             self.server_update()
             self.can_recv = True
             pygame.display.update()

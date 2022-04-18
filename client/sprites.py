@@ -131,7 +131,7 @@ class Entity(pygame.sprite.Sprite):
 
             if self.entity_type == ARROW_TYPE:
                 angle = -(180 - np.rad2deg(np.arctan2(self.direction[0], self.direction[1])))
-                self.texture = pygame.transform.rotate(self.texture,angle)
+                self.texture = pygame.transform.rotate(self.texture, angle)
 
         else:
             if self.entity_type != ARROW_TYPE:
@@ -195,16 +195,15 @@ class PlayerEntity(Entity):
     def update_tool(self, tool_id):
         self.tool_id = tool_id
         self.hand.kill()
-        match tool_id:
-            case 0:
-                self.hand = weapons.Hand(self.visible_sprites)
-            case 1:
-                self.hand = weapons.Weapon(self.visible_sprites, "sword", "rare")
-            case 2:
-                self.hand = weapons.Weapon(self.visible_sprites, "axe", "rare")
-            case 3:
-                self.hand = weapons.RangeWeapon(self.visible_sprites, self.obstacles_sprites, self.map_collision,
-                                        "bow", "rare")
+
+        if tool_id == 0:
+            self.hand = weapons.Hand(self.visible_sprites)
+            return
+
+        for item in consts.weapon_data.values():
+            if consts.weapon_data.get[item]["id"] == tool_id:
+                self.hand = weapons.Item(self.visible_sprites, item, "rare")
+                return
 
     def update(self):
         self.draw_entity()

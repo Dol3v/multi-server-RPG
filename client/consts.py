@@ -28,15 +28,16 @@ MAX_HEALTH = 100
 
 weapon_data = {
     'sword': {"id": 1, "is_ranged": False, 'cooldown': 100, 'damage': 15, 'graphics': "assets/weapons/sword/full.png",
-              "hand_position": (9, 45)},
+              "hand_position": (9, 45), "size_multiplier": 1},
 
     'axe': {"id": 2, "is_ranged": False, 'cooldown': 300, 'damage': 30, 'graphics': "assets/weapons/axe/full.png",
-            "hand_position": (15, 40)},
+            "hand_position": (15, 40), "size_multiplier": 1},
 
     'bow': {"id": 3, "is_ranged": True, 'cooldown': 400, 'damage': 40, 'graphics': "assets/weapons/bow/full.png",
-            "hand_position": (20, 15)},
+            "hand_position": (20, 15), "size_multiplier": 1},
 
-    'potion': {"id": 4, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20)}
+    'health_potion': {"id": 4, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
+                      "size_multiplier": 3}
 }
 
 ENTITY_DATA = {
