@@ -1,5 +1,7 @@
 """Grphics utils for login screen and more"""
 import random
+from typing import List
+
 import pygame
 import math
 
@@ -230,7 +232,7 @@ class TipBox(pygame.sprite.Sprite):
         self.render_text()
 
 
-class ChatBox(pygame.sprite.Sprite):
+class ChatBox:
     def __init__(self, x, y, width, height, font, text_color=(255, 255, 255)):
         super().__init__()
         self.x = x
@@ -336,3 +338,71 @@ class ChatBox(pygame.sprite.Sprite):
         result.blit(f_surf, (0, 0))
         result.blit(s_surf, (0, f_surf.get_height()))
         return result
+
+
+class Inventory:
+    def __init__(self):
+        size_multiplier = 3
+        self.inv = pygame.image.load("assets/inventory.png")
+        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * size_multiplier,
+                                                     self.inv.get_height() * size_multiplier))
+        self.starting_x = 8 * size_multiplier
+        self.starting_y = 8 * size_multiplier
+        self.x_offset = 2 * size_multiplier
+        self.y_offest = 2 * size_multiplier
+
+        self.icon_size = 16 * size_multiplier
+        self.items = [None] * 27
+        self.icon_rects: List[pygame.Rect | None] = [None] * 27
+        self.init_icon_rects()
+        self.has_hovered_slot = False
+        self.hovered_slot = -1
+
+    def init_icon_rects(self):
+        for y in range(3):  # Rows
+            for x in range(9):  # Columns
+                index = y * 9 + x
+                self.icon_rects[index] = pygame.Rect(
+
+                    (SCREEN_WIDTH - self.inv.get_width()) + self.starting_x + self.icon_size * x + self.x_offset * x,
+                    self.starting_y + self.icon_size * y + self.y_offest * y,
+                    self.icon_size, self.icon_size)
+
+    def draw_inventory(self, surface):
+        inv = self.inv.copy()
+
+        for y in range(3):  # Rows
+            for x in range(9):  # Columns
+                index = y * 9 + x
+                item = self.items[index]
+
+                if self.has_hovered_slot:
+                    if index == self.hovered_slot:
+                        pygame.draw.rect(surface, (255, 255, 255, 100),
+                                         pygame.Rect((SCREEN_WIDTH - self.inv.get_width()) +
+                                                     self.starting_x + self.icon_size * x + self.x_offset * x,
+                                                     self.starting_y + self.icon_size * y + self.y_offest * y,
+                                                     self.icon_size, self.icon_size))
+
+                if item:
+                    icon = pygame.transform.scale(item.icon, (self.icon_size, self.icon_size))
+                    inv.blit(icon, (
+                        self.starting_x + self.icon_size * x + self.x_offset * x,
+                        self.starting_y + self.icon_size * y + self.y_offest * y
+                    ))
+        inv.set_alpha(200)
+        surface.blit(inv, (SCREEN_WIDTH - inv.get_width(), 0))
+
+    def update(self, event_list):
+        mouse_pos = pygame.mouse.get_pos()
+        has_collision_rect = False
+        index = 0
+        for rect in self.icon_rects:
+            if rect.collidepoint(mouse_pos):
+                has_collision_rect = True
+                self.hovered_slot = index
+            index += 1
+        self.has_hovered_slot = has_collision_rect
+
+    def set_item_in_slot(self, slot, item):
+        self.items[slot] = item

@@ -8,18 +8,18 @@ from typing import List
 
 from cryptography.fernet import Fernet
 
-import weapons
+import items
 
 # to import from a dir
 sys.path.append('../')
 
 try:
-    from graphics import ChatBox
+    from graphics import ChatBox, Inventory
     from common.consts import *
     from networking import generate_client_message, parse_server_message
     from player import Player
     from sprites import PlayerEntity, FollowingCameraGroup, Entity
-    from weapons import *
+    from items import *
     from map_manager import *
 except ModuleNotFoundError:
     from client.graphics import ChatBox
@@ -27,7 +27,7 @@ except ModuleNotFoundError:
     from client.networking import generate_client_message, parse_server_message
     from client.player import Player
     from client.sprites import PlayerEntity, FollowingCameraGroup, Entity
-    from client.weapons import *
+    from client.items import *
     from client.map_manager import *
 
 
@@ -80,10 +80,8 @@ class Game:
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
-        # inventory init
-        self.inv = pygame.image.load("assets/inventory.png")
-        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 3, self.inv.get_height() * 3))
-        self.inv.set_alpha(150)
+        self.inv = Inventory()
+        self.inv.set_item_in_slot(5, Item(self.visible_sprites, "health_potion", "rare", False, False))
 
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
         """[message, direction, did attack, attack directions, selected slot]"""
@@ -127,19 +125,18 @@ class Game:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
             print(f"{x=} {y=} {health=} {tools=}")
             for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
-                weapon_type = weapons.get_weapon_type(tool_id)
+                weapon_type = items.get_weapon_type(tool_id)
 
                 if weapon_type:
                     player_weapon = self.player.get_item_in_slot(i)
 
                     if player_weapon:
                         if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
-
-                            weapon = Item((self.visible_sprites,), weapon_type, "rare")
+                            weapon = Item(self.visible_sprites, weapon_type, "rare")
                             self.player.remove_item_in_slot(i)
                             self.player.set_item_in_slot(i, weapon)
                     else:
-                        weapon = Item((self.visible_sprites,), weapon_type, "rare")
+                        weapon = Item(self.visible_sprites, weapon_type, "rare")
                         self.player.set_item_in_slot(i, weapon)
                 else:
                     self.player.set_item_in_slot(i, None)
@@ -287,7 +284,7 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
-            self.draw_inventory()
+            self.draw_inventory(event_list)
             self.server_update()
             self.can_recv = True
             pygame.display.update()
@@ -297,6 +294,11 @@ class Game:
         if self.is_showing_chat:
             self.chat.render_chat(self.display_surface, self.chat_msg)
             self.chat.update(event_list)
+
+    def draw_inventory(self, event_list):
+        if self.player.is_inv_open:
+            self.inv.draw_inventory(self.display_surface)
+            self.inv.update(event_list)
 
     def draw_health_bar(self):
         """
@@ -331,12 +333,6 @@ class Game:
             # (16 + 36 * i, 18)
 
         self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))
-
-    def draw_inventory(self):
-        if self.player.is_inv_open:
-            x = SCREEN_WIDTH - self.inv.get_width()
-            y = 0
-            self.display_surface.blit(self.inv, (x, y))
 
     def draw_map(self):
         for layer in self.map.layers:

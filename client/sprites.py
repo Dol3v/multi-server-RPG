@@ -12,10 +12,10 @@ TODO: merge the weapon classes with the Player class
 
 try:
     import graphics
-    import weapons
+    import items
 except ModuleNotFoundError:
     from client import graphics
-    from client import weapons
+    from client import items
 
 
 class Obstacle(pygame.sprite.Sprite):
@@ -153,7 +153,7 @@ class PlayerEntity(Entity):
         self.visible_sprites = (groups[1],)
         self.obstacles_sprites = (groups[0],)
         self.tool_id = 0
-        self.hand = weapons.Hand(self.visible_sprites)
+        self.hand = items.Hand(self.visible_sprites)
         self.map_collision = map_collision
         self.update_tool(tool_id)
 
@@ -197,12 +197,12 @@ class PlayerEntity(Entity):
         self.hand.kill()
 
         if tool_id == 0:
-            self.hand = weapons.Hand(self.visible_sprites)
+            self.hand = items.Hand(self.visible_sprites)
             return
 
         for item in consts.weapon_data.values():
             if consts.weapon_data.get[item]["id"] == tool_id:
-                self.hand = weapons.Item(self.visible_sprites, item, "rare")
+                self.hand = items.Item(self.visible_sprites, item, "rare")
                 return
 
     def update(self):

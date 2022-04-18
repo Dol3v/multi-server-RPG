@@ -48,14 +48,18 @@ class Hand(pygame.sprite.Sprite):
 
 
 class Item(pygame.sprite.Sprite):
-    def __init__(self, groups, weapon_type, rarity, flip_weapon=True):
-        super().__init__(*groups)
+    def __init__(self, visible_sprites, weapon_type, rarity, flip_item=True, add_to_sprite_group=True):
+        super().__init__()
+        self.visible_sprites = visible_sprites
+        if add_to_sprite_group:
+            self.add(visible_sprites)
+
         self.weapon_type = weapon_type
         self.rarity = rarity
         self.texture = pygame.image.load(f"assets/weapons/{weapon_type}/full.png")
 
         self.icon = pygame.transform.scale(self.texture, (32, 32))
-        self.flip_weapon = flip_weapon
+        self.flip_item = flip_item
 
         data = weapon_data.get(weapon_type)
 
@@ -66,9 +70,6 @@ class Item(pygame.sprite.Sprite):
         hand = pygame.image.load("assets/character/knight/knight_hand.png")
         hand = pygame.transform.scale(hand, (hand.get_width() * (PLAYER_SIZE_MULTIPLIER - 0.5),
                                              hand.get_height() * (PLAYER_SIZE_MULTIPLIER - 0.5)))
-
-
-
 
         self.is_ranged = data.get("is_ranged")
         self.damage = data.get("damage")
@@ -81,6 +82,7 @@ class Item(pygame.sprite.Sprite):
         self.original_image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
+
         # angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
 
         # self.sword = pygame.transform.rotate(self.sword, angle)
@@ -93,7 +95,7 @@ class Item(pygame.sprite.Sprite):
 
         self.texture = self.original_texture
 
-        if vec[0] < 0 and self.flip_weapon:
+        if vec[0] < 0 and self.flip_item:
             self.texture = pygame.transform.flip(self.original_texture, True, False)
 
         self.texture = pygame.transform.rotate(self.texture, angle)
@@ -106,8 +108,3 @@ class Item(pygame.sprite.Sprite):
     def hide(self):
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
-
-    @abc.abstractmethod
-    def attack(self, player):
-        return
-

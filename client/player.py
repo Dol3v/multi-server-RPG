@@ -5,7 +5,7 @@ import pygame
 
 from common.consts import SPEED, SCREEN_HEIGHT, SCREEN_WIDTH
 from common.utils import normalize_vec, get_bounding_box
-from weapons import *
+from items import *
 from consts import *
 from graphics import Animation
 
@@ -90,8 +90,6 @@ class Player(pygame.sprite.Sprite):
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.attacking = True
                     self.attack_cooldown = pygame.time.get_ticks() + item.cooldown
-                    if self.hotbar[self.current_slot]:
-                        self.hotbar[self.current_slot].attack(self)
         else:
             self.attacking = False
 
