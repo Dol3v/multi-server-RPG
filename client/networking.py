@@ -53,7 +53,7 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
 
     if num_of_entities == 0:
         return player_status, []
-
+    # NOTE: we never send the uuid
     raw_entities = parse(MESSAGE_ENDIANESS + ENTITY_FORMAT * num_of_entities,  # Format
                          packet[SERVER_HEADER_SIZE: SERVER_HEADER_SIZE + num_of_entities * struct.calcsize(
                              ENTITY_FORMAT)])  # partition

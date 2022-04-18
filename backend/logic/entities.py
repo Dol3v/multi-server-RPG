@@ -6,11 +6,12 @@ from typing import List
 from cryptography.fernet import Fernet
 
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
-    PROJECTILE_TTL
+    PROJECTILE_TTL, EntityType
 
 
 @dataclass
 class Entity:
+    kind: int
     pos: Pos = DEFAULT_POS_MARK
     direction: Dir = DEFAULT_DIR
     uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
@@ -42,19 +43,20 @@ class Player(Combatant):
     tools: [default, tool2, tool3]
     """
     fernet: Fernet = None
+    kind: int = EntityType.PLAYER
 
 
 @dataclass
 class Projectile(Entity):
     damage: int = 0
     ttl: int = PROJECTILE_TTL
-
+    kind: int = EntityType.ARROW
 
 @dataclass
 class Mob(Combatant):
     weapon: int = SWORD
     on_player: bool = False
-
+    kind: int = EntityType.MOB
 
 ServerControlled = Projectile | Mob
 """Entity with server-controlled movements and actions"""
