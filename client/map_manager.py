@@ -6,7 +6,7 @@ from pyqtree import Index
 
 from client import consts
 from common.utils import get_bounding_box
-from common.consts import OBSTACLE_TYPE
+from common.consts import EntityType
 
 try:
     from sprites import Tile
@@ -112,4 +112,4 @@ class Map:
             self.collision_objects.extend(layer.collision_objects)
 
             for obj in layer.collision_objects:
-                quadtree.insert((OBSTACLE_TYPE, obj), get_bounding_box((obj.x, obj.y), obj.height, obj.width))
+                quadtree.insert((EntityType.OBSTACLE, obj), get_bounding_box((obj.x, obj.y), obj.height, obj.width))

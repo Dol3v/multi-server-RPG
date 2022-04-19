@@ -12,7 +12,8 @@ from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS
+from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS, CLIENT_WIDTH, \
+    CLIENT_HEIGHT, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT, EntityType
 
 
 def enter_ip(enter_string: str):
@@ -33,7 +34,7 @@ def get_random_port():
 
 
 def parse(parse_format: str, data: bytes) -> tuple | None:
-    """parse a given message by the given format"""
+    """Parse a given message by the given format"""
     try:
         return struct.unpack(parse_format, data)
     except struct.error as error:
@@ -102,6 +103,22 @@ def get_shared_key(private_key: EllipticCurvePrivateKey, peer_public_key: Ellipt
     shared = private_key.exchange(ECDH(), peer_public_key)
     derived = HKDF(algorithm=SHA256(), length=SHARED_KEY_SIZE, salt=None, info=b"handshake data").derive(shared)
     return derived
+
+
+def get_entity_bounding_box(pos: Pos, entity_type: int):
+    """Get width and height by entity type, and create the bounding box for the quadtree"""
+    width, height = -1, -1
+    match entity_type:
+        case EntityType.PLAYER:
+            width, height = CLIENT_WIDTH, CLIENT_HEIGHT
+        case EntityType.ARROW:
+            width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
+        case EntityType.MOB:
+            width, height = BOT_WIDTH, BOT_HEIGHT
+        case _:
+            raise ValueError("Non-existent type entered to get_entity_bounding_box")
+
+    return get_bounding_box(pos, height, width)
 
 
 def get_bounding_box(pos: Pos, height: int, width: int) -> Tuple[int, int, int, int]:
