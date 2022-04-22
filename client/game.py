@@ -56,7 +56,8 @@ class Game:
 
         # player init
 
-        self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+        self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision,
+                             self.display_surface)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
 
@@ -79,9 +80,6 @@ class Game:
         self.hot_bar = pygame.image.load("assets/hot_bar.png")
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
-
-        self.inv = Inventory()
-        self.inv.set_item_in_slot(5, Item(self.visible_sprites, "health_potion", "rare", False, False))
 
         self.actions = [b'', 0, False, 0.0, 0.0, 0]
         """[message, direction, did attack, attack directions, selected slot]"""
@@ -123,23 +121,23 @@ class Game:
 
         if addr == self.server_addr:
             (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(f"{x=} {y=} {health=} {tools=}")
-            for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
-                weapon_type = items.get_weapon_type(tool_id)
-
-                if weapon_type:
-                    player_weapon = self.player.get_item_in_slot(i)
-
-                    if player_weapon:
-                        if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
-                            weapon = Item(self.visible_sprites, weapon_type, "rare")
-                            self.player.remove_item_in_slot(i)
-                            self.player.set_item_in_slot(i, weapon)
-                    else:
-                        weapon = Item(self.visible_sprites, weapon_type, "rare")
-                        self.player.set_item_in_slot(i, weapon)
-                else:
-                    self.player.set_item_in_slot(i, None)
+            # print(f"{x=} {y=} {health=} {tools=}")
+            # for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
+            #     weapon_type = items.get_weapon_type(tool_id)
+            #
+            #     if weapon_type:
+            #         player_weapon = self.player.get_item_in_slot(i)
+            #
+            #         if player_weapon:
+            #             if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
+            #                 weapon = Item(self.visible_sprites, weapon_type, "rare")
+            #                 self.player.remove_item_in_slot(i)
+            #                 self.player.set_item_in_slot(i, weapon)
+            #         else:
+            #             weapon = Item(self.visible_sprites, weapon_type, "rare")
+            #             self.player.set_item_in_slot(i, weapon)
+            #     else:
+            #         self.player.set_item_in_slot(i, None)
 
             # update graphics and status
 
@@ -179,7 +177,7 @@ class Game:
         self.actions[CHAT] = chat_msg.encode()
         self.actions[ATTACK] = self.player.attacking
         self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
-        self.actions[SELECTED_SLOT] = self.player.current_slot
+        self.actions[SELECTED_SLOT] = self.player.current_hotbar_slot
 
     def render_clients(self, entities: List[Tuple[int, str, tuple, tuple, int]]) -> None:
         """
@@ -208,8 +206,6 @@ class Game:
 
         remove_entities = []
         received_uuids = list(map(lambda info: info[1], entities))
-        print(f"{received_uuids=}")
-        print(f"keys={self.entities.keys()}")
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
                 print(f"killing uuid={entity_uuid}")
@@ -236,9 +232,9 @@ class Game:
             for event in event_list:
                 if event.type == pygame.MOUSEWHEEL:
                     if event.y > 0:
-                        self.player.previous_slot()
+                        self.player.inv.previous_hotbar_slot()
                     elif event.y < 0:
-                        self.player.next_slot()
+                        self.player.inv.next_hotbar_slot()
 
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -284,7 +280,7 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
-            self.draw_inventory(event_list)
+            self.player.draw_inventory(event_list)
             self.server_update()
             self.can_recv = True
             pygame.display.update()
@@ -294,11 +290,6 @@ class Game:
         if self.is_showing_chat:
             self.chat.render_chat(self.display_surface, self.chat_msg)
             self.chat.update(event_list)
-
-    def draw_inventory(self, event_list):
-        if self.player.is_inv_open:
-            self.inv.draw_inventory(self.display_surface)
-            self.inv.update(event_list)
 
     def draw_health_bar(self):
         """
@@ -320,7 +311,7 @@ class Game:
         for i, weapon in enumerate(self.player.hotbar):
 
             surface = pygame.Surface((32, 32), pygame.SRCALPHA)
-            if i == self.player.current_slot:
+            if i == self.player.current_hotbar_slot:
                 surface.fill((0, 0, 0, 100))
 
             if weapon:

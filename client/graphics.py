@@ -351,16 +351,22 @@ class Inventory:
         self.x_offset = 2 * size_multiplier
         self.y_offest = 2 * size_multiplier
 
+        self.rows = 4
+        self.columns = 9
+
         self.icon_size = 16 * size_multiplier
-        self.items = [None] * 27
-        self.icon_rects: List[pygame.Rect | None] = [None] * 27
+        self.items = [None] * (self.rows * self.columns)
+        self.icon_rects: List[pygame.Rect | None] = [None] * (self.rows * self.columns)
         self.init_icon_rects()
+        self.current_hotbar_slot = 0
         self.has_hovered_slot = False
         self.hovered_slot = -1
+        self.selected_slot = -1
+        self.move = [-1, -1]
 
     def init_icon_rects(self):
-        for y in range(3):  # Rows
-            for x in range(9):  # Columns
+        for y in range(self.rows):  # Rows
+            for x in range(self.columns):  # Columns
                 index = y * 9 + x
                 self.icon_rects[index] = pygame.Rect(
 
@@ -371,9 +377,9 @@ class Inventory:
     def draw_inventory(self, surface):
         inv = self.inv.copy()
 
-        for y in range(3):  # Rows
-            for x in range(9):  # Columns
-                index = y * 9 + x
+        for y in range(self.rows):  # Rows
+            for x in range(self.columns):  # Columns
+                index = y * self.columns + x
                 item = self.items[index]
 
                 if self.has_hovered_slot:
@@ -383,6 +389,13 @@ class Inventory:
                                                      self.starting_x + self.icon_size * x + self.x_offset * x,
                                                      self.starting_y + self.icon_size * y + self.y_offest * y,
                                                      self.icon_size, self.icon_size))
+
+                if index == self.selected_slot:
+                    pygame.draw.rect(surface, (100, 200, 50, 100),
+                                     pygame.Rect((SCREEN_WIDTH - self.inv.get_width()) +
+                                                 self.starting_x + self.icon_size * x + self.x_offset * x,
+                                                 self.starting_y + self.icon_size * y + self.y_offest * y,
+                                                 self.icon_size, self.icon_size))
 
                 if item:
                     icon = pygame.transform.scale(item.icon, (self.icon_size, self.icon_size))
@@ -401,8 +414,70 @@ class Inventory:
             if rect.collidepoint(mouse_pos):
                 has_collision_rect = True
                 self.hovered_slot = index
+                break
             index += 1
         self.has_hovered_slot = has_collision_rect
 
+        for event in event_list:
+            if event.type == pygame.MOUSEBUTTONUP:
+                if has_collision_rect:
+                    if self.selected_slot == -1 and self.items[index]:
+                        self.selected_slot = index
+                    else:
+                        # Note selected_slot = seleceted slot
+                        # Note index = new slot
+                        self.swap_items(self.selected_slot, index)
+                        self.move = [self.selected_slot, index]
+                        self.selected_slot = -1
+
     def set_item_in_slot(self, slot, item):
         self.items[slot] = item
+
+    def get_hotbar_items(self):
+        return self.items[:9]
+
+    def next_hotbar_slot(self):
+        hotbar = self.get_hotbar_items()
+        current_item = hotbar[self.current_hotbar_slot]
+        if current_item:
+            current_item.hide()
+
+        if self.current_hotbar_slot + 1 < len(hotbar):
+            self.current_hotbar_slot += 1
+        else:
+            self.current_hotbar_slot = 0
+
+        if hotbar[self.current_hotbar_slot]:
+            hotbar[self.current_hotbar_slot].start_drawing()
+
+    def previous_hotbar_slot(self):
+        hotbar = self.get_hotbar_items()
+        current_item = hotbar[self.current_hotbar_slot]
+        if current_item:
+            current_item.hide()
+
+        if self.current_hotbar_slot - 1 > -1:
+            self.current_hotbar_slot -= 1
+        else:
+            self.current_hotbar_slot = len(hotbar) - 1
+
+        if hotbar[self.current_hotbar_slot]:
+            hotbar[self.current_hotbar_slot].start_drawing()
+
+    def swap_items(self, index_one: int, index_two: int):
+        if index_one == index_two:
+            return
+        if index_one == self.current_hotbar_slot:
+            if self.get_hotbar_items()[index_one]:
+                self.get_hotbar_items()[index_one].hide()
+        if index_two == self.current_hotbar_slot:
+            if self.get_hotbar_items()[index_two]:
+                self.get_hotbar_items()[index_two].hide()
+        self.items[index_one], self.items[index_two] = self.items[index_two], self.items[index_one]
+
+        if index_one == self.current_hotbar_slot:
+            if self.items[index_one]:
+                self.items[index_one].start_drawing()
+        if index_two == self.current_hotbar_slot:
+            if self.items[index_two]:
+                self.items[index_two].start_drawing()

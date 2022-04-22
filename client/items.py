@@ -52,7 +52,7 @@ class Item(pygame.sprite.Sprite):
         super().__init__()
         self.visible_sprites = visible_sprites
         if add_to_sprite_group:
-            self.add(visible_sprites)
+            self.start_drawing()
 
         self.weapon_type = weapon_type
         self.rarity = rarity
@@ -106,5 +106,7 @@ class Item(pygame.sprite.Sprite):
             center=player.rect.center + pygame.math.Vector2(60 * vec[0], (60 * vec[1] + 3)))
 
     def hide(self):
-        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
-        self.rect = self.image.get_rect()
+        self.remove(self.visible_sprites)
+
+    def start_drawing(self):
+        self.add(self.visible_sprites)
