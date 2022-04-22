@@ -1,7 +1,11 @@
+import json
 import socket
 import struct
+from typing import Iterable
 
+from backend.logic.entities import Entity, Player
 from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos, ENTITY_FORMAT, ENTITY_NUM_OF_FIELDS, RECV_CHUNK
+from common.message_type import MessageType
 from common.utils import parse, send_public_key, get_shared_key, deserialize_public_key
 
 
@@ -21,6 +25,21 @@ def parse_client_message(packet: bytes) -> tuple | None:
     return parse(CLIENT_FORMAT, packet)
 
 
+def serialize_entity_list(entities: Iterable[Entity]) -> dict:
+    """Serializes a list of entities to a JSON format."""
+    return {"entities": [entity.serialize() for entity in entities]}
+
+
+def craft_message(message_type: MessageType, message_contents: dict) -> bytes:
+    return json.dumps({"id": int(message_type)} | message_contents).encode()
+
+
+def generate_routine_message(valid_pos: Pos, player: Player, sent_entities: Iterable[Entity]) -> bytes:
+    return craft_message(MessageType.ROUTINE_SERVER, {"valid_pos": valid_pos,
+                                                      "health": player.health,
+                                                      "tools": player.tools} | serialize_entity_list(sent_entities))
+
+
 def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, health: int,
                             flattened_entities_in_range: list) -> bytes | None:
     """Creates the server update message
@@ -38,4 +57,5 @@ def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, heal
     data += flattened_entities_in_range
     # entity format shouldn't be with uuid right?
     packet_format = SERVER_HEADER_FORMAT + ENTITY_FORMAT * entities_count
+
     return struct.pack(packet_format, *data)
