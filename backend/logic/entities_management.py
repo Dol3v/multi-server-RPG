@@ -42,14 +42,15 @@ class EntityManager:
         return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
             get_entity_bounding_box(pos, kind)))
 
-    def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> list[tuple[Any, Entity]]:
+    def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> \
+            list[tuple[EntityType, Combatant]]:
         return list(map(lambda data: (data[0], self.entities[data[1]]),
                         filter(lambda data: data[1] != entity_uuid and data[0] != EntityType.ARROW and
                                             data[0] != EntityType.OBSTACLE,
                                self.spindex.intersect(bbox))))
 
     def entities_in_melee_attack_range(self, entity: Combatant, melee_range: int) \
-            -> list[tuple[Any, Entity]]:
+            -> list[tuple[EntityType, Combatant]]:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
