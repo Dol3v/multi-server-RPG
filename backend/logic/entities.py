@@ -1,3 +1,4 @@
+import abc
 import dataclasses
 import uuid as uuid
 from dataclasses import dataclass, field
@@ -10,21 +11,30 @@ from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DE
 
 
 @dataclass
-class Entity:
+class Entity(abc.ABC):
     kind: int
     pos: Pos = DEFAULT_POS_MARK
     direction: Dir = DEFAULT_DIR
     uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
 
+    def serialize(self) -> dict:
+        """Returns a dictionary encoding for a client all necessary data to know about an entity."""
+        return {"type": self.kind,
+                "pos": self.pos,
+                "dir": self.direction,
+                "uuid": self.uuid}
+
 
 @dataclass
 class Combatant(Entity):
     attacking_direction: Dir = DEFAULT_DIR
-
     is_attacking: bool = False
     last_time_attacked: float = -1
     current_cooldown: float = -1
     health: int = MAX_HEALTH
+
+    def serialize(self) -> dict:
+        return super().serialize() | {"is_attacking": self.is_attacking}
 
 
 @dataclass
@@ -45,6 +55,9 @@ class Player(Combatant):
     fernet: Fernet = None
     kind: int = EntityType.PLAYER
 
+    def serialize(self) -> dict:
+        return super().serialize() | {"tool": self.tools[self.slot]}
+
 
 @dataclass
 class Projectile(Entity):
@@ -52,11 +65,16 @@ class Projectile(Entity):
     ttl: int = PROJECTILE_TTL
     kind: int = EntityType.ARROW
 
+
 @dataclass
 class Mob(Combatant):
     weapon: int = SWORD
     on_player: bool = False
     kind: int = EntityType.MOB
+
+    def serialize(self) -> dict:
+        return super().serialize() | {"weapon": self.weapon}
+
 
 ServerControlled = Projectile | Mob
 """Entity with server-controlled movements and actions"""
