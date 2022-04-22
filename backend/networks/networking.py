@@ -5,6 +5,7 @@ import struct
 from typing import Iterable
 
 from cryptography.exceptions import InvalidKey
+from cryptography.fernet import Fernet
 
 from backend.logic.entities import Entity, Player
 from backend.logic.entities_management import EntityManager
@@ -47,14 +48,15 @@ def serialize_entity_list(entities: Iterable[Entity]) -> dict:
     return {"entities": [entity.serialize() for entity in entities]}
 
 
-def craft_message(message_type: MessageType, message_contents: dict) -> bytes:
-    return json.dumps({"id": int(message_type)} | message_contents).encode()
+def craft_message(message_type: MessageType, message_contents: dict, fernet: Fernet) -> bytes:
+    return fernet.encrypt(json.dumps({"id": int(message_type)} | message_contents).encode())
 
 
 def generate_routine_message(valid_pos: Pos, player: Player, sent_entities: Iterable[Entity]) -> bytes:
     return craft_message(MessageType.ROUTINE_SERVER, {"valid_pos": valid_pos,
                                                       "health": player.health,
-                                                      "tools": player.tools} | serialize_entity_list(sent_entities))
+                                                      "tools": player.tools} | serialize_entity_list(sent_entities),
+                         player.fernet)
 
 
 def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, health: int,
