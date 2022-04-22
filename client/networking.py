@@ -5,6 +5,7 @@ from typing import Any
 
 from cryptography.fernet import Fernet
 
+from client.player import Player
 from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, CLIENT_FORMAT, ENTITY_FORMAT, \
     RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT, Addr
 from common.message_type import MessageType
@@ -82,3 +83,15 @@ def craft_client_message(message_type: MessageType, client_uuid: str, contents: 
     return json.dumps({"uuid": client_uuid,
                        "contents": fernet.encrypt(json.dumps({"id": int(message_type)} |
                                                              contents).encode())}).encode()
+
+
+def generate_client_routine_message(player_uuid: str, seqn: int, x: int, y: int, player: Player, chat_message: str,
+                                    fernet: Fernet) -> bytes:
+    return craft_client_message(MessageType.ROUTINE_CLIENT, player_uuid, {
+        "pos": (x, y),
+        "seqn": seqn,
+        "chat": chat_message,
+        "dir": player.get_direction_vec(),
+        "slot": player.current_slot,
+        "is_attacking": player.attacking
+    }, fernet)

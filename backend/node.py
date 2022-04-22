@@ -3,9 +3,8 @@ import queue
 import sys
 import threading
 from collections import defaultdict
-from typing import Dict, Set
+from typing import Set
 
-import numpy as np
 from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
@@ -13,20 +12,22 @@ from pyqtree import Index
 from backend.logic.attacks import attack
 from backend.logic.server_controlled_entities import server_entities_handler
 from client.map_manager import Map, Layer, TilesetData
+from common.message_type import MessageType
 
 sys.path.append('../')
 
 from logic.entities_management import EntityManager
 from common.consts import *
 from common.utils import *
-from consts import FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT
+from consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
 from backend.logic.entities import *
-from backend.networks.networking import generate_server_message, parse_client_message
+from backend.networks.networking import generate_server_message, parse_client_message, parse_message_from_client
 
 
 class Node:
     """Server that receive and transfer data to the clients and root server"""
+
     def __init__(self, port):
         # TODO: uncomment when coding on prod
         # self.node_ip = socket.gethostbyname(socket.gethostname())
@@ -98,41 +99,61 @@ class Node:
 
         return data
 
+    def routine_message_handler(self, player_uuid: str, contents: dict):
+        try:
+            player_pos, seqn, chat, attack_dir, slot_index, attacked = contents["pos"], contents["seqn"], \
+                                                                       contents["chat"], contents["dir"], contents[
+                                                                           "slot"], contents["is_attacking"]
+        except KeyError:
+            logging.warning(f"[security] invalid message given by {player_uuid=}")
+            return
+        if player_uuid in self.should_join:
+            self.entities_manager.add_entity(EntityType.PLAYER, player_uuid,
+                                             player_pos, CLIENT_HEIGHT, CLIENT_WIDTH)
+            self.should_join.remove(player_uuid)
+
+        if slot_index > MAX_SLOT or slot_index < 0:
+            return
+
+        player = self.entities_manager.players[player_uuid]
+        if seqn <= player.last_updated != 0:
+            logging.info(f"Got outdated packet from {player_uuid=}")
+            return
+
+        player.attacking_direction = attack_dir
+        player.new_message = chat.decode()
+        secure_pos = self.update_location(player_pos, seqn, player)
+
+        player.slot = slot_index
+        if attacked:
+            attack(self.entities_manager, player, player.tools[player.slot])
+
+        self.broadcast_clients(player.uuid)
+        self.update_client(player.uuid, secure_pos)
+        player.last_updated = seqn
+
     def client_handler(self):
         """Communicate with client"""
         while True:
             data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-            player_uuid = data[:UUID_SIZE].decode()
-            data = self.receive_client_packet(player_uuid, data)
+            data = parse_message_from_client(data, self.entities_manager)
             if not data:
                 continue
-            seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
-            player_pos = x, y
-
-            if player_uuid in self.should_join:
-                self.entities_manager.add_entity(EntityType.PLAYER, player_uuid,
-                                                 player_pos, CLIENT_HEIGHT, CLIENT_WIDTH)
-                self.should_join.remove(player_uuid)
-
-            if slot_index > MAX_SLOT or slot_index < 0:
+            try:
+                message_type = MessageType(data["contents"]["id"])
+            except KeyError as e:
+                logging.warning(f"[security] invalid message, no id present {data=}, {e=}")
+                continue
+            except ValueError as e:
+                logging.warning(f"[security] invalid id, {data=}, {e=}")
                 continue
 
-            player = self.entities_manager.players[player_uuid]
-            if seqn <= player.last_updated != 0:
-                logging.info(f"Got outdated packet from {addr=}")
-                continue
+            match message_type:
+                case MessageType.ROUTINE_CLIENT:
+                    self.routine_message_handler(data["uuid"], data["contents"])
+                case _:
+                    logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
-            player.attacking_direction = attack_dir
-            player.new_message = chat.decode()
-            secure_pos = self.update_location(player_pos, seqn, player)
-
-            player.slot = slot_index
-            if attacked:
-                attack(self.entities_manager, player, player.tools[player.slot])
-
-            self.broadcast_clients(player.uuid)
-            self.update_client(player.uuid, secure_pos)
-            player.last_updated = seqn
 
     def root_handler(self):
         """Receive new clients from the root infinitely
@@ -162,7 +183,7 @@ class Node:
     def run(self):
         """Starts node threads and bind & connect sockets"""
         self.server_sock.bind(self.address)
-        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT)) # may case the bug
+        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))  # may case the bug
         logging.info(f"bound to address {self.address}")
 
         threading.Thread(target=server_entities_handler, args=(self.entities_manager,)).start()

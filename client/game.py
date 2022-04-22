@@ -16,7 +16,7 @@ sys.path.append('../')
 try:
     from graphics import ChatBox
     from common.consts import *
-    from networking import generate_client_message, parse_server_message
+    from networking import generate_client_message, parse_server_message, generate_client_routine_message
     from player import Player
     from sprites import PlayerEntity, FollowingCameraGroup, Entity
     from weapons import *
@@ -117,8 +117,8 @@ class Game:
         """communicate with the server over UDP."""
 
         self.update_player_actions()
-        update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
-                                                self.actions, self.fernet)
+        update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
+                                                        self.player, self.chat_msg, self.fernet)
         self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
 
