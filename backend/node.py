@@ -22,7 +22,8 @@ from common.utils import *
 from consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
 from backend.logic.entities import *
-from backend.networks.networking import generate_server_message, parse_client_message, parse_message_from_client
+from backend.networks.networking import generate_server_message, parse_client_message, parse_message_from_client, \
+    generate_routine_message
 
 
 class Node:
@@ -75,10 +76,9 @@ class Node:
     def update_client(self, player_uuid: str, secure_pos: Pos):
         """sends server message to the client"""
         player = self.entities_manager.players[player_uuid]
-        entities_array = flatten(self.entities_manager.entities_in_rendering_range(player))
+        entities_array = self.entities_manager.entities_in_rendering_range(player)
         # generate and send message
-        update_packet = generate_server_message(player.tools, player.incoming_message, secure_pos, player.health,
-                                                entities_array)
+        update_packet = generate_routine_message(secure_pos, player, entities_array)
         self.server_sock.sendto(update_packet, player.addr)
         logging.debug(f"[debug] sent message to client {player.uuid=}")
 

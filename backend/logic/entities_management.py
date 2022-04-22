@@ -77,12 +77,12 @@ class EntityManager:
 
         return entity_data[0], entity.uuid.encode(), *entity.pos, *direction, tool_id
 
-    def entities_in_rendering_range(self, entity: Player) -> Iterable[tuple[int, bytes, Pos, Dir, int]]:
+    def entities_in_rendering_range(self, entity: Player) -> Iterable[Entity]:
         """Returns all players that are within render distance of each other."""
-        return list(map(self.get_data_from_entity,
+        return map(lambda data: self.entities[data[1]],
                    filter(lambda data: data[1] != entity.uuid and data[0] != EntityType.OBSTACLE,
                           self.spindex.intersect(
-                              get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH)))))
+                              get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
         logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
@@ -160,7 +160,7 @@ class EntityManager:
         """Generates a position on the map, such that the bounding box of an entity of type ``kind``
            doesn't intersect with any existing object on the map.
 
-        :param kind: entity type
+        :param: kind entity type
         :returns: available position"""
         pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
 
