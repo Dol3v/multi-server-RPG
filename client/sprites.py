@@ -4,7 +4,7 @@ import numpy as np
 import pygame
 
 from client import consts
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, ARROW_TYPE, PLAYER_TYPE
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, EntityType
 
 """
 TODO: merge the weapon classes with the Player class
@@ -129,12 +129,12 @@ class Entity(pygame.sprite.Sprite):
                                                    frame.get_height() * self.scale_size))
             self.texture = frame
 
-            if self.entity_type == ARROW_TYPE:
+            if self.entity_type == EntityType.ARROW:
                 angle = -(180 - np.rad2deg(np.arctan2(self.direction[0], self.direction[1])))
                 self.texture = pygame.transform.rotate(self.texture, angle)
 
         else:
-            if self.entity_type != ARROW_TYPE:
+            if self.entity_type != EntityType.ARROW:
                 if self.direction[0] < 0:
                     self.texture = pygame.transform.flip(self.original_texture, True, False)
                 else:
@@ -143,7 +143,7 @@ class Entity(pygame.sprite.Sprite):
 
 class PlayerEntity(Entity):
     def __init__(self, groups, x, y, direction, tool_id, map_collision):
-        super().__init__(groups, PLAYER_TYPE, x, y, direction)
+        super().__init__(groups, EntityType.PLAYER, x, y, direction)
         self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * consts.PLAYER_SIZE_MULTIPLIER,
                                                              self.texture.get_height() * consts.PLAYER_SIZE_MULTIPLIER))

@@ -17,16 +17,13 @@ def do_ecdh(conn: socket.socket) -> None | bytes:
 
 
 def parse_client_message(packet: bytes) -> tuple | None:
-    """
-    Use: convert the packets bytes to a list of fields
-    """
+    """Convert the packets bytes to a list of fields"""
     return parse(CLIENT_FORMAT, packet)
 
 
 def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, health: int,
                             flattened_entities_in_range: list) -> bytes | None:
-    """
-    Use: creates the server update message
+    """Creates the server update message
     Format: [tools + new_msg + last valid player_pos + HP + players in range]
     NOTE: the first tool inside the tools will be the equipped one. 
     """
@@ -39,5 +36,6 @@ def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, heal
     data.append(health)
     data.append(entities_count)
     data += flattened_entities_in_range
+    # entity format shouldn't be with uuid right?
     packet_format = SERVER_HEADER_FORMAT + ENTITY_FORMAT * entities_count
     return struct.pack(packet_format, *data)

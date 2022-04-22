@@ -192,10 +192,10 @@ class Game:
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
-                if entity_type == PLAYER_TYPE and self.entities[entity_uuid].tool_id != tool_id:
+                if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != tool_id:
                     self.entities[entity_uuid].update_tool(tool_id)
             else:
-                if entity_type == PLAYER_TYPE:
+                if entity_type == EntityType.PLAYER:
                     print("creating player")
                     self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
                                                               entity_dir, tool_id, self.map_collision)

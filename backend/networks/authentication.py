@@ -9,10 +9,10 @@ from cryptography.exceptions import InvalidKey
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 # to import from a dir
-sys.path.append('../')
+sys.path.append('../../')
 
-from database import SqlDatabase
-from database_utils import add_user_to_database, user_in_database, get_user_credentials
+from backend.database.sql_database import SqlDatabase
+from backend.database.database_utils import add_user_to_database, user_in_database, get_user_credentials
 from common.utils import *
 from consts import *
 
