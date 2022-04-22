@@ -1,9 +1,13 @@
 import json
+import logging
 import socket
 import struct
 from typing import Iterable
 
+from cryptography.exceptions import InvalidKey
+
 from backend.logic.entities import Entity, Player
+from backend.logic.entities_management import EntityManager
 from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos, ENTITY_FORMAT, ENTITY_NUM_OF_FIELDS, RECV_CHUNK
 from common.message_type import MessageType
 from common.utils import parse, send_public_key, get_shared_key, deserialize_public_key
@@ -23,6 +27,19 @@ def do_ecdh(conn: socket.socket) -> None | bytes:
 def parse_client_message(packet: bytes) -> tuple | None:
     """Convert the packets bytes to a list of fields"""
     return parse(CLIENT_FORMAT, packet)
+
+
+def parse_message_from_client(packet: bytes, entity_manager: EntityManager) -> dict | None:
+    try:
+        message_json = json.loads(packet)
+        player_fernet = entity_manager.players[message_json["uuid"]].fernet
+        contents = player_fernet.decrypt(message_json["contents"])
+        message_json["contents"] = contents
+        return message_json
+    except KeyError as e:
+        logging.warning(f"[error] invalid message from client, {message_json=}, {e=}")
+    except InvalidKey as e:
+        logging.warning(f"[security] invalid key from client, {message_json=}, {e=}")
 
 
 def serialize_entity_list(entities: Iterable[Entity]) -> dict:

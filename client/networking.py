@@ -1,11 +1,13 @@
 """Utils for communicating with the server"""
+import json
 from base64 import urlsafe_b64encode
-from typing import Tuple, Any
+from typing import Any
 
 from cryptography.fernet import Fernet
 
-from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, MESSAGE_ENDIANESS, CLIENT_FORMAT, ENTITY_FORMAT, \
+from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, CLIENT_FORMAT, ENTITY_FORMAT, \
     RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT, Addr
+from common.message_type import MessageType
 from common.utils import *
 
 
@@ -34,7 +36,8 @@ def send_credentials(username: str, password: str, conn: socket.socket, shared_k
 
 
 def get_login_response(conn: socket.socket) -> tuple[Any, Any, Any, Any, str]:
-    user_uuid, *initial_pos, ip, success, msg_length = struct.unpack(REDIRECT_FORMAT, conn.recv(struct.calcsize(REDIRECT_FORMAT)))
+    user_uuid, *initial_pos, ip, success, msg_length = struct.unpack(REDIRECT_FORMAT,
+                                                                     conn.recv(struct.calcsize(REDIRECT_FORMAT)))
     return ip.decode().rstrip("\x00"), initial_pos, user_uuid.decode(), success, conn.recv(msg_length).decode()
 
 
@@ -73,3 +76,9 @@ def generate_client_message(player_uuid: str, seqn: int, x: int, y: int, actions
     Format: [player_pos(x, y) + (new_msg || attack || attack_directiton || equipped_id )]
     """
     return player_uuid.encode() + fernet.encrypt(struct.pack(CLIENT_FORMAT, seqn, x, y, *actions))
+
+
+def craft_client_message(message_type: MessageType, client_uuid: str, contents: dict, fernet: Fernet) -> bytes:
+    return json.dumps({"uuid": client_uuid,
+                       "contents": fernet.encrypt(json.dumps({"id": int(message_type)} |
+                                                             contents).encode())}).encode()
