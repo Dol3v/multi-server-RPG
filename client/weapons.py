@@ -1,13 +1,11 @@
-import datetime
-import time
-
-import pygame
-import numpy as np
 import abc
 
+import numpy as np
+import pygame
+
+from common.consts import ARROW_OFFSET_FACTOR, SCREEN_HEIGHT, SCREEN_WIDTH
 from common.utils import get_bounding_box
 from consts import *
-from common.consts import PROJECTILE_SPEED, ARROW_OFFSET_FACTOR, SCREEN_HEIGHT, SCREEN_WIDTH
 
 
 def get_weapon_type(tool_id: int) -> str | None:
@@ -187,7 +185,7 @@ class Projectile(pygame.sprite.Sprite):
             if sprite != self and sprite.rect.colliderect(self.rect) and not isinstance(sprite, Projectile):
                 self.kill()
         for _, rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
-                                                                  SCREEN_HEIGHT, SCREEN_WIDTH)):
+                                                                     SCREEN_HEIGHT, SCREEN_WIDTH)):
             if rect.colliderect(self.rect):
                 self.kill()
 

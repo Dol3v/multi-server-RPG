@@ -15,16 +15,16 @@ sys.path.append('../')
 try:
     from graphics import ChatBox
     from common.consts import *
-    from networking import generate_client_message, parse_server_message, generate_client_routine_message, parse_message
     from player import Player
+    from networking import *
     from sprites import PlayerEntity, FollowingCameraGroup, Entity
     from weapons import *
     from map_manager import *
 except ModuleNotFoundError:
     from client.graphics import ChatBox
     from common.consts import *
-    from client.networking import generate_client_message, parse_server_message
     from client.player import Player
+    from client.networking import *
     from client.sprites import PlayerEntity, FollowingCameraGroup, Entity
     from client.weapons import *
     from client.map_manager import *

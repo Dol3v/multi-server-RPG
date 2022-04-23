@@ -45,13 +45,6 @@ class Player(Combatant):
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
     tools: List = field(default_factory=lambda: [SWORD, AXE, BOW, EMPTY_SLOT, EMPTY_SLOT, EMPTY_SLOT])
-    """
-    [IDs]
-        sword = 1
-        axe = 2
-        arrow = 3
-    tools: [default, tool2, tool3]
-    """
     fernet: Fernet = None
     kind: int = EntityType.PLAYER
 
