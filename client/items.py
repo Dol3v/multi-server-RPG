@@ -1,13 +1,9 @@
-import datetime
-import time
+from typing import List
 
 import pygame
 import numpy as np
-import abc
 
-from common.utils import get_bounding_box
 from consts import *
-from common.consts import PROJECTILE_SPEED, ARROW_OFFSET_FACTOR, SCREEN_HEIGHT, SCREEN_WIDTH
 
 
 def get_weapon_type(tool_id: int) -> str | None:
@@ -27,7 +23,7 @@ class Hand(pygame.sprite.Sprite):
                                               )
         self.original_texture = self.texture.copy()
 
-        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()))
         self.original_image = self.image.copy()
 
         self.rect = self.image.get_rect()
@@ -43,7 +39,7 @@ class Hand(pygame.sprite.Sprite):
             center=player.rect.center + pygame.math.Vector2(45 * vec[0], (45 * vec[1] + 3)))
 
     def hide(self):
-        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()))
         self.rect = self.image.get_rect()
 
 
@@ -54,14 +50,23 @@ class Item(pygame.sprite.Sprite):
         if add_to_sprite_group:
             self.start_drawing()
 
+        data = weapon_data.get(weapon_type)
+
         self.weapon_type = weapon_type
         self.rarity = rarity
-        self.texture = pygame.image.load(f"assets/weapons/{weapon_type}/full.png")
+        self.texture = pygame.image.load(data["graphics"])
 
-        self.icon = pygame.transform.scale(self.texture, (32, 32))
+        self.icon = pygame.image.load(data["icon"])
+        if self.icon.get_width() > 32:
+            self.icon = pygame.transform.scale(self.icon, (32, self.icon.get_height()))
+
+        if self.icon.get_height() > 32:
+            self.icon = pygame.transform.scale(self.icon, (self.icon.get_width(), 32))
+
+        if data["resize_icon"]:
+            self.icon = pygame.transform.scale(self.icon, (32, 32))
+
         self.flip_item = flip_item
-
-        data = weapon_data.get(weapon_type)
 
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * data["size_multiplier"],
                                                              self.texture.get_height() * data["size_multiplier"]))
@@ -82,6 +87,8 @@ class Item(pygame.sprite.Sprite):
         self.original_image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
+        self.display_name_info = data["display_name"]
+        self.description = data["description"]
 
         # angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
 

@@ -317,9 +317,15 @@ class Game:
             if weapon:
 
                 if weapon.is_ranged:
-                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (0, 0))
+                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (
+                        (surface.get_width() - pygame.transform.rotate(weapon.icon, -90).get_width()) / 2,
+                        (surface.get_height() - pygame.transform.rotate(weapon.icon, -90).get_height()) / 2)
+                                 )
                 else:
-                    surface.blit(weapon.icon, (0, 0))
+                    surface.blit(weapon.icon, (
+                        (surface.get_width() - weapon.icon.get_width()) / 2,
+                        (surface.get_height() - weapon.icon.get_height()) / 2)
+                                 )
             hot_bar.blit(surface, (16 + 36 * i, 18))
             # (16 + 36 * i, 18)
 

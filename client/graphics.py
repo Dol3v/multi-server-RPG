@@ -342,19 +342,19 @@ class ChatBox:
 
 class Inventory:
     def __init__(self):
-        size_multiplier = 3
+        self.size_multiplier = 3
         self.inv = pygame.image.load("assets/inventory.png")
-        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * size_multiplier,
-                                                     self.inv.get_height() * size_multiplier))
-        self.starting_x = 8 * size_multiplier
-        self.starting_y = 8 * size_multiplier
-        self.x_offset = 2 * size_multiplier
-        self.y_offest = 2 * size_multiplier
+        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * self.size_multiplier,
+                                                     self.inv.get_height() * self.size_multiplier))
+        self.starting_x = 8 * self.size_multiplier
+        self.starting_y = 8 * self.size_multiplier
+        self.x_offset = 2 * self.size_multiplier
+        self.y_offest = 2 * self.size_multiplier
 
         self.rows = 4
         self.columns = 9
 
-        self.icon_size = 16 * size_multiplier
+        self.icon_size = 16 * self.size_multiplier
         self.items = [None] * (self.rows * self.columns)
         self.icon_rects: List[pygame.Rect | None] = [None] * (self.rows * self.columns)
         self.init_icon_rects()
@@ -363,6 +363,8 @@ class Inventory:
         self.hovered_slot = -1
         self.selected_slot = -1
         self.move = [-1, -1]
+
+        self.item_info = ItemInfo(0, 0, self.items[0])
 
     def init_icon_rects(self):
         for y in range(self.rows):  # Rows
@@ -376,7 +378,6 @@ class Inventory:
 
     def draw_inventory(self, surface):
         inv = self.inv.copy()
-
         for y in range(self.rows):  # Rows
             for x in range(self.columns):  # Columns
                 index = y * self.columns + x
@@ -390,6 +391,23 @@ class Inventory:
                                                      self.starting_y + self.icon_size * y + self.y_offest * y,
                                                      self.icon_size, self.icon_size))
 
+                        if SCREEN_WIDTH > ((SCREEN_WIDTH - self.inv.get_width()) +
+                                           (self.icon_size + self.x_offset) +
+                                           (self.starting_x + self.icon_size * x + self.x_offset * x)
+                                           + self.item_info.width):
+                            self.item_info.move_to(
+                                (SCREEN_WIDTH - self.inv.get_width()) +
+                                (self.icon_size + self.x_offset) +
+                                (self.starting_x + self.icon_size * x + self.x_offset * x),
+                                self.starting_y + self.icon_size * y + self.y_offest * y
+                            )
+                        else:
+                            print(self.item_info.width)
+                            self.item_info.move_to(
+                                (SCREEN_WIDTH - self.inv.get_width()) +
+                                (self.starting_x + self.icon_size * x + self.x_offset * x) - self.item_info.width,
+                                self.starting_y + self.icon_size * y + self.y_offest * y)
+
                 if index == self.selected_slot:
                     pygame.draw.rect(surface, (100, 200, 50, 100),
                                      pygame.Rect((SCREEN_WIDTH - self.inv.get_width()) +
@@ -398,13 +416,25 @@ class Inventory:
                                                  self.icon_size, self.icon_size))
 
                 if item:
-                    icon = pygame.transform.scale(item.icon, (self.icon_size, self.icon_size))
+                    width_multiplier = self.icon_size / item.icon.get_width()
+                    height_multiplier = self.icon_size / item.icon.get_height()
+                    print(width_multiplier, height_multiplier)
+                    multiplier = min(width_multiplier, height_multiplier)
+
+                    icon = pygame.transform.scale(item.icon, (item.icon.get_width() * multiplier,
+                                                              item.icon.get_height() * multiplier))
                     inv.blit(icon, (
-                        self.starting_x + self.icon_size * x + self.x_offset * x,
+                        (self.starting_x + self.icon_size * x + self.x_offset * x)
+                        + (self.icon_size - icon.get_width()) / 2,
                         self.starting_y + self.icon_size * y + self.y_offest * y
+                        + (self.icon_size - icon.get_height()) / 2
                     ))
         inv.set_alpha(200)
         surface.blit(inv, (SCREEN_WIDTH - inv.get_width(), 0))
+
+        if self.has_hovered_slot and self.items[self.hovered_slot]:
+            self.item_info.set_item(self.items[self.hovered_slot])
+            self.item_info.draw_item_info(surface)
 
     def update(self, event_list):
         mouse_pos = pygame.mouse.get_pos()
@@ -481,3 +511,107 @@ class Inventory:
         if index_two == self.current_hotbar_slot:
             if self.items[index_two]:
                 self.items[index_two].start_drawing()
+
+
+class ItemInfo:
+    def __init__(self, x, y, item):
+        self.x = x
+        self.y = y
+        self.item = item
+        self.width = 0
+        self.small_font = pygame.font.SysFont("courier", 18, False)
+        self.big_font = pygame.font.SysFont("courier", 25, False)
+
+    def set_item(self, item):
+        if self.item != item:
+            self.width = 0
+            self.item = item
+            self.calculte_width()
+
+    def move_to(self, x, y):
+        self.x = x
+        self.y = y
+
+    def calculte_width(self):
+        if self.item:
+            for line in self.item.description:
+                full_surface = self.small_font.render(line, True, (0, 0, 0), None)
+                if full_surface.get_width() > self.width:
+                    self.width = full_surface.get_width()
+
+            display_name_info = self.item.display_name_info
+            display_name = display_name_info[0]
+            display_name_color = display_name_info[1]
+            is_bold = display_name_info[2]
+            display_name_surface = self.generate_surface(display_name,
+                                                         pygame.font.SysFont("courier", 25, is_bold),
+                                                         display_name_color)
+            if display_name_surface.get_width() > self.width:
+                self.width = display_name_surface.get_width()
+
+    def draw_item_info(self, surface):
+        display_name_info = self.item.display_name_info
+        display_name = display_name_info[0]
+        display_name_color = display_name_info[1]
+        is_bold = display_name_info[2]
+        display_name_surface = self.generate_surface(display_name,
+                                                     pygame.font.SysFont("courier", 25, is_bold),
+                                                     display_name_color)
+        display_name_surface = self.combine_surfaces(display_name_surface,
+                                                     self.generate_surface(
+                                                         " ",
+                                                         self.small_font,
+                                                         (255, 255, 255)
+                                                     ))
+
+        for line in self.item.description:
+            display_name_surface = self.combine_surfaces(display_name_surface,
+                                                         self.generate_surface(
+                                                             line,
+                                                             self.small_font,
+                                                             (255, 255, 255)
+                                                         ))
+
+        surface.blit(self.add_background(display_name_surface, (0, 0, 0, 200)), (self.x, self.y))
+
+    def add_background(self, surface, background_color):
+        new_surface = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+        new_surface.fill(background_color)
+        new_surface.blit(surface, (0, 0))
+        return new_surface
+
+    def generate_surface(self, message: str, font, text_color):
+        full_surface = font.render(message, True, text_color, None)
+
+        if full_surface.get_width() > self.width:
+            surface = pygame.Surface((0, 0), pygame.SRCALPHA)
+            loops_amount = math.ceil(full_surface.get_width() / self.width)
+
+            # t_surf = self.font.render(self.tip, True, (0, 0, 0), None)
+            index = 0
+            characters = list(message)
+            for i in range(loops_amount):
+                current_msg = ""
+                rendered_text = font.render(current_msg, True, text_color, None)
+                while index < len(characters) and rendered_text.get_width() < self.width:
+                    current_msg += characters[index]
+                    index += 1
+                    rendered_text = font.render(current_msg, True, text_color, None)
+
+                index -= 1
+                current_msg = current_msg[:-1]
+                surface = self.combine_surfaces(surface, font.render(current_msg, True, text_color, None))
+            return surface
+        else:
+            print(full_surface.get_height())
+            return full_surface
+
+    def combine_surfaces(self, f_surf, s_surf):
+        # Create a surface and pass the sum of the widths.
+        # Also, pass pg.SRCALPHA to make the surface transparent.
+        result = pygame.Surface((self.width, f_surf.get_height() + s_surf.get_height()), pygame.SRCALPHA)
+
+        # Blit the first two surfaces onto the third.
+        result.blit(f_surf, (0, 0))
+        result.blit(s_surf, (0, f_surf.get_height()))
+        return result
