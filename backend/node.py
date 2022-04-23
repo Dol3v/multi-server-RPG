@@ -104,14 +104,14 @@ class Node:
             return
 
         player.attacking_direction = attack_dir
-        player.new_message = chat.decode()
+        player.new_message = chat
         secure_pos = self.update_location(player_pos, seqn, player)
 
         player.slot = slot_index
         if attacked:
             attack(self.entities_manager, player, player.tools[player.slot])
 
-        self.broadcast_clients(player.uuid)
+        # self.broadcast_clients(player.uuid)
         self.update_client(player.uuid, secure_pos)
         player.last_updated = seqn
 
@@ -123,6 +123,7 @@ class Node:
             if not data:
                 continue
             try:
+                print(data)
                 message_type = MessageType(data["contents"]["id"])
             except KeyError as e:
                 logging.warning(f"[security] invalid message, no id present {data=}, {e=}")

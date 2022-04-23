@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import socket
@@ -34,7 +35,7 @@ def parse_message_from_client(packet: bytes, entity_manager: EntityManager) -> d
     try:
         message_json = json.loads(packet)
         player_fernet = entity_manager.players[message_json["uuid"]].fernet
-        contents = player_fernet.decrypt(message_json["contents"])
+        contents = json.loads(player_fernet.decrypt(base64.b64decode(message_json["contents"])))
         message_json["contents"] = contents
         return message_json
     except KeyError as e:

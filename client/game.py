@@ -5,29 +5,17 @@ import sys
 import threading
 from typing import List
 
-from cryptography.fernet import Fernet
-
 import weapons
 
 # to import from a dir
 sys.path.append('../')
 
-try:
-    from graphics import ChatBox
-    from common.consts import *
-    from player import Player
-    from networking import *
-    from sprites import PlayerEntity, FollowingCameraGroup, Entity
-    from weapons import *
-    from map_manager import *
-except ModuleNotFoundError:
-    from client.graphics import ChatBox
-    from common.consts import *
-    from client.player import Player
-    from client.networking import *
-    from client.sprites import PlayerEntity, FollowingCameraGroup, Entity
-    from client.weapons import *
-    from client.map_manager import *
+from graphics import ChatBox
+from common.consts import *
+from networking import *
+from sprites import PlayerEntity, FollowingCameraGroup, Entity
+from weapons import *
+from map_manager import *
 
 
 class Game:
@@ -54,7 +42,6 @@ class Game:
         self.map.load_collision_objects_to(self.map_collision)
 
         # player init
-
         self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
@@ -114,7 +101,6 @@ class Game:
         if self.msg_to_send:
             self.chat_msg = self.msg_to_send
             self.msg_to_send = ""
-
         update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
                                                         self.player, self.chat_msg, self.fernet)
         self.conn.sendto(update_packet, self.server_addr)
@@ -129,7 +115,7 @@ class Game:
         if addr != self.server_addr:
             return
         contents = parse_message(packet, self.fernet)
-        pos, tools, health, entities = contents["valid_pos"], contents["tools"], contents["health"], \
+        pos, tools, health, entities = tuple(contents["valid_pos"]), contents["tools"], contents["health"], \
                                        contents["entities"]
 
         print(f"{pos=} {health=} {tools=}")

@@ -1,14 +1,12 @@
 """Connection screen login and signup"""
-import base64
 import socket
 import sys
-import platform
 
 import pygame.transform
 
-# to import from a dir
-from networking import do_ecdh, get_login_response, send_credentials
 from common.utils import is_valid_ip
+# to import from a dir
+from login import do_ecdh, get_login_response, send_credentials
 
 sys.path.append('../')
 from consts import *
