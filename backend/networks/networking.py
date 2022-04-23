@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 import socket
-import struct
 from typing import Iterable
 
 from cryptography.exceptions import InvalidKey
@@ -10,7 +9,7 @@ from cryptography.fernet import Fernet
 
 from backend.logic.entities import Entity, Player
 from backend.logic.entities_management import EntityManager
-from common.consts import CLIENT_FORMAT, SERVER_HEADER_FORMAT, Pos, ENTITY_FORMAT, ENTITY_NUM_OF_FIELDS, RECV_CHUNK
+from common.consts import Pos, RECV_CHUNK
 from common.message_type import MessageType
 from common.utils import parse, send_public_key, get_shared_key, deserialize_public_key
 
@@ -24,11 +23,6 @@ def do_ecdh(conn: socket.socket) -> None | bytes:
         return None
     private_key = send_public_key(conn)
     return get_shared_key(private_key, client_public_key)
-
-
-def parse_client_message(packet: bytes) -> tuple | None:
-    """Convert the packets bytes to a list of fields"""
-    return parse(CLIENT_FORMAT, packet)
 
 
 def parse_message_from_client(packet: bytes, entity_manager: EntityManager) -> dict | None:
