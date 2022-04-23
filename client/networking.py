@@ -6,7 +6,7 @@ from typing import Any
 from cryptography.fernet import Fernet
 
 from client.player import Player
-from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, CLIENT_FORMAT, ENTITY_FORMAT, \
+from common.consts import SERVER_HEADER_SIZE, SERVER_HEADER_FORMAT, ENTITY_FORMAT, \
     RECV_CHUNK, ENTITY_NUM_OF_FIELDS, REDIRECT_FORMAT, Addr
 from common.message_type import MessageType
 from common.utils import *
@@ -71,12 +71,8 @@ def parse_server_message(packet: bytes) -> Tuple[Tuple, list]:
         return player_status, entities
 
 
-def generate_client_message(player_uuid: str, seqn: int, x: int, y: int, actions: list, fernet: Fernet) -> bytes | None:
-    """
-    Use: generate the client message bytes by this format
-    Format: [player_pos(x, y) + (new_msg || attack || attack_directiton || equipped_id )]
-    """
-    return player_uuid.encode() + fernet.encrypt(struct.pack(CLIENT_FORMAT, seqn, x, y, *actions))
+def parse_message(data: bytes, fernet: Fernet) -> dict:
+    return json.loads(fernet.decrypt(data))
 
 
 def craft_client_message(message_type: MessageType, client_uuid: str, contents: dict, fernet: Fernet) -> bytes:

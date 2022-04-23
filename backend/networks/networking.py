@@ -57,24 +57,3 @@ def generate_routine_message(valid_pos: Pos, player: Player, sent_entities: Iter
                                                       "health": player.health,
                                                       "tools": player.tools} | serialize_entity_list(sent_entities),
                          player.fernet)
-
-
-def generate_server_message(tools: list, new_msg: str, last_valid_pos: Pos, health: int,
-                            flattened_entities_in_range: list) -> bytes | None:
-    """Creates the server update message
-    Format: [tools + new_msg + last valid player_pos + HP + players in range]
-    NOTE: the first tool inside the tools will be the equipped one. 
-    """
-    data = []
-    entities_count = len(flattened_entities_in_range) // ENTITY_NUM_OF_FIELDS
-    # # create data array
-    data += tools
-    data.append(new_msg.encode())
-    data += [*last_valid_pos]
-    data.append(health)
-    data.append(entities_count)
-    data += flattened_entities_in_range
-    # entity format shouldn't be with uuid right?
-    packet_format = SERVER_HEADER_FORMAT + ENTITY_FORMAT * entities_count
-
-    return struct.pack(packet_format, *data)

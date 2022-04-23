@@ -22,7 +22,7 @@ from common.utils import *
 from consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
 from backend.logic.entities import *
-from backend.networks.networking import generate_server_message, parse_client_message, parse_message_from_client, \
+from backend.networks.networking import parse_message_from_client, \
     generate_routine_message
 
 
@@ -81,23 +81,6 @@ class Node:
         update_packet = generate_routine_message(secure_pos, player, entities_array)
         self.server_sock.sendto(update_packet, player.addr)
         logging.debug(f"[debug] sent message to client {player.uuid=}")
-
-    def receive_client_packet(self, player_uuid, data):
-        try:
-            data = self.entities_manager.players[player_uuid].fernet.decrypt(data[UUID_SIZE:])
-        except InvalidToken:
-            logging.warning(f"[security] player sent non-matching uuid={player_uuid}")
-            return None
-        except KeyError:
-            logging.warning(f"{data=}")
-            return None
-        if player_uuid in self.died_clients:
-            return None
-        client_msg = parse_client_message(data)
-        if not client_msg:
-            return None
-
-        return data
 
     def routine_message_handler(self, player_uuid: str, contents: dict):
         try:
