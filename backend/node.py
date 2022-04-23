@@ -84,7 +84,7 @@ class Node:
 
     def routine_message_handler(self, player_uuid: str, contents: dict):
         try:
-            player_pos, seqn, chat, attack_dir, slot_index, attacked = contents["pos"], contents["seqn"], \
+            player_pos, seqn, chat, attack_dir, slot_index, attacked = tuple(contents["pos"]), contents["seqn"], \
                                                                        contents["chat"], contents["dir"], contents[
                                                                            "slot"], contents["is_attacking"]
         except KeyError:
