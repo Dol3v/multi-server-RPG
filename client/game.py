@@ -1,5 +1,4 @@
 """Game loop and communication with the server"""
-import base64
 import queue
 import sys
 import threading

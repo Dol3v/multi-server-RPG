@@ -5,7 +5,6 @@ import threading
 from collections import defaultdict
 from typing import Set
 
-from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
 # to import from a dir
@@ -83,6 +82,7 @@ class Node:
         logging.debug(f"[debug] sent message to client {player.uuid=}")
 
     def routine_message_handler(self, player_uuid: str, contents: dict):
+        """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
         try:
             player_pos, seqn, chat, attack_dir, slot_index, attacked = tuple(contents["pos"]), contents["seqn"], \
                                                                        contents["chat"], contents["dir"], contents[
@@ -137,7 +137,6 @@ class Node:
                     self.routine_message_handler(data["uuid"], data["contents"])
                 case _:
                     logging.warning(f"[security] no handler present for {message_type=}, {data=}")
-
 
     def root_handler(self):
         """Receive new clients from the root infinitely
