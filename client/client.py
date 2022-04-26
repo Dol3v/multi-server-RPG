@@ -6,16 +6,11 @@ sys.path.append('../')
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
-try:
-    import pygame
-    import game
-    import connect_screen
-    import consts
-    from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
-except ModuleNotFoundError:
-    from client import game
-    from client import connect_screen
-    from client import consts
+import pygame
+import game
+import connect_screen
+import consts
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
 
 
 def init_pygame() -> pygame.Surface:

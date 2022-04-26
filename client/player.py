@@ -1,13 +1,10 @@
 """Player class..."""
 from typing import List, Tuple
 
-import pygame
-
-from common.consts import SPEED, SCREEN_HEIGHT, SCREEN_WIDTH
-from common.utils import normalize_vec, get_bounding_box
-from weapons import *
-from consts import *
+from common.consts import SPEED
+from common.utils import normalize_vec
 from graphics import Animation
+from weapons import *
 
 
 class Player(pygame.sprite.Sprite):
@@ -28,9 +25,7 @@ class Player(pygame.sprite.Sprite):
         )
 
         self.rect = self.image.get_rect(center=pos)
-
         self.looking_direction = "RIGHT"
-
         self.direction = pygame.math.Vector2()
         self.speed = SPEED
         self.max_health = MAX_HEALTH
@@ -122,7 +117,7 @@ class Player(pygame.sprite.Sprite):
                     if self.direction.x < 0:  # moving left
                         self.rect.left = sprite.rect.right
             for _, rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
-                                                                      SCREEN_HEIGHT, SCREEN_WIDTH)):
+                                                                         SCREEN_HEIGHT, SCREEN_WIDTH)):
                 if rect.colliderect(self.rect):
                     if self.direction.x > 0:  # moving right
                         self.rect.right = rect.left
@@ -137,7 +132,7 @@ class Player(pygame.sprite.Sprite):
                     if self.direction.y < 0:  # moving up
                         self.rect.top = sprite.rect.bottom
             for _, rect in self.map_collision.intersect(get_bounding_box((self.rect.x, self.rect.y),
-                                                                      SCREEN_HEIGHT, SCREEN_WIDTH)):
+                                                                         SCREEN_HEIGHT, SCREEN_WIDTH)):
                 if rect.colliderect(self.rect):
                     if self.direction.y > 0:  # moving down
                         self.rect.bottom = rect.top

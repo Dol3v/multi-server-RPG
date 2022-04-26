@@ -1,4 +1,6 @@
 """Login/Load-balancing server"""
+import base64
+import json
 import logging
 import queue
 import select
@@ -12,18 +14,21 @@ from typing import List, Iterable
 
 # to import from a dir
 import numpy as np
+from cryptography.fernet import Fernet
+
+from backend.networks.networking import S2SMessageType
 
 sys.path.append('../')
 from database import DB_PASS
 from database import SqlDatabase
 
-from networks import login, signup, parse_credentials
+from networks import login, signup
 from networks import do_ecdh
 
-from common.utils import deserialize_addr, serialize_ip
+from common.utils import deserialize_json, serialize_json
 from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NUM_NODES, \
-    WORLD_WIDTH, WORLD_HEIGHT, POSITION_FORMAT
-from consts import CREDENTIALS_PACKET_SIZE, ROOT_SERVER2SERVER_PORT, ADDR_HEADER_SIZE
+    WORLD_WIDTH, WORLD_HEIGHT
+from consts import ROOT_SERVER2SERVER_PORT
 
 
 @dataclass
@@ -77,7 +82,7 @@ class EntryNode:
             recipients, msg = self.server_send_queue.get()
             logging.info(f"[action] sending {msg=} to {recipients=}")
             for server in recipients:
-                server.conn.send(msg)
+                server.conn.send(json.dumps(msg).encode())
 
     def receiver(self):
         """Receives data from servers and puts in the queue."""
@@ -97,35 +102,36 @@ class EntryNode:
             conn, addr = self.sock.accept()
             logging.info(f"[update] client with {addr=} tries to login/signup")
             shared_key = do_ecdh(conn)
-            data = conn.recv(CREDENTIALS_PACKET_SIZE)
-            game_addr, data = deserialize_addr(data[:ADDR_HEADER_SIZE]), data[ADDR_HEADER_SIZE:]
-            is_login, username, password = parse_credentials(shared_key, data)
-            print(f"{game_addr=} {is_login=} {username=} {password=}")
+            fernet = Fernet(base64.urlsafe_b64encode(shared_key))
+
+            data = deserialize_json(conn.recv(RECV_CHUNK), fernet)
+            is_login, username, password, client_game_addr = data["is_login"], data["username"], data["password"], \
+                                                             data["game_addr"]
             initial_pos = self.get_initial_position()
             if is_login:
-                success, error_msg, user_uuid = login(username, password, self.db_conn)
+                success, error_msg, user_uuid = login(username, password.encode(), self.db_conn)
             else:
-                success, error_msg, user_uuid = signup(username, password, self.db_conn)
+                success, error_msg, user_uuid = signup(username, password.encode(), self.db_conn)
 
             if not success:
                 logging.info(f"[blocked] login/signup failed, error msg: {error_msg}")
-                conn.send(struct.pack(REDIRECT_FORMAT, EMPTY_UUID.encode(), *initial_pos, "0.0.0.0".encode(),
-                                      success, len(error_msg)) + error_msg.encode())
+                conn.send(serialize_json({"success": False, "error": error_msg}, fernet))
                 conn.close()
                 continue
 
             target_node = self.get_minimal_load_server()
-            # uuid & addr
-            logging.info(f"client redirected to {target_node.ip}")
-            conn.send(
-                struct.pack(REDIRECT_FORMAT, user_uuid.encode(), *initial_pos, target_node.ip.encode(),
-                            success, len(error_msg)) + error_msg.encode())
-
-            self.server_send_queue.put(([target_node], shared_key + user_uuid.encode() +
-                                        struct.pack(POSITION_FORMAT, *initial_pos) +
-                                        serialize_ip(game_addr[0]) + struct.pack(">l", game_addr[1])))
-
+            conn.send(serialize_json({"ip": target_node.ip,
+                                      "initial_pos": initial_pos,
+                                      "uuid": user_uuid,
+                                      "success": False}, fernet))
+            self.server_send_queue.put(([target_node], {"id": S2SMessageType.PLAYER_LOGIN,
+                                                        "key": base64.b64encode(shared_key).decode(),
+                                                        "uuid": user_uuid,
+                                                        "initial_pos": initial_pos,
+                                                        "client_ip": client_game_addr[0],
+                                                        "client_port": client_game_addr[1]}))
             conn.close()
+            logging.info(f"client redirected to {target_node.ip}")
 
     def init_nodes(self):
         """Initializes nodes' data based on user input."""

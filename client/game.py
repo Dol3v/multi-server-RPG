@@ -1,34 +1,20 @@
 """Game loop and communication with the server"""
-import base64
 import queue
-import socket
 import sys
 import threading
 from typing import List
-
-from cryptography.fernet import Fernet
 
 import weapons
 
 # to import from a dir
 sys.path.append('../')
 
-try:
-    from graphics import ChatBox
-    from common.consts import *
-    from networking import generate_client_message, parse_server_message
-    from player import Player
-    from sprites import PlayerEntity, FollowingCameraGroup, Entity
-    from weapons import *
-    from map_manager import *
-except ModuleNotFoundError:
-    from client.graphics import ChatBox
-    from common.consts import *
-    from client.networking import generate_client_message, parse_server_message
-    from client.player import Player
-    from client.sprites import PlayerEntity, FollowingCameraGroup, Entity
-    from client.weapons import *
-    from client.map_manager import *
+from graphics import ChatBox
+from common.consts import *
+from networking import *
+from sprites import PlayerEntity, FollowingCameraGroup, Entity
+from weapons import *
+from map_manager import *
 
 
 class Game:
@@ -55,7 +41,6 @@ class Game:
         self.map.load_collision_objects_to(self.map_collision)
 
         # player init
-
         self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
@@ -90,9 +75,6 @@ class Game:
         self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
         self.inv.set_alpha(150)
 
-        self.actions = [b'', 0, False, 0.0, 0.0, 0]
-        """[message, direction, did attack, attack directions, selected slot]"""
-
         self.chat_msg = ""
         self.msg_to_send = ""
 
@@ -115,10 +97,11 @@ class Game:
 
     def server_update(self):
         """communicate with the server over UDP."""
-
-        self.update_player_actions()
-        update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
-                                                self.actions, self.fernet)
+        if self.msg_to_send:
+            self.chat_msg = self.msg_to_send
+            self.msg_to_send = ""
+        update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
+                                                        self.player, self.chat_msg, self.fernet)
         self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
 
@@ -128,43 +111,47 @@ class Game:
         except queue.Empty:
             return
 
-        if addr == self.server_addr:
-            (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            print(f"{x=} {y=} {health=} {tools=}")
-            for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
-                weapon_type = weapons.get_weapon_type(tool_id)
+        if addr != self.server_addr:
+            return
+        contents = parse_message(packet, self.fernet)
+        pos, tools, health, entities = tuple(contents["valid_pos"]), contents["tools"], contents["health"], \
+                                       contents["entities"]
 
-                if weapon_type:
-                    player_weapon = self.player.get_weapon_in_slot(i)
+        print(f"{pos=} {health=} {tools=}")
+        for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
+            weapon_type = weapons.get_weapon_type(tool_id)
 
-                    if player_weapon:
-                        if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
+            if weapon_type:
+                player_weapon = self.player.get_weapon_in_slot(i)
 
-                            weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
-                            if weapon.is_ranged:
-                                weapon.kill()
-                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites, self.map_collision,
-                                                     weapon_type, "rare")
+                if player_weapon:
+                    if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
 
-                            self.player.remove_weapon_in_slot(i)
-                            self.player.set_weapon_in_slot(i, weapon)
-                    else:
                         weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
                         if weapon.is_ranged:
                             weapon.kill()
-                            weapon = RangeWeapon((self.visible_sprites,), self.obstacles_sprites, self.map_collision,
+                            weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites, self.map_collision,
                                                  weapon_type, "rare")
 
+                        self.player.remove_weapon_in_slot(i)
                         self.player.set_weapon_in_slot(i, weapon)
                 else:
-                    self.player.set_weapon_in_slot(i, None)
+                    weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
+                    if weapon.is_ranged:
+                        weapon.kill()
+                        weapon = RangeWeapon((self.visible_sprites,), self.obstacles_sprites, self.map_collision,
+                                             weapon_type, "rare")
 
-            # update graphics and status
+                    self.player.set_weapon_in_slot(i, weapon)
+            else:
+                self.player.set_weapon_in_slot(i, None)
 
-            self.render_clients(entities)
-            self.update_player_status(chat_msg, (x, y), health)
+        # update graphics and status
 
-    def update_player_status(self, msg_bytes: bytes, valid_pos: Pos, health: int) -> None:
+        self.render_entities(entities)
+        self.update_player_status(pos, health)
+
+    def update_player_status(self, valid_pos: Pos, health: int) -> None:
         """update player status by the server message"""
 
         # update client position only when the server says so
@@ -181,51 +168,33 @@ class Game:
             pygame.quit()
             sys.exit(0)
 
-        chat_new_msg = msg_bytes.decode().rstrip("\x00")
-
-        if chat_new_msg:
-            self.chat.add_message(chat_new_msg)
-
-    def update_player_actions(self) -> None:
-        """update player actions to send"""
-        chat_msg = ""
-
-        if self.msg_to_send:
-            chat_msg = self.msg_to_send
-            self.msg_to_send = ""
-
-        self.actions[CHAT] = chat_msg.encode()
-        self.actions[ATTACK] = self.player.attacking
-        self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
-        self.actions[SELECTED_SLOT] = self.player.current_slot
-
-    def render_clients(self, entities: List[Tuple[int, str, tuple, tuple, int]]) -> None:
+    def render_entities(self, entities: List[dict]) -> None:
         """
         Use: prints the other clients by the given info about them
         """
         print("-" * 10)
-        for entity_info in entities:
-            entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-            print(f"received entity {entity_uuid=} {entity_type=} {pos=} {entity_dir=} {tool_id=}")
+        for entity in entities:
+            entity_type, entity_uuid, pos, entity_dir = entity["type"], entity["uuid"], entity["pos"], entity["dir"]
+            print(f"received entity {entity_uuid=} {entity_type=} {pos=} {entity_dir=}")
             if entity_uuid in self.entities.keys():
                 print("entity in keys, updating")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
-                if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != tool_id:
-                    self.entities[entity_uuid].update_tool(tool_id)
+                if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != entity["tool"]:
+                    self.entities[entity_uuid].update_tool(entity["tool"])
             else:
                 if entity_type == EntityType.PLAYER:
                     print("creating player")
                     self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
-                                                              entity_dir, tool_id, self.map_collision)
+                                                              entity_dir, entity["tool"], self.map_collision)
                 else:
                     print(f"creating entity of type={entity_type}")
                     self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
                                                         *pos, entity_dir)
 
         remove_entities = []
-        received_uuids = list(map(lambda info: info[1], entities))
+        received_uuids = list(map(lambda info: info["uuid"], entities))
         print(f"{received_uuids=}")
         print(f"keys={self.entities.keys()}")
         for entity_uuid in self.entities.keys():
