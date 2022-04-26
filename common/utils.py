@@ -1,18 +1,20 @@
 """Some useful common utils"""
 import base64
+import json
 import math
 import re
 import socket
 import struct
-from typing import Iterable, Tuple
+from typing import Tuple
 
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, generate_private_key, \
     EllipticCurvePublicKey, ECDH
 from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS, CLIENT_WIDTH, \
+from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, CLIENT_WIDTH, \
     CLIENT_HEIGHT, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT, EntityType
 
 
@@ -31,15 +33,6 @@ def get_random_port():
     free_port = sock.getsockname()[1]
     sock.close()
     return free_port
-
-
-def parse(parse_format: str, data: bytes) -> tuple | None:
-    """Parse a given message by the given format"""
-    try:
-        return struct.unpack(parse_format, data)
-    except struct.error as error:
-        print(error)
-        return None
 
 
 def valid_ip(ip: str):
@@ -115,14 +108,14 @@ def get_bounding_box(pos: Pos, height: int, width: int) -> Tuple[int, int, int, 
     return pos[0] - width // 2, pos[1] - height // 2, pos[0] + width // 2, pos[1] + height // 2
 
 
-def serialize_ip(ip: str) -> bytes:
-    return socket.inet_aton(ip)
-
-
-def deserialize_addr(addr_bytes: bytes) -> Tuple[str, int]:
-    components = struct.unpack(MESSAGE_ENDIANESS + "4Bl", addr_bytes)
-    return "".join(str(ip_byte) + "." for ip_byte in components[:-1])[:-1], components[-1]
-
-
 def is_empty(iterable) -> bool:
     return next(iterable, None) is None
+
+
+def serialize_json(data: dict, fernet: Fernet) -> bytes:
+    """Serializes and encrypts a dictionary in JSON format."""
+    return fernet.encrypt(json.dumps(data).encode())
+
+
+def deserialize_json(data: bytes, fernet: Fernet) -> dict:
+    return json.loads(fernet.decrypt(data))

@@ -1,16 +1,18 @@
 """Connection screen login and signup"""
+import base64
 import socket
 import sys
 
 import pygame.transform
+from cryptography.fernet import Fernet
 
-from common.utils import is_valid_ip
+from common.utils import is_valid_ip, deserialize_json
 # to import from a dir
-from login import do_ecdh, get_login_response, send_credentials
+from login import do_ecdh, send_credentials
 
 sys.path.append('../')
 from consts import *
-from common.consts import NODE_PORT, SCREEN_HEIGHT, ROOT_PORT
+from common.consts import NODE_PORT, SCREEN_HEIGHT, ROOT_PORT, RECV_CHUNK
 from graphics import *
 
 
@@ -155,16 +157,22 @@ class ConnectScreen:
                 print(f"Couldn't connect to ip {ip}")
                 return
             self.shared_key = do_ecdh(conn)
-            print(f"Did ecdh, key={self.shared_key}")
-            send_credentials(username, password, conn, self.shared_key, self.sock.getsockname(), is_login)
-            ip, self.initial_pos, user_uuid, success, error_message = get_login_response(conn)
-            print(self.initial_pos)
-            self.game_server_addr = (ip, NODE_PORT)
-            self.received_player_uuid = user_uuid
+            fernet = Fernet(base64.urlsafe_b64encode(self.shared_key))
+            send_credentials(username, password, conn, fernet, self.sock.getsockname(), is_login)
 
-            if not success:
-                print(error_message)
-                self.sock = None
+            try:
+                data = deserialize_json(conn.recv(RECV_CHUNK), fernet)
+                success = data["success"]
+                if not success:
+                    print(data["error"])
+                    self.sock = None
+                    return
+
+                self.game_server_addr = (data["ip"], NODE_PORT)
+                self.received_player_uuid = data["uuid"]
+                self.initial_pos = data["initial_pos"]
+            except KeyError as e:
+                print(f"Invalid message received, {e=}")
 
 
 class ConnectButton(Button):
