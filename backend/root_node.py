@@ -1,4 +1,6 @@
 """Login/Load-balancing server"""
+import base64
+import json
 import logging
 import queue
 import select
@@ -12,6 +14,8 @@ from typing import List, Iterable
 
 # to import from a dir
 import numpy as np
+
+from backend.networks.networking import S2SMessageType
 
 sys.path.append('../')
 from database import DB_PASS
@@ -77,7 +81,7 @@ class EntryNode:
             recipients, msg = self.server_send_queue.get()
             logging.info(f"[action] sending {msg=} to {recipients=}")
             for server in recipients:
-                server.conn.send(msg)
+                server.conn.send(json.dumps(msg).encode())
 
     def receiver(self):
         """Receives data from servers and puts in the queue."""
@@ -98,9 +102,8 @@ class EntryNode:
             logging.info(f"[update] client with {addr=} tries to login/signup")
             shared_key = do_ecdh(conn)
             data = conn.recv(CREDENTIALS_PACKET_SIZE)
-            game_addr, data = deserialize_addr(data[:ADDR_HEADER_SIZE]), data[ADDR_HEADER_SIZE:]
+            client_game_addr, data = deserialize_addr(data[:ADDR_HEADER_SIZE]), data[ADDR_HEADER_SIZE:]
             is_login, username, password = parse_credentials(shared_key, data)
-            print(f"{game_addr=} {is_login=} {username=} {password=}")
             initial_pos = self.get_initial_position()
             if is_login:
                 success, error_msg, user_uuid = login(username, password, self.db_conn)
@@ -121,9 +124,12 @@ class EntryNode:
                 struct.pack(REDIRECT_FORMAT, user_uuid.encode(), *initial_pos, target_node.ip.encode(),
                             success, len(error_msg)) + error_msg.encode())
 
-            self.server_send_queue.put(([target_node], shared_key + user_uuid.encode() +
-                                        struct.pack(POSITION_FORMAT, *initial_pos) +
-                                        serialize_ip(game_addr[0]) + struct.pack(">l", game_addr[1])))
+            self.server_send_queue.put(([target_node], {"id": S2SMessageType.PLAYER_LOGIN,
+                                                        "key": base64.b64encode(shared_key).decode(),
+                                                        "uuid": user_uuid,
+                                                        "initial_pos": initial_pos,
+                                                        "client_ip": client_game_addr[0],
+                                                        "client_port": client_game_addr[1]}))
 
             conn.close()
 

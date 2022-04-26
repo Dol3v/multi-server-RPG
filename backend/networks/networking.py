@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import socket
+from enum import IntEnum, auto
 from typing import Iterable
 
 from cryptography.exceptions import InvalidKey
@@ -11,7 +12,12 @@ from backend.logic.entities import Entity, Player
 from backend.logic.entities_management import EntityManager
 from common.consts import Pos, RECV_CHUNK
 from common.message_type import MessageType
-from common.utils import parse, send_public_key, get_shared_key, deserialize_public_key
+from common.utils import send_public_key, get_shared_key, deserialize_public_key
+
+
+class S2SMessageType(IntEnum):
+    """Types of messages that are sent between servers."""
+    PLAYER_LOGIN = auto()
 
 
 def do_ecdh(conn: socket.socket) -> None | bytes:

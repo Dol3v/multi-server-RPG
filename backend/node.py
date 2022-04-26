@@ -1,3 +1,4 @@
+import json
 import logging
 import queue
 import sys
@@ -22,7 +23,7 @@ from consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
 from backend.logic.entities import *
 from backend.networks.networking import parse_message_from_client, \
-    generate_routine_message
+    generate_routine_message, S2SMessageType
 
 
 class Node:
@@ -138,23 +139,35 @@ class Node:
                 case _:
                     logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
-    def root_handler(self):
-        """Receive new clients from the root infinitely
-        TODO: make this function use networking.py
-        NOTE: add msg_type
+    def handle_player_prelogin(self, data: dict):
+        """Handles the root message of a player that is going to join.
+
+        :param data: data of message sent from root
         """
-        while True:
-            data = self.root_sock.recv(RECV_CHUNK)
-            shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
-            initial_pos = struct.unpack(POSITION_FORMAT, data[SHARED_KEY_SIZE + UUID_SIZE:SHARED_KEY_SIZE +
-                                                                                          UUID_SIZE + INT_SIZE * 2])
-            ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE + INT_SIZE * 2:])
+        try:
+            shared_key, player_uuid, initial_pos, ip, port = base64.b64decode(data["key"]), data["uuid"], \
+                                                             data["initial_pos"], data["client_ip"], data["client_port"]
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
 
             self.should_join.add(player_uuid)
             self.entities_manager.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                                 fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
                                                                 pos=initial_pos)
+        except KeyError as e:
+            logging.warning(f"[error] invalid message from root message, {data=}, {e=}")
+
+    def root_handler(self):
+        """Receive new clients from the root infinitely
+        NOTE: add msg_type
+        """
+        while True:
+            try:
+                data = json.loads(self.root_sock.recv(RECV_CHUNK))
+                match S2SMessageType(data["id"]):
+                    case S2SMessageType.PLAYER_LOGIN:
+                        self.handle_player_prelogin(data)
+            except KeyError | ValueError as e:
+                logging.warning(f"[error] prelogin message from root has an invalid format, {data=}, {e=}")
 
     def broadcast_clients(self, player_uuid: str):
         """Broadcast clients new messages to each other."""
