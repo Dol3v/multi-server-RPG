@@ -14,7 +14,7 @@ sys.path.append('../../')
 from backend.database.sql_database import SqlDatabase
 from backend.database.database_utils import add_user_to_database, user_in_database, get_user_credentials
 from common.utils import *
-from consts import *
+from backend.consts import *
 
 
 def parse_credentials(shared_key: bytes, data: bytes) -> Tuple[bool, str, bytes] | None:
@@ -89,7 +89,7 @@ def signup(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str, 
     return (True, "", user_uuid) if res else (False, "Server encountered error while adding user to database", None)
 
 
-def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str, str | None]:
+def login(username: str, password_bytes: bytes, db: SqlDatabase) -> Tuple[bool, str, str | None]:
     """
     Verifies that the user's creds match up to existing creds in the database.
     :returns: if the login was successful, returns (True, None). Else, returns (False, err_msg). Also returns the uuid
@@ -101,7 +101,7 @@ def login(username: str, password: bytes, db: SqlDatabase) -> Tuple[bool, str, s
     if not creds:
         return False, "Server encountered error while receiving client data", None
     password_hash, salt, user_uuid = creds
-    return (True, "", user_uuid) if verify_credentials(password_hash, password, salt) else\
+    return (True, "", user_uuid) if verify_credentials(password_hash, password_bytes, salt) else\
         (False, "Password does not match", None)
 
 

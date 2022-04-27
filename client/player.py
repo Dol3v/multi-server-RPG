@@ -6,6 +6,7 @@ import pygame
 from common.consts import SPEED, SCREEN_HEIGHT, SCREEN_WIDTH
 from common.utils import normalize_vec, get_bounding_box
 from items import *
+from weapons import *
 from consts import *
 from graphics import Animation, Inventory
 
@@ -34,9 +35,7 @@ class Player(pygame.sprite.Sprite):
         )
 
         self.rect = self.image.get_rect(center=pos)
-
         self.looking_direction = "RIGHT"
-
         self.direction = pygame.math.Vector2()
         self.speed = SPEED
         self.max_health = MAX_HEALTH
