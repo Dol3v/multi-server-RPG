@@ -1,10 +1,12 @@
 """Grphics utils for login screen and more"""
+import math
 import random
 from typing import List
 
 import pygame
-import math
 
+from client.consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
+from client.items import Item
 from common.consts import SCREEN_WIDTH
 
 
@@ -342,95 +344,88 @@ class ChatBox:
 
 class Inventory:
     def __init__(self):
-        self.size_multiplier = 3
-        self.inv = pygame.image.load("assets/inventory.png")
-        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * self.size_multiplier,
-                                                     self.inv.get_height() * self.size_multiplier))
-        self.starting_x = 8 * self.size_multiplier
-        self.starting_y = 8 * self.size_multiplier
-        self.x_offset = 2 * self.size_multiplier
-        self.y_offest = 2 * self.size_multiplier
+        self.image = pygame.image.load("assets/inventory.png")
+        self.image = pygame.transform.scale(self.image, (self.image.get_width() * INVENTORY_SIZE_MULTIPLIER,
+                                                         self.image.get_height() * INVENTORY_SIZE_MULTIPLIER))
+        self.starting_x = 8 * INVENTORY_SIZE_MULTIPLIER
+        self.starting_y = 8 * INVENTORY_SIZE_MULTIPLIER
+        self.x_offset = 2 * INVENTORY_SIZE_MULTIPLIER
+        self.y_offset = 2 * INVENTORY_SIZE_MULTIPLIER
 
-        self.rows = 4
-        self.columns = 9
-
-        self.icon_size = 16 * self.size_multiplier
-        self.items = [None] * (self.rows * self.columns)
-        self.icon_rects: List[pygame.Rect | None] = [None] * (self.rows * self.columns)
-        self.init_icon_rects()
+        self.items: List[Item | None] = [None] * (INVENTORY_ROWS * INVENTORY_COLUMNS)
+        self.icon_rects: List[pygame.Rect | None] = [None] * (INVENTORY_ROWS * INVENTORY_COLUMNS)
         self.current_hotbar_slot = 0
         self.has_hovered_slot = False
         self.hovered_slot = -1
         self.selected_slot = -1
         self.move = [-1, -1]
-
         self.item_info = ItemInfo(0, 0, self.items[0])
 
+        self.init_icon_rects()
+
     def init_icon_rects(self):
-        for y in range(self.rows):  # Rows
-            for x in range(self.columns):  # Columns
-                index = y * 9 + x
+        for y in range(INVENTORY_ROWS):  # Rows
+            for x in range(INVENTORY_COLUMNS):  # Columns
+                index = y * INVENTORY_COLUMNS + x
                 self.icon_rects[index] = pygame.Rect(
+                    (SCREEN_WIDTH - self.image.get_width()) + self.starting_x + ICON_SIZE * x + self.x_offset * x,
+                    self.starting_y + ICON_SIZE * y + self.y_offset * y,
+                    ICON_SIZE, ICON_SIZE)
 
-                    (SCREEN_WIDTH - self.inv.get_width()) + self.starting_x + self.icon_size * x + self.x_offset * x,
-                    self.starting_y + self.icon_size * y + self.y_offest * y,
-                    self.icon_size, self.icon_size)
-
-    def draw_inventory(self, surface):
-        inv = self.inv.copy()
-        for y in range(self.rows):  # Rows
-            for x in range(self.columns):  # Columns
-                index = y * self.columns + x
+    def draw(self, surface):
+        image = self.image.copy()
+        for y in range(INVENTORY_ROWS):  # Rows
+            for x in range(INVENTORY_COLUMNS):  # Columns
+                index = y * INVENTORY_COLUMNS + x
                 item = self.items[index]
 
                 if self.has_hovered_slot:
                     if index == self.hovered_slot:
                         pygame.draw.rect(surface, (255, 255, 255, 100),
-                                         pygame.Rect((SCREEN_WIDTH - self.inv.get_width()) +
-                                                     self.starting_x + self.icon_size * x + self.x_offset * x,
-                                                     self.starting_y + self.icon_size * y + self.y_offest * y,
-                                                     self.icon_size, self.icon_size))
+                                         pygame.Rect((SCREEN_WIDTH - self.image.get_width()) +
+                                                     self.starting_x + ICON_SIZE * x + self.x_offset * x,
+                                                     self.starting_y + ICON_SIZE * y + self.y_offset * y,
+                                                     ICON_SIZE, ICON_SIZE))
 
-                        if SCREEN_WIDTH > ((SCREEN_WIDTH - self.inv.get_width()) +
-                                           (self.icon_size + self.x_offset) +
-                                           (self.starting_x + self.icon_size * x + self.x_offset * x)
+                        if SCREEN_WIDTH > ((SCREEN_WIDTH - self.image.get_width()) +
+                                           (ICON_SIZE + self.x_offset) +
+                                           (self.starting_x + ICON_SIZE * x + self.x_offset * x)
                                            + self.item_info.width):
                             self.item_info.move_to(
-                                (SCREEN_WIDTH - self.inv.get_width()) +
-                                (self.icon_size + self.x_offset) +
-                                (self.starting_x + self.icon_size * x + self.x_offset * x),
-                                self.starting_y + self.icon_size * y + self.y_offest * y
+                                (SCREEN_WIDTH - self.image.get_width()) +
+                                (ICON_SIZE + self.x_offset) +
+                                (self.starting_x + ICON_SIZE * x + self.x_offset * x),
+                                self.starting_y + ICON_SIZE * y + self.y_offset * y
                             )
                         else:
                             print(self.item_info.width)
                             self.item_info.move_to(
-                                (SCREEN_WIDTH - self.inv.get_width()) +
-                                (self.starting_x + self.icon_size * x + self.x_offset * x) - self.item_info.width,
-                                self.starting_y + self.icon_size * y + self.y_offest * y)
+                                (SCREEN_WIDTH - self.image.get_width()) +
+                                (self.starting_x + ICON_SIZE * x + self.x_offset * x) - self.item_info.width,
+                                self.starting_y + ICON_SIZE * y + self.y_offset * y)
 
                 if index == self.selected_slot:
                     pygame.draw.rect(surface, (100, 200, 50, 100),
-                                     pygame.Rect((SCREEN_WIDTH - self.inv.get_width()) +
-                                                 self.starting_x + self.icon_size * x + self.x_offset * x,
-                                                 self.starting_y + self.icon_size * y + self.y_offest * y,
-                                                 self.icon_size, self.icon_size))
+                                     pygame.Rect((SCREEN_WIDTH - self.image.get_width()) +
+                                                 self.starting_x + ICON_SIZE * x + self.x_offset * x,
+                                                 self.starting_y + ICON_SIZE * y + self.y_offset * y,
+                                                 ICON_SIZE, ICON_SIZE))
 
                 if item:
-                    width_multiplier = self.icon_size / item.icon.get_width()
-                    height_multiplier = self.icon_size / item.icon.get_height()
-                    print(width_multiplier, height_multiplier)
+                    width_multiplier = ICON_SIZE / item.icon.get_width()
+                    height_multiplier = ICON_SIZE / item.icon.get_height()
                     multiplier = min(width_multiplier, height_multiplier)
 
                     icon = pygame.transform.scale(item.icon, (item.icon.get_width() * multiplier,
                                                               item.icon.get_height() * multiplier))
-                    inv.blit(icon, (
-                        (self.starting_x + self.icon_size * x + self.x_offset * x)
-                        + (self.icon_size - icon.get_width()) / 2,
-                        self.starting_y + self.icon_size * y + self.y_offest * y
-                        + (self.icon_size - icon.get_height()) / 2
+                    image.blit(icon, (
+                        (self.starting_x + ICON_SIZE * x + self.x_offset * x)
+                        + (ICON_SIZE - icon.get_width()) / 2,
+                        self.starting_y + ICON_SIZE * y + self.y_offset * y
+                        + (ICON_SIZE - icon.get_height()) / 2
                     ))
-        inv.set_alpha(200)
-        surface.blit(inv, (SCREEN_WIDTH - inv.get_width(), 0))
+        image.set_alpha(200)
+        surface.blit(image, (SCREEN_WIDTH - image.get_width(), 0))
 
         if self.has_hovered_slot and self.items[self.hovered_slot]:
             self.item_info.set_item(self.items[self.hovered_slot])
@@ -454,17 +449,17 @@ class Inventory:
                     if self.selected_slot == -1 and self.items[index]:
                         self.selected_slot = index
                     else:
-                        # Note selected_slot = seleceted slot
+                        # Note selected_slot = selected slot
                         # Note index = new slot
                         self.swap_items(self.selected_slot, index)
                         self.move = [self.selected_slot, index]
                         self.selected_slot = -1
 
-    def set_item_in_slot(self, slot, item):
-        self.items[slot] = item
+    def __setitem__(self, key, value):
+        self.items[key] = value
 
     def get_hotbar_items(self):
-        return self.items[:9]
+        return self.items[:HOTBAR_LENGTH]
 
     def next_hotbar_slot(self):
         hotbar = self.get_hotbar_items()
@@ -513,6 +508,14 @@ class Inventory:
                 self.items[index_two].start_drawing()
 
 
+def add_background(surface, background_color):
+    """Adds a background with a specified background color to a surface."""
+    new_surface = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+    new_surface.fill(background_color)
+    new_surface.blit(surface, (0, 0))
+    return new_surface
+
+
 class ItemInfo:
     def __init__(self, x, y, item):
         self.x = x
@@ -526,13 +529,13 @@ class ItemInfo:
         if self.item != item:
             self.width = 0
             self.item = item
-            self.calculte_width()
+            self.calculate_width()
 
     def move_to(self, x, y):
         self.x = x
         self.y = y
 
-    def calculte_width(self):
+    def calculate_width(self):
         if self.item:
             for line in self.item.description:
                 full_surface = self.small_font.render(line, True, (0, 0, 0), None)
@@ -572,13 +575,7 @@ class ItemInfo:
                                                              (255, 255, 255)
                                                          ))
 
-        surface.blit(self.add_background(display_name_surface, (0, 0, 0, 200)), (self.x, self.y))
-
-    def add_background(self, surface, background_color):
-        new_surface = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
-        new_surface.fill(background_color)
-        new_surface.blit(surface, (0, 0))
-        return new_surface
+        surface.blit(add_background(display_name_surface, (0, 0, 0, 200)), (self.x, self.y))
 
     def generate_surface(self, message: str, font, text_color):
         full_surface = font.render(message, True, text_color, None)

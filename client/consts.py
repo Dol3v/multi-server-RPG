@@ -15,17 +15,26 @@ REGISTER_BUTTON_IMG = "assets/register_btn.png"
 TREE_IMG = "assets/tree.png"
 SWORD_IMG = "assets/items/sword/full.png"
 
-# Game data
+# general game data
 GAME_NAME = "MMORPG Game"
 
 FPS = 60
 TILE_SIZE = 64
 
-# General player data
+# general player data
 SPEED = 5
 ATTACK_COOLDOWN = 250
 MAX_HEALTH = 100
 
+# inventory data
+INVENTORY_ROWS = 4
+INVENTORY_COLUMNS = 9
+INVENTORY_SIZE_MULTIPLIER = 3
+ICON_SIZE = 16 * INVENTORY_SIZE_MULTIPLIER
+
+HOTBAR_LENGTH = INVENTORY_COLUMNS
+
+# weapon data
 weapon_data = {
     'sword':
         {
