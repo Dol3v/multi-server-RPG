@@ -123,7 +123,7 @@ class EntryNode:
             conn.send(serialize_json({"ip": target_node.ip,
                                       "initial_pos": initial_pos,
                                       "uuid": user_uuid,
-                                      "success": False}, fernet))
+                                      "success": True}, fernet))
             self.server_send_queue.put(([target_node], {"id": S2SMessageType.PLAYER_LOGIN,
                                                         "key": base64.b64encode(shared_key).decode(),
                                                         "uuid": user_uuid,

@@ -2,12 +2,6 @@
 import queue
 import sys
 import threading
-from typing import List
-
-from cryptography.fernet import Fernet
-
-import items
-import weapons
 
 # to import from a dir
 sys.path.append('../')
@@ -17,10 +11,8 @@ from common.consts import *
 from networking import *
 from player import Player
 from sprites import PlayerEntity, FollowingCameraGroup, Entity
-from weapons import *
 from items import *
 from map_manager import *
-
 
 
 class Game:
@@ -122,22 +114,21 @@ class Game:
 
         # print(f"{pos=} {health=} {tools=}")
         # for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
-            #     weapon_type = items.get_weapon_type(tool_id)
-            #
-            #     if weapon_type:
-            #         player_weapon = self.player.get_item_in_slot(i)
-            #
-            #         if player_weapon:
-            #             if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
-            #                 weapon = Item(self.visible_sprites, weapon_type, "rare")
-            #                 self.player.remove_item_in_slot(i)
-            #                 self.player.set_item_in_slot(i, weapon)
-            #         else:
-            #             weapon = Item(self.visible_sprites, weapon_type, "rare")
-            #             self.player.set_item_in_slot(i, weapon)
-            #     else:
-            #         self.player.set_item_in_slot(i, None)
-
+        #     weapon_type = items.get_weapon_type(tool_id)
+        #
+        #     if weapon_type:
+        #         player_weapon = self.player.get_item_in_slot(i)
+        #
+        #         if player_weapon:
+        #             if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
+        #                 weapon = Item(self.visible_sprites, weapon_type, "rare")
+        #                 self.player.remove_item_in_slot(i)
+        #                 self.player.set_item_in_slot(i, weapon)
+        #         else:
+        #             weapon = Item(self.visible_sprites, weapon_type, "rare")
+        #             self.player.set_item_in_slot(i, weapon)
+        #     else:
+        #         self.player.set_item_in_slot(i, None)
 
         self.render_entities(entities)
         self.update_player_status(pos, health)

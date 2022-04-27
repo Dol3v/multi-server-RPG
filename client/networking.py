@@ -25,6 +25,6 @@ def generate_client_routine_message(player_uuid: str, seqn: int, x: int, y: int,
         "seqn": seqn,
         "chat": chat_message,
         "dir": player.get_direction_vec(),
-        "slot": player.current_slot,
+        "slot": player.inv,
         "is_attacking": player.attacking
     }, fernet)

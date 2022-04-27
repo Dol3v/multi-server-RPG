@@ -1,14 +1,10 @@
 """Player class..."""
-from typing import List, Tuple
-
-import pygame
+from typing import Tuple
 
 from common.consts import SPEED, SCREEN_HEIGHT, SCREEN_WIDTH
 from common.utils import normalize_vec, get_bounding_box
-from items import *
-from weapons import *
-from consts import *
 from graphics import Animation, Inventory
+from items import *
 
 
 class Player(pygame.sprite.Sprite):
