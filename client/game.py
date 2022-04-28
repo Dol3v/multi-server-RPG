@@ -4,7 +4,10 @@ import sys
 import threading
 
 # to import from a dir
+
 sys.path.append('../')
+
+import items
 
 from graphics import ChatBox
 from common.consts import *
@@ -66,9 +69,9 @@ class Game:
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
         # inventory init
-        self.inv = pygame.image.load("assets/inventory.png")
-        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
-        self.inv.set_alpha(150)
+        self.inventory = pygame.image.load("assets/inventory.png")
+        self.inventory = pygame.transform.scale(self.inventory, (self.inventory.get_width() * 2.5, self.inventory.get_height() * 2.5))
+        self.inventory.set_alpha(150)
 
         self.chat_msg = ""
         self.msg_to_send = ""
@@ -109,26 +112,24 @@ class Game:
         if addr != self.server_addr:
             return
         contents = parse_message(packet, self.fernet)
-        pos, tools, health, entities = tuple(contents["valid_pos"]), contents["tools"], contents["health"], \
-                                       contents["entities"]
+        pos, inventory, health, entities = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
+                                           contents["entities"]
 
-        # print(f"{pos=} {health=} {tools=}")
-        # for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
-        #     weapon_type = items.get_weapon_type(tool_id)
-        #
-        #     if weapon_type:
-        #         player_weapon = self.player.get_item_in_slot(i)
-        #
-        #         if player_weapon:
-        #             if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
-        #                 weapon = Item(self.visible_sprites, weapon_type, "rare")
-        #                 self.player.remove_item_in_slot(i)
-        #                 self.player.set_item_in_slot(i, weapon)
-        #         else:
-        #             weapon = Item(self.visible_sprites, weapon_type, "rare")
-        #             self.player.set_item_in_slot(i, weapon)
-        #     else:
-        #         self.player.set_item_in_slot(i, None)
+        print(f"{pos=} {health=} {inventory=}")
+        for i, tool_id in enumerate(inventory):  # I know its ugly code, but I don't care enough to change it lmao
+            weapon_type = items.get_weapon_type(tool_id)
+            if weapon_type:
+                player_weapon = self.player.get_item_in_slot(i)
+                if player_weapon:
+                    if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
+                        weapon = Item(self.visible_sprites, weapon_type, "rare")
+                        self.player.remove_item_in_slot(i)
+                        self.player.set_item_in_slot(i, weapon)
+                else:
+                    weapon = Item(self.visible_sprites, weapon_type, "rare")
+                    self.player.set_item_in_slot(i, weapon)
+            else:
+                self.player.set_item_in_slot(i, None)
 
         self.render_entities(entities)
         self.update_player_status(pos, health)

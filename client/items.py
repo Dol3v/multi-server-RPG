@@ -3,7 +3,10 @@ from typing import List
 import pygame
 import numpy as np
 
-from consts import *
+try:
+    from client_consts import *
+except ModuleNotFoundError:
+    from client.client_consts import *
 
 
 def get_weapon_type(tool_id: int) -> str | None:
@@ -89,11 +92,6 @@ class Item(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.display_name_info = data["display_name"]
         self.description = data["description"]
-
-        # angle = -(180 - np.rad2deg(np.arctan2(vec[0], vec[1])))
-
-        # self.sword = pygame.transform.rotate(self.sword, angle)
-        # self.image = pygame.transform.rotate(self.image, angle)
 
     def draw_item(self, player):
         vec = player.get_direction_vec()
