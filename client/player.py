@@ -19,9 +19,6 @@ class Player(pygame.sprite.Sprite):
         self.display_surface = display_surface
 
         self.inv = Inventory()
-        self.inv[5] = Item(groups[0], "health_potion", "rare", False, False)
-        self.inv[20] = Item(groups[0], "sword", "rare", False, False)
-        self.inv[25] = Item(groups[0], "shmulik_mahak", "rare", True, False)
 
         self.moving_animation = Animation(
             [pygame.image.load("assets/character/knight/move_0.png"),
