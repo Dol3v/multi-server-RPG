@@ -14,7 +14,7 @@ sys.path.append('../../')
 from backend.database.sql_database import SqlDatabase
 from backend.database.database_utils import add_user_to_database, user_in_database, get_user_credentials
 from common.utils import *
-from backend.consts import *
+from backend.backend_consts import *
 
 
 def parse_credentials(shared_key: bytes, data: bytes) -> Tuple[bool, str, bytes] | None:
