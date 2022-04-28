@@ -5,9 +5,14 @@ from typing import List
 
 import pygame
 
-from client.consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
-from client.items import Item
 from common.consts import SCREEN_WIDTH
+
+try:
+    from client_consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
+    from items import Item
+except ModuleNotFoundError:
+    from client.client_consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
+    from client.items import Item
 
 
 class TextInputBox(pygame.sprite.Sprite):
@@ -358,7 +363,7 @@ class Inventory:
         self.has_hovered_slot = False
         self.hovered_slot = -1
         self.selected_slot = -1
-        self.move = [-1, -1]
+        self.move = -1, -1
         self.item_info = ItemInfo(0, 0, self.items[0])
 
         self.init_icon_rects()
@@ -435,6 +440,7 @@ class Inventory:
         mouse_pos = pygame.mouse.get_pos()
         has_collision_rect = False
         index = 0
+        self.move = -1, -1
         for rect in self.icon_rects:
             if rect.collidepoint(mouse_pos):
                 has_collision_rect = True
@@ -452,7 +458,7 @@ class Inventory:
                         # Note selected_slot = selected slot
                         # Note index = new slot
                         self.swap_items(self.selected_slot, index)
-                        self.move = [self.selected_slot, index]
+                        self.move = self.selected_slot, index
                         self.selected_slot = -1
 
     def __setitem__(self, key, value):
