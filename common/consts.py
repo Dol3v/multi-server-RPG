@@ -6,26 +6,10 @@ from enum import Enum
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 
-INT_SIZE = 4
 UUID_SIZE = 36
-
-# Format 
-MESSAGE_ENDIANESS = ">"
-UUID_FORMAT = f'{UUID_SIZE}s'
-SEQUENCE_FORMAT = 'q'
-POSITION_FORMAT = 'll'
-# Redirect msg
-IP_FORMAT = "15s"
-LOGIN_RESULT_FORMAT = "?l"
-"""success status + error message length"""
-
-REDIRECT_FORMAT = MESSAGE_ENDIANESS + UUID_FORMAT + POSITION_FORMAT + IP_FORMAT + LOGIN_RESULT_FORMAT
 
 # sizes of stuff
 NUM_NODES = 1
-
-# Some defaults
-EMPTY_UUID = "0" * UUID_SIZE
 
 # Useful graphics consts
 CLIENT_HEIGHT = 60

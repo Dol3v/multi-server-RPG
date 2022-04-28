@@ -3,19 +3,20 @@
 import numpy as np
 import pygame
 
-from client import consts
 from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, EntityType
+
+try:
+    import client_consts as consts
+    import graphics
+    import items
+except ModuleNotFoundError:
+    from client import client_consts as consts
+    from client import graphics
+    from client import items
 
 """
 TODO: merge the weapon classes with the Player class
 """
-
-try:
-    import graphics
-    import items
-except ModuleNotFoundError:
-    from client import graphics
-    from client import items
 
 
 class Obstacle(pygame.sprite.Sprite):

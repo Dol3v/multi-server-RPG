@@ -26,9 +26,9 @@ from networks import login, signup
 from networks import do_ecdh
 
 from common.utils import deserialize_json, serialize_json
-from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NUM_NODES, \
+from common.consts import ROOT_IP, ROOT_PORT, Addr, DEFAULT_ADDR, RECV_CHUNK, NUM_NODES, \
     WORLD_WIDTH, WORLD_HEIGHT
-from consts import ROOT_SERVER2SERVER_PORT
+from backend_consts import ROOT_SERVER2SERVER_PORT
 
 
 @dataclass
