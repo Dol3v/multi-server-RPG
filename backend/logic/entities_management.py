@@ -4,7 +4,7 @@ import threading
 import numpy as np
 from pyqtree import Index
 
-from backend.consts import MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, MOB_ERROR_TERM, RANGED_OFFSET, \
+from backend.backend_consts import MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, MOB_ERROR_TERM, RANGED_OFFSET, \
     ARM_LENGTH_MULTIPLIER
 
 from backend.logic.collision import moved_reasonable_distance
@@ -85,7 +85,7 @@ class EntityManager:
                               get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
     def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
-        logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
+        # logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
         self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
         # are both necessary? prob not, but I'm not gonna take the risk
         entity.pos = new_location

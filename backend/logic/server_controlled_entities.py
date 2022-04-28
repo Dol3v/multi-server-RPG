@@ -2,7 +2,7 @@ import logging
 import sched
 import time
 
-from backend.consts import FRAME_TIME
+from backend.backend_consts import FRAME_TIME
 from backend.logic.attacks import attack
 from backend.logic.entities import Combatant
 from backend.logic.entities_management import EntityManager

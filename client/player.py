@@ -1,14 +1,14 @@
 """Player class..."""
-from typing import List, Tuple
+from typing import Tuple
 
-from common.consts import SPEED
-from common.utils import normalize_vec
-from graphics import Animation
-from weapons import *
+from common.consts import SPEED, SCREEN_HEIGHT, SCREEN_WIDTH
+from common.utils import normalize_vec, get_bounding_box
+from graphics import Animation, Inventory
+from items import *
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, obstacle_sprites, map_collision):
+    def __init__(self, pos, groups, obstacle_sprites, map_collision, display_surface):
         super().__init__(*groups)
         # self.image = pygame.image.load(PLAYER_IMG).convert_alpha()
         self.map_collision = map_collision
@@ -16,6 +16,9 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (self.image.get_width() * PLAYER_SIZE_MULTIPLIER,
                                                          self.image.get_height() * PLAYER_SIZE_MULTIPLIER))
         self.original_image = self.image.copy()
+        self.display_surface = display_surface
+
+        self.inv = Inventory()
 
         self.moving_animation = Animation(
             [pygame.image.load("assets/character/knight/move_0.png"),
@@ -38,10 +41,8 @@ class Player(pygame.sprite.Sprite):
 
         self.hand = Hand(groups)
 
-        self.hotbar: List[Weapon | None] = [None] * 6
-        self.current_slot = 0
-        self.hotbar[1] = Weapon(groups, "axe", "rare")
-        self.hotbar[2] = RangeWeapon(groups, obstacle_sprites, self.map_collision, "bow", "rare")
+        self.hotbar: List[Item | None] = self.inv.get_hotbar_items()
+        self.current_hotbar_slot = 0
 
     def input(self):
         if self.is_typing:
@@ -80,15 +81,13 @@ class Player(pygame.sprite.Sprite):
             self.direction.x = 0
 
         if pygame.mouse.get_pressed()[0]:  # Check if the mouse is clicked
-            if not self.hotbar[self.current_slot]:
+            if not self.hotbar[self.current_hotbar_slot]:
                 return
-            weapon = self.hotbar[self.current_slot]
+            item = self.hotbar[self.current_hotbar_slot]
             if not self.attacking:
                 if self.attack_cooldown < pygame.time.get_ticks():
                     self.attacking = True
-                    self.attack_cooldown = pygame.time.get_ticks() + weapon.cooldown
-                    if self.hotbar[self.current_slot]:
-                        self.hotbar[self.current_slot].attack(self)
+                    self.attack_cooldown = pygame.time.get_ticks() + item.cooldown
         else:
             self.attacking = False
 
@@ -105,8 +104,6 @@ class Player(pygame.sprite.Sprite):
             self.rect.y = 0
 
         self.collision('vertical')
-
-    # self.rect.center += self.direction*speed
 
     def collision(self, direction):
         if direction == 'horizontal':
@@ -144,44 +141,25 @@ class Player(pygame.sprite.Sprite):
         half_height = SCREEN_HEIGHT / 2
         return [self.rect.centerx - half_width, self.rect.centery - half_height]
 
-    def draw_main_weapon(self):
-        weapon = self.hotbar[self.current_slot]
-        if weapon:
-            weapon.draw_weapon(self)
+    def draw_main_item(self):
+        item = self.hotbar[self.current_hotbar_slot]
+        if item:
+            print(item)
+            item.draw_item(self)
             self.hand.hide()
         else:
-            self.hand.draw_weapon(self)
+            self.hand.draw_hand(self)
 
-    def set_weapon_in_slot(self, slot, weapon):
-        self.hotbar[slot] = weapon
+    def set_item_in_slot(self, slot, item):
+        self.inv.items[slot] = item
 
-    def get_weapon_in_slot(self, slot) -> Weapon:
-        return self.hotbar[slot]
+    def get_item_in_slot(self, slot) -> Item:
+        return self.inv.items[slot]
 
-    def remove_weapon_in_slot(self, slot):
-        if self.hotbar[slot]:
-            self.hotbar[slot].kill()
-            self.hotbar[slot] = None
-
-    def next_slot(self):
-        current_weapon = self.hotbar[self.current_slot]
-        if current_weapon:
-            current_weapon.hide()
-
-        if self.current_slot + 1 < len(self.hotbar):
-            self.current_slot += 1
-        else:
-            self.current_slot = 0
-
-    def previous_slot(self):
-        current_weapon = self.hotbar[self.current_slot]
-        if current_weapon:
-            current_weapon.hide()
-
-        if self.current_slot - 1 > -1:
-            self.current_slot -= 1
-        else:
-            self.current_slot = len(self.hotbar) - 1
+    def remove_item_in_slot(self, slot):
+        if self.inv.items[slot]:
+            self.inv.items[slot].kill()
+            self.inv.items[slot] = None
 
     def get_direction_vec(self) -> Tuple[float, float]:
         center_x = self.rect.centerx
@@ -232,6 +210,16 @@ class Player(pygame.sprite.Sprite):
     def update(self):
         self.input()
         self.move(self.speed)
-        self.draw_main_weapon()
+        self.update_hotbar()
+        self.draw_main_item()
         self.update_looking_direction()
         self.update_player_animation()
+
+    def update_hotbar(self):
+        self.current_hotbar_slot = self.inv.current_hotbar_slot
+        self.hotbar = self.inv.get_hotbar_items()
+
+    def draw_inventory(self, event_list):
+        if self.is_inv_open:
+            self.inv.draw(self.display_surface)
+            self.inv.update(event_list)

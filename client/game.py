@@ -2,18 +2,19 @@
 import queue
 import sys
 import threading
-from typing import List
-
-import weapons
 
 # to import from a dir
+
 sys.path.append('../')
+
+import items
 
 from graphics import ChatBox
 from common.consts import *
 from networking import *
+from player import Player
 from sprites import PlayerEntity, FollowingCameraGroup, Entity
-from weapons import *
+from items import *
 from map_manager import *
 
 
@@ -41,14 +42,11 @@ class Game:
         self.map.load_collision_objects_to(self.map_collision)
 
         # player init
-        self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+
+        self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision,
+                             self.display_surface)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
-
-        self.map = Map()
-        self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
-                                                                            "assets/map/new_props.tsj")))
-        self.map.load_collision_objects_to(self.map_collision)
 
         self.full_screen = full_screen
         self.running = False
@@ -71,9 +69,9 @@ class Game:
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
         # inventory init
-        self.inv = pygame.image.load("assets/inventory.png")
-        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
-        self.inv.set_alpha(150)
+        self.inventory = pygame.image.load("assets/inventory.png")
+        self.inventory = pygame.transform.scale(self.inventory, (self.inventory.get_width() * 2.5, self.inventory.get_height() * 2.5))
+        self.inventory.set_alpha(150)
 
         self.chat_msg = ""
         self.msg_to_send = ""
@@ -114,39 +112,24 @@ class Game:
         if addr != self.server_addr:
             return
         contents = parse_message(packet, self.fernet)
-        pos, tools, health, entities = tuple(contents["valid_pos"]), contents["tools"], contents["health"], \
-                                       contents["entities"]
+        pos, inventory, health, entities = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
+                                           contents["entities"]
 
-        print(f"{pos=} {health=} {tools=}")
-        for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
-            weapon_type = weapons.get_weapon_type(tool_id)
-
+        print(f"{pos=} {health=} {inventory=}")
+        for i, tool_id in enumerate(inventory):  # I know its ugly code, but I don't care enough to change it lmao
+            weapon_type = items.get_weapon_type(tool_id)
             if weapon_type:
-                player_weapon = self.player.get_weapon_in_slot(i)
-
+                player_weapon = self.player.get_item_in_slot(i)
                 if player_weapon:
                     if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
-
-                        weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
-                        if weapon.is_ranged:
-                            weapon.kill()
-                            weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites, self.map_collision,
-                                                 weapon_type, "rare")
-
-                        self.player.remove_weapon_in_slot(i)
-                        self.player.set_weapon_in_slot(i, weapon)
+                        weapon = Item(self.visible_sprites, weapon_type, "rare")
+                        self.player.remove_item_in_slot(i)
+                        self.player.set_item_in_slot(i, weapon)
                 else:
-                    weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
-                    if weapon.is_ranged:
-                        weapon.kill()
-                        weapon = RangeWeapon((self.visible_sprites,), self.obstacles_sprites, self.map_collision,
-                                             weapon_type, "rare")
-
-                    self.player.set_weapon_in_slot(i, weapon)
+                    weapon = Item(self.visible_sprites, weapon_type, "rare")
+                    self.player.set_item_in_slot(i, weapon)
             else:
-                self.player.set_weapon_in_slot(i, None)
-
-        # update graphics and status
+                self.player.set_item_in_slot(i, None)
 
         self.render_entities(entities)
         self.update_player_status(pos, health)
@@ -223,9 +206,9 @@ class Game:
             for event in event_list:
                 if event.type == pygame.MOUSEWHEEL:
                     if event.y > 0:
-                        self.player.previous_slot()
+                        self.player.inv.previous_hotbar_slot()
                     elif event.y < 0:
-                        self.player.next_slot()
+                        self.player.inv.next_hotbar_slot()
 
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -271,6 +254,7 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
+            self.player.draw_inventory(event_list)
             self.server_update()
             self.can_recv = True
             pygame.display.update()
@@ -301,25 +285,25 @@ class Game:
         for i, weapon in enumerate(self.player.hotbar):
 
             surface = pygame.Surface((32, 32), pygame.SRCALPHA)
-            if i == self.player.current_slot:
+            if i == self.player.current_hotbar_slot:
                 surface.fill((0, 0, 0, 100))
 
             if weapon:
 
                 if weapon.is_ranged:
-                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (0, 0))
+                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (
+                        (surface.get_width() - pygame.transform.rotate(weapon.icon, -90).get_width()) / 2,
+                        (surface.get_height() - pygame.transform.rotate(weapon.icon, -90).get_height()) / 2)
+                                 )
                 else:
-                    surface.blit(weapon.icon, (0, 0))
+                    surface.blit(weapon.icon, (
+                        (surface.get_width() - weapon.icon.get_width()) / 2,
+                        (surface.get_height() - weapon.icon.get_height()) / 2)
+                                 )
             hot_bar.blit(surface, (16 + 36 * i, 18))
             # (16 + 36 * i, 18)
 
         self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))
-
-    def draw_inventory(self):
-        if self.player.is_inv_open:
-            x = SCREEN_WIDTH - self.inv.get_width()
-            y = 0
-            self.display_surface.blit(self.inv, (x, y))
 
     def draw_map(self):
         for layer in self.map.layers:

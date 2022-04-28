@@ -19,7 +19,7 @@ sys.path.append('../')
 from logic.entities_management import EntityManager
 from common.consts import *
 from common.utils import *
-from consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
+from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
 from backend.logic.entities import *
 from backend.networks.networking import parse_message_from_client, \
@@ -85,9 +85,12 @@ class Node:
     def routine_message_handler(self, player_uuid: str, contents: dict):
         """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
         try:
-            player_pos, seqn, chat, attack_dir, slot_index, attacked = tuple(contents["pos"]), contents["seqn"], \
-                                                                       contents["chat"], contents["dir"], contents[
-                                                                           "slot"], contents["is_attacking"]
+            player_pos, seqn, chat, attack_dir, slot_index, attacked, did_swap = tuple(contents["pos"]), contents["seqn"], \
+                                        contents["chat"], contents["dir"], contents["slot"], contents["is_attacking"], \
+                                        contents["did_swap"]
+            swap_indices = (-1, -1)
+            if did_swap:
+                swap_indices = contents["swap"]
         except KeyError:
             logging.warning(f"[security] invalid message given by {player_uuid=}")
             return
@@ -100,6 +103,7 @@ class Node:
             return
 
         player = self.entities_manager.players[player_uuid]
+        logging.debug(f"{player=} sent a routine message")
         if seqn <= player.last_updated != 0:
             logging.info(f"Got outdated packet from {player_uuid=}")
             return
@@ -108,9 +112,12 @@ class Node:
         player.new_message = chat
         secure_pos = self.update_location(player_pos, seqn, player)
 
+        if did_swap:
+            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]],\
+                                                                                   player.inventory[swap_indices[0]]
         player.slot = slot_index
         if attacked:
-            attack(self.entities_manager, player, player.tools[player.slot])
+            attack(self.entities_manager, player, player.hotbar[player.slot])
 
         # self.broadcast_clients(player.uuid)
         self.update_client(player.uuid, secure_pos)
@@ -124,7 +131,6 @@ class Node:
             if not data:
                 continue
             try:
-                print(data)
                 message_type = MessageType(data["contents"]["id"])
             except KeyError as e:
                 logging.warning(f"[security] invalid message, no id present {data=}, {e=}")
@@ -206,5 +212,5 @@ def create_map():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
     Node(NODE_PORT)

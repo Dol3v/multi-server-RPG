@@ -4,14 +4,13 @@ import sys
 
 sys.path.append('../')
 from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
-from common.utils import get_random_port
-
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 import pygame
 import game
 import connect_screen
-import consts
+from client_consts import GAME_NAME, PLAYER_IMG
+
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 
 def init_pygame() -> pygame.Surface:
@@ -20,8 +19,8 @@ def init_pygame() -> pygame.Surface:
     """
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption(consts.GAME_NAME)
-    pygame.display.set_icon(pygame.image.load(consts.PLAYER_IMG))
+    pygame.display.set_caption(GAME_NAME)
+    pygame.display.set_icon(pygame.image.load(PLAYER_IMG))
 
     return screen
 

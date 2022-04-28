@@ -6,6 +6,7 @@ from typing import List
 
 from cryptography.fernet import Fernet
 
+from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS, HOTBAR_LENGTH
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
     PROJECTILE_TTL, EntityType
 
@@ -44,12 +45,17 @@ class Player(Combatant):
     addr: Addr = ("127.0.0.1", 10000)
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
-    tools: List = field(default_factory=lambda: [SWORD, AXE, BOW, EMPTY_SLOT, EMPTY_SLOT, EMPTY_SLOT])
-    fernet: Fernet = None
+    inventory: List[int] = field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
+                                 for _ in range(INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
+    fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
+    @property
+    def hotbar(self):
+        return self.inventory[:HOTBAR_LENGTH]
+
     def serialize(self) -> dict:
-        return super().serialize() | {"tool": self.tools[self.slot]}
+        return super().serialize() | {"tool": self.hotbar[self.slot]}
 
 
 @dataclass

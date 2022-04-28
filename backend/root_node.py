@@ -26,9 +26,9 @@ from networks import login, signup
 from networks import do_ecdh
 
 from common.utils import deserialize_json, serialize_json
-from common.consts import ROOT_IP, ROOT_PORT, Addr, REDIRECT_FORMAT, DEFAULT_ADDR, RECV_CHUNK, EMPTY_UUID, NUM_NODES, \
+from common.consts import ROOT_IP, ROOT_PORT, Addr, DEFAULT_ADDR, RECV_CHUNK, NUM_NODES, \
     WORLD_WIDTH, WORLD_HEIGHT
-from consts import ROOT_SERVER2SERVER_PORT
+from backend_consts import ROOT_SERVER2SERVER_PORT
 
 
 @dataclass
@@ -123,7 +123,7 @@ class EntryNode:
             conn.send(serialize_json({"ip": target_node.ip,
                                       "initial_pos": initial_pos,
                                       "uuid": user_uuid,
-                                      "success": False}, fernet))
+                                      "success": True}, fernet))
             self.server_send_queue.put(([target_node], {"id": S2SMessageType.PLAYER_LOGIN,
                                                         "key": base64.b64encode(shared_key).decode(),
                                                         "uuid": user_uuid,

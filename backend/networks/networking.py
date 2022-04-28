@@ -56,5 +56,5 @@ def craft_message(message_type: MessageType, message_contents: dict, fernet: Fer
 def generate_routine_message(valid_pos: Pos, player: Player, sent_entities: Iterable[Entity]) -> bytes:
     return craft_message(MessageType.ROUTINE_SERVER, {"valid_pos": valid_pos,
                                                       "health": player.health,
-                                                      "tools": player.tools} | serialize_entity_list(sent_entities),
+                                                      "inventory": player.inventory} | serialize_entity_list(sent_entities),
                          player.fernet)

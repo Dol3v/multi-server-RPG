@@ -11,7 +11,7 @@ from common.utils import is_valid_ip, deserialize_json
 from login import do_ecdh, send_credentials
 
 sys.path.append('../')
-from consts import *
+from client_consts import *
 from common.consts import NODE_PORT, SCREEN_HEIGHT, ROOT_PORT, RECV_CHUNK
 from graphics import *
 
