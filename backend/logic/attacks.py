@@ -1,8 +1,8 @@
 import logging
 import time
 
-from backend.consts import FRAME_TIME, WEAPON_DATA
-from backend.logic.entities import Combatant, Projectile
+from backend.backend_consts import FRAME_TIME, WEAPON_DATA
+from backend.logic.entities import Combatant, Projectile, Player
 from backend.logic.entities_management import EntityManager
 from common.consts import MIN_HEALTH, ARROW_OFFSET_FACTOR, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, EntityType
 
@@ -18,8 +18,8 @@ def melee_attack(entities_manager: EntityManager, attacker: Combatant, weapon_da
             attackable.health -= weapon_data['damage']
             if attackable.health <= MIN_HEALTH:
                 entities_manager.remove_entity(attackable, kind)
-                logging.debug(f"[debug] killed {attackable=}")
-            logging.debug(f"Updated entity health to {attackable.health}")
+                logging.info(f"killed {attackable=}")
+            logging.info(f"Updated entity health to {attackable.health}")
 
 
 def ranged_attack(entities_manager: EntityManager, attacker: Combatant, weapon_data: dict):
@@ -47,8 +47,11 @@ def attack(entities_manager: EntityManager, attacker: Combatant, weapon: int):
 
     if attacker.uuid in entities_manager.players.keys():
         logging.debug("[debug] player is attacking")
-    weapon_data = WEAPON_DATA[weapon]
-
+    try:
+        weapon_data = WEAPON_DATA[weapon]
+    except KeyError:
+        # if the player tried to attack using a non-weapon. just return
+        return
     if attacker.current_cooldown != -1:
         if attacker.current_cooldown + attacker.last_time_attacked > (new := time.time()):
             return
