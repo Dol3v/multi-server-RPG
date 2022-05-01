@@ -8,20 +8,20 @@ from pyqtree import Index
 
 # to import from a dir
 # from backend.logic.attacks import attack
-from backend.logic.server_controlled_entities import server_entities_handler
-from client.map_manager import Map, Layer, TilesetData
 from common.message_type import MessageType
 
 sys.path.append('../')
-
-from logic.entities_management import EntityManager
+import logic.entities_management as m
+from backend.logic.entities import *
 from common.consts import *
 from common.utils import *
 from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
-from backend.logic.entities import *
 from backend.networks.networking import parse_message_from_client, \
     generate_routine_message, S2SMessageType
+
+from backend.logic.server_controlled_entities import server_entities_handler
+from client.map_manager import Map, Layer, TilesetData
 
 
 class Node:
@@ -47,7 +47,7 @@ class Node:
         self.died_clients: Set[str] = set()
         self.should_join: Set[str] = set()
 
-        self.entities_manager = EntityManager(create_map())
+        self.entities_manager = m.EntityManager(create_map())
         # Starts the node
         self.run()
 

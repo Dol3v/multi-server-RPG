@@ -2,8 +2,8 @@ import logging
 import sched
 import time
 
+import backend.logic.entities as e
 from backend.backend_consts import FRAME_TIME
-from backend.logic.entities import Combatant
 from backend.logic.entities_management import EntityManager
 from common.consts import EntityType, MIN_HEALTH, PROJECTILE_SPEED, MOB_SPEED
 
@@ -38,7 +38,7 @@ def update_projectiles(entities_manager: EntityManager):
                     if kind == EntityType.ARROW:
                         continue
                     if kind == EntityType.PLAYER or kind == EntityType.MOB:
-                        combatant: Combatant = entities_manager.entities[identifier]
+                        combatant: e.Combatant = entities_manager.entities[identifier]
                         logging.info(f"Projectile {projectile} hit {combatant}")
                         should_remove = True
                         combatant.health -= projectile.damage
@@ -54,9 +54,10 @@ def update_projectiles(entities_manager: EntityManager):
 
             entities_manager.update_entity_location(projectile,
                                                     (
-                                                    projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
-                                                    projectile.pos[1] + int(
-                                                        PROJECTILE_SPEED * projectile.direction[1])),
+                                                        projectile.pos[0] + int(
+                                                            PROJECTILE_SPEED * projectile.direction[0]),
+                                                        projectile.pos[1] + int(
+                                                            PROJECTILE_SPEED * projectile.direction[1])),
                                                     EntityType.ARROW)
     for projectile in to_remove:
         entities_manager.remove_entity(projectile, EntityType.ARROW)
