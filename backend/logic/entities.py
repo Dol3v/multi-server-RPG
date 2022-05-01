@@ -2,10 +2,11 @@ import abc
 import dataclasses
 import uuid as uuid
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Iterable, NamedTuple
 
 from cryptography.fernet import Fernet
 
+from backend.logic.entities_management import EntityManager
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS, HOTBAR_LENGTH
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
     PROJECTILE_TTL, EntityType
@@ -24,6 +25,35 @@ class Entity(abc.ABC):
                 "pos": self.pos,
                 "dir": self.direction,
                 "uuid": self.uuid}
+
+
+class CanHit(abc.ABC):
+    """An interface for game objects that can hit others, such as weapons and projectiles."""
+
+    @abc.abstractmethod
+    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+        """Handles a hit between self and other objects.
+
+        :param hit_objects: objects that were hit by self
+        :param manager: entity manager"""
+        ...
+
+
+# class TickInfo(NamedTuple):
+#     """Info describing events that occurred to a server-controlled entity during a tick."""
+#     should_remove: bool
+
+
+class ServerControlled(Entity, abc.ABC):
+    """An abstract class for server controlled objects, i.e., objects with server-controlled
+    movement and general behaviour such as mobs and projectiles."""
+
+    @abc.abstractmethod
+    def advance_per_tick(self, manager: EntityManager) -> bool:
+        """Advances the object per game tick: calculates collisions and updates stats locally (not in the manager).
+
+        :returns: whether the entity should be removed from the game"""
+        ...
 
 
 @dataclass
@@ -59,14 +89,20 @@ class Player(Combatant):
 
 
 @dataclass
-class Projectile(Entity):
+class Projectile(ServerControlled, CanHit):
     damage: int = 0
     ttl: int = PROJECTILE_TTL
     kind: int = EntityType.ARROW
 
+    def advance_per_tick(self, manager: EntityManager) -> bool:
+        pass
+
+    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+        pass
+
 
 @dataclass
-class Mob(Combatant):
+class Mob(Combatant, ServerControlled):
     weapon: int = SWORD
     on_player: bool = False
     kind: int = EntityType.MOB
@@ -74,6 +110,5 @@ class Mob(Combatant):
     def serialize(self) -> dict:
         return super().serialize() | {"weapon": self.weapon}
 
-
-ServerControlled = Projectile | Mob
-"""Entity with server-controlled movements and actions"""
+    def advance_per_tick(self, manager: EntityManager) -> bool:
+        pass
