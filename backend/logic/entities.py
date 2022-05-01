@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+import logging
 import uuid as uuid
 from dataclasses import dataclass, field
 from typing import List, Iterable, NamedTuple
@@ -9,7 +10,7 @@ from cryptography.fernet import Fernet
 from backend.logic.entities_management import EntityManager
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS, HOTBAR_LENGTH
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
-    PROJECTILE_TTL, EntityType
+    PROJECTILE_TTL, EntityType, MIN_HEALTH
 
 
 @dataclass
@@ -57,6 +58,19 @@ class ServerControlled(Entity, abc.ABC):
 
 
 @dataclass
+class Item:
+    """An in-game item"""
+    type: int
+
+    def on_click(self, clicked_by: Entity, manager: EntityManager):
+        """Handles a click on the item.
+
+        :param clicked_by: entity who clicked on the item
+        :param manager: entity manager"""
+        ...
+
+
+@dataclass
 class Combatant(Entity):
     attacking_direction: Dir = DEFAULT_DIR
     is_attacking: bool = False
@@ -66,6 +80,32 @@ class Combatant(Entity):
 
     def serialize(self) -> dict:
         return super().serialize() | {"is_attacking": self.is_attacking}
+
+
+@dataclass
+class Weapon(Item):
+    """An in-game weapon."""
+    cooldown: int
+    damage: int
+
+    def on_click(self, clicked_by: Combatant, manager: EntityManager):
+        ...
+
+
+@dataclass
+class MeleeWeapon(Weapon):
+    melee_attack_range: int
+
+    def on_click(self, clicked_by: Combatant, manager: EntityManager):
+        in_range = manager.entities_in_melee_attack_range(clicked_by, self.melee_attack_range)
+        for kind, attackable in in_range:
+            if kind == EntityType.MOB == clicked_by.kind:
+                continue  # mobs shouldn't attack mobs
+            attackable.health -= self.damage
+            if attackable.health <= MIN_HEALTH:
+                manager.remove_entity(attackable, kind)
+                logging.info(f"killed {attackable=}")
+            logging.info(f"Updated entity health to {attackable.health}")
 
 
 @dataclass
@@ -102,7 +142,7 @@ class Projectile(ServerControlled, CanHit):
 
 
 @dataclass
-class Mob(Combatant, ServerControlled):
+class Mob(Combatant, ServerControlled, CanHit):
     weapon: int = SWORD
     on_player: bool = False
     kind: int = EntityType.MOB
@@ -111,4 +151,7 @@ class Mob(Combatant, ServerControlled):
         return super().serialize() | {"weapon": self.weapon}
 
     def advance_per_tick(self, manager: EntityManager) -> bool:
+        pass
+
+    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
         pass
