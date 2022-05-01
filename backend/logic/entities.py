@@ -1,16 +1,18 @@
 import abc
 import dataclasses
 import logging
+import time
 import uuid as uuid
 from dataclasses import dataclass, field
-from typing import List, Iterable, NamedTuple
+from typing import List, Iterable, NamedTuple, Type
 
 from cryptography.fernet import Fernet
 
+from backend.backend_consts import FRAME_TIME
 from backend.logic.entities_management import EntityManager
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS, HOTBAR_LENGTH
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
-    PROJECTILE_TTL, EntityType, MIN_HEALTH
+    PROJECTILE_TTL, EntityType, MIN_HEALTH, ARROW_OFFSET_FACTOR, PROJECTILE_HEIGHT, PROJECTILE_WIDTH
 
 
 @dataclass
@@ -88,8 +90,15 @@ class Weapon(Item):
     cooldown: int
     damage: int
 
+    @abc.abstractmethod
     def on_click(self, clicked_by: Combatant, manager: EntityManager):
         ...
+
+    def use_to_attack(self, attacker: Combatant, manager: EntityManager):
+        """Attack using this weapon."""
+        self.on_click(attacker, manager)
+        attacker.last_time_attacked = time.time()
+        attacker.current_cooldown = self.cooldown * FRAME_TIME
 
 
 @dataclass
@@ -105,7 +114,38 @@ class MeleeWeapon(Weapon):
             if attackable.health <= MIN_HEALTH:
                 manager.remove_entity(attackable, kind)
                 logging.info(f"killed {attackable=}")
-            logging.info(f"Updated entity health to {attackable.health}")
+            logging.info(f"updated entity health to {attackable.health}")
+
+
+@dataclass
+class Projectile(ServerControlled, CanHit):
+    damage: int = 0
+    ttl: int = PROJECTILE_TTL
+    kind: int = EntityType.ARROW
+    width: int = PROJECTILE_WIDTH
+    height: int = PROJECTILE_HEIGHT
+
+    def advance_per_tick(self, manager: EntityManager) -> bool:
+        pass
+
+    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+        pass
+
+
+@dataclass
+class RangedWeapon(Weapon):
+    projectile_class: Type[Projectile]
+    """Projectile type to be shot. Can be any class which inherits from `Projectile`."""
+
+    def on_click(self, clicked_by: Combatant, manager: EntityManager):
+        projectile = self.projectile_class(
+            pos=(int(clicked_by.pos[0] + ARROW_OFFSET_FACTOR * clicked_by.attacking_direction[0]),
+                 int(clicked_by.pos[1] + ARROW_OFFSET_FACTOR * clicked_by.attacking_direction[1])))
+        manager.add_entity(projectile.kind, projectile.uuid, projectile.pos, projectile.height,
+                           projectile.width)
+        with manager.projectile_lock:
+            manager.projectiles[projectile.uuid] = projectile
+            logging.info(f"added projectile {projectile}")
 
 
 @dataclass
@@ -116,7 +156,8 @@ class Player(Combatant):
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
     inventory: List[int] = field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
-                                 for _ in range(INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
+                                                                              for _ in range(
+            INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
@@ -126,19 +167,6 @@ class Player(Combatant):
 
     def serialize(self) -> dict:
         return super().serialize() | {"tool": self.hotbar[self.slot]}
-
-
-@dataclass
-class Projectile(ServerControlled, CanHit):
-    damage: int = 0
-    ttl: int = PROJECTILE_TTL
-    kind: int = EntityType.ARROW
-
-    def advance_per_tick(self, manager: EntityManager) -> bool:
-        pass
-
-    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
-        pass
 
 
 @dataclass
