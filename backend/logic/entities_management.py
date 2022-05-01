@@ -12,17 +12,17 @@ from common.consts import WORLD_WIDTH, WORLD_HEIGHT, MOB_COUNT, Pos, EntityType,
     CLIENT_HEIGHT, CLIENT_WIDTH, BOW, EMPTY_SLOT, DEFAULT_DIR, \
     SCREEN_HEIGHT, SCREEN_WIDTH, Dir
 from common.utils import get_entity_bounding_box, is_empty, normalize_vec, get_bounding_box
-from backend.logic.entities import Projectile, Player, Mob, Entity, Combatant
+import backend.logic.entities as e
 from collections import defaultdict
-from typing import Dict, Iterable, Tuple, Any
+from typing import Dict, Iterable, Tuple
 
 
 class EntityManager:
     """Use to control and access all game entities."""
     def __init__(self, spindex: Index):
-        self.players: Dict[str, Player] = {}
-        self.mobs: Dict[str, Mob] = {}
-        self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
+        self.players: Dict[str, e.Player] = {}
+        self.mobs: Dict[str, e.Mob] = {}
+        self.projectiles: defaultdict[str, e.Projectile] = defaultdict(lambda: e.Projectile())
 
         self.spindex = spindex
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
@@ -34,7 +34,7 @@ class EntityManager:
         self.generate_mobs()
 
     @property
-    def entities(self) -> Dict[str, Entity]:
+    def entities(self) -> Dict[str, e.Entity]:
         return self.players | self.mobs | self.projectiles
 
     def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: int) -> Iterable[Tuple[int, str]]:
@@ -43,14 +43,14 @@ class EntityManager:
             get_entity_bounding_box(pos, kind)))
 
     def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> \
-            list[tuple[EntityType, Combatant]]:
+            list[tuple[EntityType, e.Combatant]]:
         return list(map(lambda data: (data[0], self.entities[data[1]]),
                         filter(lambda data: data[1] != entity_uuid and data[0] != EntityType.ARROW and
                                             data[0] != EntityType.OBSTACLE,
                                self.spindex.intersect(bbox))))
 
-    def entities_in_melee_attack_range(self, entity: Combatant, melee_range: int) \
-            -> list[tuple[EntityType, Combatant]]:
+    def entities_in_melee_attack_range(self, entity: e.Combatant, melee_range: int) \
+            -> list[tuple[EntityType, e.Combatant]]:
         """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
         and close enough)."""
         weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
@@ -77,14 +77,14 @@ class EntityManager:
 
         return entity_data[0], entity.uuid.encode(), *entity.pos, *direction, tool_id
 
-    def entities_in_rendering_range(self, entity: Player) -> Iterable[Entity]:
+    def entities_in_rendering_range(self, entity: e.Player) -> Iterable[e.Entity]:
         """Returns all players that are within render distance of each other."""
         return map(lambda data: self.entities[data[1]],
                    filter(lambda data: data[1] != entity.uuid and data[0] != EntityType.OBSTACLE,
                           self.spindex.intersect(
                               get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
 
-    def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
+    def update_entity_location(self, entity: e.Entity, new_location: Pos, kind: int):
         # logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
         self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
         # are both necessary? prob not, but I'm not gonna take the risk
@@ -92,7 +92,7 @@ class EntityManager:
         self.entities[entity.uuid].pos = new_location
         self.spindex.insert((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
 
-    def remove_entity(self, entity: Entity, kind: int):
+    def remove_entity(self, entity: e.Entity, kind: int):
         match kind:
             case EntityType.PLAYER:
                 # TODO: update client
@@ -115,7 +115,7 @@ class EntityManager:
         self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
 
     @staticmethod
-    def get_mob_stop_distance(mob: Mob) -> float:
+    def get_mob_stop_distance(mob: e.Mob) -> float:
         return 0.5 * (np.sqrt(BOT_HEIGHT ** 2 + BOT_WIDTH ** 2) + np.sqrt(CLIENT_HEIGHT ** 2 + CLIENT_WIDTH ** 2)) + \
                (RANGED_OFFSET if mob.weapon == BOW else 0)
 
@@ -125,7 +125,7 @@ class EntityManager:
         mapped = list(map(lambda data: self.entities[data[1]].pos, filtered))
         return mapped
 
-    def update_mob_directions(self, mob: Mob):
+    def update_mob_directions(self, mob: e.Mob):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = self.players_in_range(mob.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT)
         mob.direction = -1, -1  # used to reset calculations each iteration
@@ -146,7 +146,7 @@ class EntityManager:
         if mob.direction != (0., 0.):
             mob.direction = dir_x * MOB_SPEED, dir_y * MOB_SPEED
 
-    def invalid_movement(self, entity: Player, player_pos: Pos, seqn: int) -> bool:
+    def invalid_movement(self, entity: e.Player, player_pos: Pos, seqn: int) -> bool:
         """check if a given player movement is valid"""
         return entity.last_updated != -1 and (not moved_reasonable_distance(
             player_pos, entity.pos, seqn - entity.last_updated) or
@@ -171,7 +171,7 @@ class EntityManager:
     def generate_mobs(self):
         """Generate the mobs object with a random positions"""
         for _ in range(MOB_COUNT):
-            mob = Mob()
+            mob = e.Mob()
             mob.pos = self.get_available_position(EntityType.MOB)
             mob.weapon = 1  # random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
             self.mobs[mob.uuid] = mob

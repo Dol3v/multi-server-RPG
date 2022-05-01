@@ -4,12 +4,12 @@ import logging
 import time
 import uuid as uuid
 from dataclasses import dataclass, field
-from typing import List, Iterable, NamedTuple, Type
+from typing import List, Iterable, Type
 
 from cryptography.fernet import Fernet
 
 from backend.backend_consts import FRAME_TIME
-from backend.logic.entities_management import EntityManager
+from backend.logic import entities_management
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS, HOTBAR_LENGTH
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
     PROJECTILE_TTL, EntityType, MIN_HEALTH, ARROW_OFFSET_FACTOR, PROJECTILE_HEIGHT, PROJECTILE_WIDTH
@@ -34,7 +34,7 @@ class CanHit(abc.ABC):
     """An interface for game objects that can hit others, such as weapons and projectiles."""
 
     @abc.abstractmethod
-    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+    def on_hit(self, hit_objects: Iterable[Entity], manager: entities_management.EntityManager):
         """Handles a hit between self and other objects.
 
         :param hit_objects: objects that were hit by self
@@ -52,7 +52,7 @@ class ServerControlled(Entity, abc.ABC):
     movement and general behaviour such as mobs and projectiles."""
 
     @abc.abstractmethod
-    def advance_per_tick(self, manager: EntityManager) -> bool:
+    def advance_per_tick(self, manager: entities_management.EntityManager) -> bool:
         """Advances the object per game tick: calculates collisions and updates stats locally (not in the manager).
 
         :returns: whether the entity should be removed from the game"""
@@ -64,7 +64,7 @@ class Item:
     """An in-game item"""
     type: int
 
-    def on_click(self, clicked_by: Entity, manager: EntityManager):
+    def on_click(self, clicked_by: Entity, manager: entities_management.EntityManager):
         """Handles a click on the item.
 
         :param clicked_by: entity who clicked on the item
@@ -91,10 +91,10 @@ class Weapon(Item):
     damage: int
 
     @abc.abstractmethod
-    def on_click(self, clicked_by: Combatant, manager: EntityManager):
+    def on_click(self, clicked_by: Combatant, manager: entities_management.EntityManager):
         ...
 
-    def use_to_attack(self, attacker: Combatant, manager: EntityManager):
+    def use_to_attack(self, attacker: Combatant, manager: entities_management.EntityManager):
         """Attack using this weapon."""
         self.on_click(attacker, manager)
         attacker.last_time_attacked = time.time()
@@ -105,7 +105,7 @@ class Weapon(Item):
 class MeleeWeapon(Weapon):
     melee_attack_range: int
 
-    def on_click(self, clicked_by: Combatant, manager: EntityManager):
+    def on_click(self, clicked_by: Combatant, manager: entities_management.EntityManager):
         in_range = manager.entities_in_melee_attack_range(clicked_by, self.melee_attack_range)
         for kind, attackable in in_range:
             if kind == EntityType.MOB == clicked_by.kind:
@@ -125,10 +125,10 @@ class Projectile(ServerControlled, CanHit):
     width: int = PROJECTILE_WIDTH
     height: int = PROJECTILE_HEIGHT
 
-    def advance_per_tick(self, manager: EntityManager) -> bool:
+    def advance_per_tick(self, manager: entities_management.EntityManager) -> bool:
         pass
 
-    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+    def on_hit(self, hit_objects: Iterable[Entity], manager: entities_management.EntityManager):
         pass
 
 
@@ -137,7 +137,7 @@ class RangedWeapon(Weapon):
     projectile_class: Type[Projectile]
     """Projectile type to be shot. Can be any class which inherits from `Projectile`."""
 
-    def on_click(self, clicked_by: Combatant, manager: EntityManager):
+    def on_click(self, clicked_by: Combatant, manager: entities_management.EntityManager):
         projectile = self.projectile_class(
             pos=(int(clicked_by.pos[0] + ARROW_OFFSET_FACTOR * clicked_by.attacking_direction[0]),
                  int(clicked_by.pos[1] + ARROW_OFFSET_FACTOR * clicked_by.attacking_direction[1])))
@@ -178,8 +178,8 @@ class Mob(Combatant, ServerControlled, CanHit):
     def serialize(self) -> dict:
         return super().serialize() | {"weapon": self.weapon}
 
-    def advance_per_tick(self, manager: EntityManager) -> bool:
+    def advance_per_tick(self, manager: entities_management.EntityManager) -> bool:
         pass
 
-    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+    def on_hit(self, hit_objects: Iterable[Entity], manager: entities_management.EntityManager):
         pass

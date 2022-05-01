@@ -1,5 +1,3 @@
-import json
-import logging
 import queue
 import sys
 import threading
