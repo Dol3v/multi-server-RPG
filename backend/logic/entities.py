@@ -4,15 +4,15 @@ import logging
 import time
 import uuid as uuid
 from dataclasses import dataclass, field
-from typing import List, Iterable, Type
+from typing import List, Iterable, Type, Dict
 
 from cryptography.fernet import Fernet
 
+import backend.logic.entities_management as entities_management
 from backend.backend_consts import FRAME_TIME
-from backend.logic import entities_management
-from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS, HOTBAR_LENGTH
+from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, MAX_HEALTH, SWORD, AXE, BOW, DEFAULT_POS_MARK, DEFAULT_DIR, EMPTY_SLOT, Addr, Dir, \
-    PROJECTILE_TTL, EntityType, MIN_HEALTH, ARROW_OFFSET_FACTOR, PROJECTILE_HEIGHT, PROJECTILE_WIDTH
+    PROJECTILE_TTL, EntityType, MIN_HEALTH, ARROW_OFFSET_FACTOR, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAHAK
 
 
 @dataclass
@@ -90,25 +90,25 @@ class Weapon(Item):
     cooldown: int
     damage: int
 
-    @abc.abstractmethod
     def on_click(self, clicked_by: Combatant, manager: entities_management.EntityManager):
-        ...
+        self.use_to_attack(clicked_by, manager)
+        clicked_by.last_time_attacked = time.time()
+        clicked_by.current_cooldown = self.cooldown * FRAME_TIME
 
+    @abc.abstractmethod
     def use_to_attack(self, attacker: Combatant, manager: entities_management.EntityManager):
         """Attack using this weapon."""
-        self.on_click(attacker, manager)
-        attacker.last_time_attacked = time.time()
-        attacker.current_cooldown = self.cooldown * FRAME_TIME
+        ...
 
 
 @dataclass
 class MeleeWeapon(Weapon):
     melee_attack_range: int
 
-    def on_click(self, clicked_by: Combatant, manager: entities_management.EntityManager):
-        in_range = manager.entities_in_melee_attack_range(clicked_by, self.melee_attack_range)
+    def use_to_attack(self, attacker: Combatant, manager: entities_management.EntityManager):
+        in_range = manager.entities_in_melee_attack_range(attacker, self.melee_attack_range)
         for kind, attackable in in_range:
-            if kind == EntityType.MOB == clicked_by.kind:
+            if kind == EntityType.MOB == attackable.kind:
                 continue  # mobs shouldn't attack mobs
             attackable.health -= self.damage
             if attackable.health <= MIN_HEALTH:
@@ -137,15 +137,27 @@ class RangedWeapon(Weapon):
     projectile_class: Type[Projectile]
     """Projectile type to be shot. Can be any class which inherits from `Projectile`."""
 
-    def on_click(self, clicked_by: Combatant, manager: entities_management.EntityManager):
+    def use_to_attack(self, attacker: Combatant, manager: entities_management.EntityManager):
         projectile = self.projectile_class(
-            pos=(int(clicked_by.pos[0] + ARROW_OFFSET_FACTOR * clicked_by.attacking_direction[0]),
-                 int(clicked_by.pos[1] + ARROW_OFFSET_FACTOR * clicked_by.attacking_direction[1])))
+            pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
+                 int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])))
         manager.add_entity(projectile.kind, projectile.uuid, projectile.pos, projectile.height,
                            projectile.width)
         with manager.projectile_lock:
             manager.projectiles[projectile.uuid] = projectile
             logging.info(f"added projectile {projectile}")
+
+
+_item_pool: Dict[int, Item] = {
+    SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
+    AXE: MeleeWeapon(type=SWORD, cooldown=300, damage=40, melee_attack_range=150),
+    BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
+    MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile)
+}
+
+
+def get_item(kind: int) -> Item:
+    return _item_pool[kind]
 
 
 @dataclass
@@ -162,11 +174,11 @@ class Player(Combatant):
     kind: int = EntityType.PLAYER
 
     @property
-    def hotbar(self):
-        return self.inventory[:HOTBAR_LENGTH]
+    def item(self) -> Item:
+        return get_item(self.inventory[self.slot])
 
     def serialize(self) -> dict:
-        return super().serialize() | {"tool": self.hotbar[self.slot]}
+        return super().serialize() | {"tool": self.inventory[self.slot]}
 
 
 @dataclass
@@ -174,6 +186,10 @@ class Mob(Combatant, ServerControlled, CanHit):
     weapon: int = SWORD
     on_player: bool = False
     kind: int = EntityType.MOB
+
+    @property
+    def item(self) -> Item:
+        return get_item(self.weapon)
 
     def serialize(self) -> dict:
         return super().serialize() | {"weapon": self.weapon}

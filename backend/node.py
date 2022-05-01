@@ -7,7 +7,7 @@ from typing import Set
 from pyqtree import Index
 
 # to import from a dir
-from backend.logic.attacks import attack
+# from backend.logic.attacks import attack
 from backend.logic.server_controlled_entities import server_entities_handler
 from client.map_manager import Map, Layer, TilesetData
 from common.message_type import MessageType
@@ -83,7 +83,7 @@ class Node:
     def routine_message_handler(self, player_uuid: str, contents: dict):
         """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
         try:
-            player_pos, seqn, chat, attack_dir, slot_index, attacked, did_swap = tuple(contents["pos"]), contents["seqn"], \
+            player_pos, seqn, chat, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents["seqn"], \
                                         contents["chat"], contents["dir"], contents["slot"], contents["is_attacking"], \
                                         contents["did_swap"]
             swap_indices = (-1, -1)
@@ -114,8 +114,9 @@ class Node:
             player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]],\
                                                                                    player.inventory[swap_indices[0]]
         player.slot = slot_index
-        if attacked:
-            attack(self.entities_manager, player, player.hotbar[player.slot])
+        if clicked_mouse:
+            player.item.on_click(player, self.entities_manager)
+            # attack(self.entities_manager, player, player.hotbar[player.slot])
 
         # self.broadcast_clients(player.uuid)
         self.update_client(player.uuid, secure_pos)
