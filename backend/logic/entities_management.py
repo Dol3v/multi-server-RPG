@@ -18,7 +18,7 @@ from typing import Dict, Iterable, Tuple, Any
 
 
 class EntityManager:
-    """Use to control and access all game entities"""
+    """Use to control and access all game entities."""
     def __init__(self, spindex: Index):
         self.players: Dict[str, Player] = {}
         self.mobs: Dict[str, Mob] = {}
