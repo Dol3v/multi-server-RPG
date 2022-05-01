@@ -3,7 +3,6 @@ import sched
 import time
 
 from backend.backend_consts import FRAME_TIME
-from backend.logic.attacks import attack
 from backend.logic.entities import Combatant
 from backend.logic.entities_management import EntityManager
 from common.consts import EntityType, MIN_HEALTH, PROJECTILE_SPEED, MOB_SPEED
@@ -77,7 +76,8 @@ def update_mobs(entities_manager: EntityManager):
                 mob.direction = 0., 0.  # TODO: refactor a bit into update_mob_directions
 
             if mob.on_player:
-                attack(entities_manager, mob, mob.weapon)
+                mob.item.on_click(mob, entities_manager)
+                # attack(entities_manager, mob, mob.weapon)
             entities_manager.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
                                                           mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
                                                     EntityType.MOB)
