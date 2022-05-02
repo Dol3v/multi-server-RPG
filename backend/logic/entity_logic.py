@@ -68,13 +68,20 @@ class EntityManager:
         the entity from the quadtree."""
         return self._grouped_entities[entity_kind].pop(entity_uuid)
 
+    def add_to_dict(self, entity: Entity):
+        """Adds am element to the manager's dictionaries. Use with caution, as this doesn't add it to the
+        quadtree."""
+        if not self._grouped_entities.get(entity.kind, None):
+            self._grouped_entities[entity.kind] = {}
+        self._grouped_entities[entity.kind][entity.uuid] = entity
+
     def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: EntityType) -> Iterable[Tuple[EntityType, str]]:
         """Get all objects that collide with entity"""
         return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
             get_entity_bounding_box(pos, kind)))
 
     def get_entities_in_range(self, bbox: Tuple[int, int, int, int], *,
-                              entity_filter: Callable[[EntityType, str], bool] = lambda _: True) -> Iterable[Entity]:
+                              entity_filter: Callable[[EntityType, str], bool] = lambda a, b: True) -> Iterable[Entity]:
         """Returns the entities in a given bounding box, for which ``entity_filter`` returns true.
 
         :param bbox: search rectangle, of format (x_min, y_min, x_max, y_max)
@@ -94,9 +101,9 @@ class EntityManager:
         self._grouped_entities[entity.kind][entity.uuid].pos = new_location
         self.spindex.insert((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
 
-    def remove_entity(self, entity: Entity, kind: int):
+    def remove_entity(self, entity: Entity):
         self._grouped_entities[entity.kind].pop(entity.uuid)
-        self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
+        self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
 
     def get_available_position(self, kind: int) -> Pos:
         """Finds a position on the map, such that the bounding box of an entity of type ``kind``
@@ -112,9 +119,7 @@ class EntityManager:
 
     def add_entity(self, entity: Entity):
         self.spindex.insert((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
-        if not self._grouped_entities.get(entity.kind, None):
-            self._grouped_entities[entity.kind] = {}
-        self._grouped_entities[entity.kind][entity.uuid] = entity
+        self.add_to_dict(entity)
 
 
 @dataclass
@@ -276,16 +281,17 @@ class MeleeWeapon(Weapon):
     melee_attack_range: int
 
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
-        in_range = manager.get_entities_in_range(get_bounding_box(attacker.pos, self.melee_attack_range,
+        in_range: Iterable[Combatant] = manager.get_entities_in_range(get_bounding_box(attacker.pos, self.melee_attack_range,
                                                                   self.melee_attack_range),
-                                                 entity_filter=lambda entity_kind, entity_uuid: kind != EntityType.PROJECTILE and
-                                                 entity_uuid != attacker.uuid)
-        for kind, attackable in in_range:
-            if kind == EntityType.MOB == attackable.kind:
+                                        entity_filter=lambda entity_kind,
+                                        entity_uuid: entity_kind != EntityType.PROJECTILE and
+                                        entity_uuid != attacker.uuid)
+        for attackable in in_range:
+            if attackable.kind == EntityType.MOB == attackable.kind:
                 continue  # mobs shouldn't attack mobs
             attackable.health -= self.damage
             if attackable.health <= MIN_HEALTH:
-                manager.remove_entity(attackable, kind)
+                manager.remove_entity(attackable)
                 logging.info(f"killed {attackable=}")
             logging.info(f"updated entity health to {attackable.health}")
 

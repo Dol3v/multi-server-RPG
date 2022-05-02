@@ -200,39 +200,13 @@ class PlayerEntity(Entity):
         if tool_id == 0:
             self.hand = items.Hand(self.visible_sprites)
             return
-
-        for item in consts.weapon_data.values():
-            if consts.weapon_data.get[item]["id"] == tool_id:
+        for item in consts.weapon_data.keys():
+            if consts.weapon_data[item]["id"] == tool_id:
                 self.hand = items.Item(self.visible_sprites, item, "rare")
                 return
 
     def update(self):
         self.draw_entity()
-        self.hand.draw_weapon(self)
+        self.hand.draw(self)
         self.update_entity_animation()
 
-
-class EntityBoots(Entity):
-    def __init__(self, groups, x, y, direction):
-        super().__init__(groups, x, y, direction)
-        self.texture = pygame.image.load("assets/mobs/Big demon/big_demon_idle_anim_f0.png").convert_alpha()
-        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * consts.PLAYER_SIZE_MULTIPLIER,
-                                                             self.texture.get_height() * consts.PLAYER_SIZE_MULTIPLIER))
-        self.original_texture = self.texture.copy()
-        self.direction = direction
-
-        self.visible_sprites = (groups[1],)
-        self.obstacles_sprites = (groups[0],)
-        self.groups = groups
-
-        self.animation = graphics.Animation(
-            [
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f0.png"),
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f1.png"),
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f2.png"),
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f3.png")
-            ],
-            10
-        )
-
-        self.draw_entity()

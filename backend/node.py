@@ -86,9 +86,12 @@ class Node:
     def routine_message_handler(self, player_uuid: str, contents: dict):
         """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
         try:
-            player_pos, seqn, chat, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents["seqn"], \
-                                        contents["chat"], contents["dir"], contents["slot"], contents["is_attacking"], \
-                                        contents["did_swap"]
+            player_pos, seqn, chat, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents[
+                "seqn"], \
+                                                                                      contents["chat"], contents["dir"], \
+                                                                                      contents["slot"], contents[
+                                                                                          "is_attacking"], \
+                                                                                      contents["did_swap"]
             swap_indices = (-1, -1)
             if did_swap:
                 swap_indices = contents["swap"]
@@ -114,7 +117,7 @@ class Node:
         secure_pos = self.update_location(player_pos, seqn, player)
 
         if did_swap:
-            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]],\
+            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]], \
                                                                                    player.inventory[swap_indices[0]]
         player.slot = slot_index
         if clicked_mouse:
@@ -157,9 +160,9 @@ class Node:
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
 
             self.should_join.add(player_uuid)
-            self.entities_manager.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
-                                                                fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                                                pos=initial_pos)
+            self.entities_manager.add_to_dict(Player(uuid=player_uuid, addr=(ip, port),
+                                                     fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                                     pos=initial_pos))
         except KeyError as e:
             logging.warning(f"[error] invalid message from root message, {data=}, {e=}")
 
@@ -176,12 +179,12 @@ class Node:
             except KeyError | ValueError as e:
                 logging.warning(f"[error] prelogin message from root has an invalid format, {data=}, {e=}")
 
-    def broadcast_clients(self, player_uuid: str):
-        """Broadcast clients new messages to each other."""
-        for uuid_to_broadcast in self.entities_manager.players:
-            if player_uuid != uuid_to_broadcast:
-                self.entities_manager.players[uuid_to_broadcast].incoming_message = \
-                    self.entities_manager.players[player_uuid].new_message
+    # def broadcast_clients(self, player_uuid: str):
+    #     """Broadcast clients new messages to each other."""
+    #     for uuid_to_broadcast in self.entities_manager.players:
+    #         if player_uuid != uuid_to_broadcast:
+    #             self.entities_manager.players[uuid_to_broadcast].incoming_message = \
+    #                 self.entities_manager.players[player_uuid].new_message
 
     def generate_mobs(self):
         """Generate the mobs object with a random positions"""

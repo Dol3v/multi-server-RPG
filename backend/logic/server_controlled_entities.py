@@ -45,7 +45,7 @@ def update_projectiles(entities_manager: EntityManager):
                         if combatant.health <= MIN_HEALTH:
                             logging.info(f"[update] killed {combatant=}")
                             # remove entity on
-                            entities_manager.remove_entity(combatant, kind)
+                            entities_manager.remove_entity(combatant)
                         logging.debug(f"Updated player {identifier} health to {combatant.health}")
                 if should_remove:
                     to_remove.append(projectile)
@@ -60,7 +60,7 @@ def update_projectiles(entities_manager: EntityManager):
                                                             PROJECTILE_SPEED * projectile.direction[1])),
                                                     EntityType.PROJECTILE)
     for projectile in to_remove:
-        entities_manager.remove_entity(projectile, EntityType.PROJECTILE)
+        entities_manager.remove_entity(projectile)
         logging.info(f"[update] removed projectile {projectile.uuid}")
 
 
