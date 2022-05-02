@@ -194,7 +194,8 @@ class Player(Combatant):
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
     inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
-                                             for _ in range(INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
+                                                                                          for _ in range(
+            INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
@@ -225,8 +226,9 @@ class Mob(Combatant, ServerControlled, CanHit):
 
     def update_direction(self, manager: EntityManager):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
-        in_range = manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                 entity_filter=lambda data: data[0] == EntityType.PLAYER)
+        in_range = map(lambda entity: entity.pos,
+                       manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
+                                                     entity_filter=lambda data: data[0] == EntityType.PLAYER))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
             self.on_player = False
@@ -234,7 +236,7 @@ class Mob(Combatant, ServerControlled, CanHit):
             return
 
         nearest_player_pos = min(in_range,
-                                 key=lambda pos: (self.pos[0] - pos[0]) ** 2 + (self.pos[1] - pos[1]) ** 2).pos
+                                 key=lambda pos: (self.pos[0] - pos[0]) ** 2 + (self.pos[1] - pos[1]) ** 2)
         self.on_player = True
         if np.sqrt(((self.pos[0] - nearest_player_pos[0]) ** 2 + (self.pos[1] - nearest_player_pos[1]) ** 2)) <= \
                 self.get_mob_stop_distance() + MOB_ERROR_TERM:
