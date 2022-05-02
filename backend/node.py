@@ -46,7 +46,7 @@ class Node:
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
-        self.died_clients: Set[str] = set()
+        self.dead_clients: Set[str] = set()
         self.should_join: Set[str] = set()
         self.entities_manager = EntityManager(create_map())
         self.generate_mobs()
@@ -73,9 +73,8 @@ class Node:
             self.entities_manager.update_entity_location(player, player_pos, EntityType.PLAYER)
         return secure_pos
 
-    def update_client(self, player_uuid: str, secure_pos: Pos):
-        """sends server message to the client"""
-        player = self.entities_manager.players[player_uuid]
+    def update_client(self, player: Player, secure_pos: Pos):
+        """Sends server message to the client"""
         entities_array = self.entities_manager.get_entities_in_range(
             get_bounding_box(player.pos, SCREEN_HEIGHT, SCREEN_WIDTH),
             entity_filter=lambda _, entity_uuid: entity_uuid != player.uuid
@@ -105,6 +104,9 @@ class Node:
             self.entities_manager.add_entity(player)
             self.should_join.remove(player_uuid)
 
+        if player_uuid in self.dead_clients:
+            return
+
         if slot_index > MAX_SLOT or slot_index < 0:
             return
 
@@ -125,8 +127,10 @@ class Node:
         if clicked_mouse:
             player.item.on_click(player, self.entities_manager)
 
+        if player.health <= MIN_HEALTH:
+            self.dead_clients.add(player.uuid)
         # self.broadcast_clients(player.uuid)
-        self.update_client(player.uuid, secure_pos)
+        self.update_client(player, secure_pos)
         player.last_updated = seqn
 
     def client_handler(self):
@@ -165,6 +169,8 @@ class Node:
             self.entities_manager.add_to_dict(Player(uuid=player_uuid, addr=(ip, port),
                                                      fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
                                                      pos=initial_pos))
+            if player_uuid in self.dead_clients:
+                self.dead_clients.remove(player_uuid)
         except KeyError as e:
             logging.warning(f"[error] invalid message from root message, {data=}, {e=}")
 
