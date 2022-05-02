@@ -8,8 +8,7 @@ from typing import Iterable
 from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet
 
-from backend.logic.entities import Entity, Player
-from backend.logic.entities_management import EntityManager
+from backend.logic.entity_logic import EntityManager, Entity, Player
 from common.consts import Pos, RECV_CHUNK
 from common.message_type import MessageType
 from common.utils import send_public_key, get_shared_key, deserialize_public_key

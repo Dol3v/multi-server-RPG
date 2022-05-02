@@ -2,9 +2,8 @@ import logging
 import sched
 import time
 
-import backend.logic.entities as e
 from backend.backend_consts import FRAME_TIME
-from backend.logic.entities_management import EntityManager
+from backend.logic.entity_logic import EntityManager, Combatant
 from common.consts import EntityType, MIN_HEALTH, PROJECTILE_SPEED, MOB_SPEED
 
 
@@ -31,14 +30,15 @@ def update_projectiles(entities_manager: EntityManager):
                 to_remove.append(projectile)
                 continue
 
-            intersection = entities_manager.get_collidables_with(projectile.pos, projectile.uuid, kind=EntityType.ARROW)
+            intersection = entities_manager.get_collidables_with(projectile.pos, projectile.uuid,
+                                                                 kind=EntityType.PROJECTILE)
             should_remove = False
             if intersection:
                 for kind, identifier in intersection:
-                    if kind == EntityType.ARROW:
+                    if kind == EntityType.PROJECTILE:
                         continue
                     if kind == EntityType.PLAYER or kind == EntityType.MOB:
-                        combatant: e.Combatant = entities_manager.entities[identifier]
+                        combatant: Combatant = entities_manager.get(identifier, EntityType.MOB)
                         logging.info(f"Projectile {projectile} hit {combatant}")
                         should_remove = True
                         combatant.health -= projectile.damage
@@ -58,9 +58,9 @@ def update_projectiles(entities_manager: EntityManager):
                                                             PROJECTILE_SPEED * projectile.direction[0]),
                                                         projectile.pos[1] + int(
                                                             PROJECTILE_SPEED * projectile.direction[1])),
-                                                    EntityType.ARROW)
+                                                    EntityType.PROJECTILE)
     for projectile in to_remove:
-        entities_manager.remove_entity(projectile, EntityType.ARROW)
+        entities_manager.remove_entity(projectile, EntityType.PROJECTILE)
         logging.info(f"[update] removed projectile {projectile.uuid}")
 
 
@@ -68,11 +68,11 @@ def update_mobs(entities_manager: EntityManager):
     """Update mobs position. In addition, attack if mob is locked on target"""
     with entities_manager.mob_lock:
         for mob in entities_manager.mobs.values():
-            entities_manager.update_mob_directions(mob)
+            mob.update_direction(entities_manager)
             colliding = entities_manager.get_collidables_with(mob.pos, mob.uuid, kind=EntityType.MOB)
 
             for kind, identifier in colliding:
-                if kind == EntityType.ARROW:
+                if kind == EntityType.PROJECTILE:
                     continue
                 mob.direction = 0., 0.  # TODO: refactor a bit into update_mob_directions
 

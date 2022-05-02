@@ -1,3 +1,4 @@
+import logging
 import queue
 import sys
 import threading
@@ -8,11 +9,12 @@ from pyqtree import Index
 
 # to import from a dir
 # from backend.logic.attacks import attack
+from backend.logic.collision import invalid_movement
+from backend.logic.entity_logic import EntityManager, Player
 from common.message_type import MessageType
 
 sys.path.append('../')
-import logic.entities_management as m
-from backend.logic.entities import *
+
 from common.consts import *
 from common.utils import *
 from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
@@ -47,7 +49,7 @@ class Node:
         self.died_clients: Set[str] = set()
         self.should_join: Set[str] = set()
 
-        self.entities_manager = m.EntityManager(create_map())
+        self.entities_manager = EntityManager(create_map())
         # Starts the node
         self.run()
 
@@ -62,7 +64,7 @@ class Node:
         """
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if self.entities_manager.invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
+        if invalid_movement(player, player_pos, seqn, self.entities_manager) or seqn != player.last_updated + 1:
             logging.info(
                 f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}"
                 f", {player.last_updated=}")
@@ -74,7 +76,8 @@ class Node:
     def update_client(self, player_uuid: str, secure_pos: Pos):
         """sends server message to the client"""
         player = self.entities_manager.players[player_uuid]
-        entities_array = self.entities_manager.entities_in_rendering_range(player)
+        entities_array = self.entities_manager.get_entities_in_range(
+            get_bounding_box(player.pos, SCREEN_HEIGHT, SCREEN_WIDTH))
         # generate and send message
         update_packet = generate_routine_message(secure_pos, player, entities_array)
         self.server_sock.sendto(update_packet, player.addr)
@@ -93,8 +96,8 @@ class Node:
             logging.warning(f"[security] invalid message given by {player_uuid=}")
             return
         if player_uuid in self.should_join:
-            self.entities_manager.add_entity(EntityType.PLAYER, player_uuid,
-                                             player_pos, CLIENT_HEIGHT, CLIENT_WIDTH)
+            player = self.entities_manager.pop(player_uuid, EntityType.PLAYER)
+            self.entities_manager.add_entity(player)
             self.should_join.remove(player_uuid)
 
         if slot_index > MAX_SLOT or slot_index < 0:
@@ -116,7 +119,6 @@ class Node:
         player.slot = slot_index
         if clicked_mouse:
             player.item.on_click(player, self.entities_manager)
-            # attack(self.entities_manager, player, player.hotbar[player.slot])
 
         # self.broadcast_clients(player.uuid)
         self.update_client(player.uuid, secure_pos)

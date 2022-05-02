@@ -1,12 +1,13 @@
 """utils for database, using SqlDatabase class"""
 from sqlalchemy import select, insert, delete
+
+from backend.logic.entity_logic import Player
 from common.utils import *
 from backend.database.sql_database import SqlDatabase
 from backend.database.consts import USERNAME_COL, HASH_COL, SALT_COL, UUID_COL
-import backend.logic.entities as e
 
 
-def save_user_info(db: SqlDatabase, user: e.Player):
+def save_user_info(db: SqlDatabase, user: Player):
     """Insert a new row inside the users_info table"""
     stmt = (
         insert(db.users_table).values(uuid=user.uuid, position=user.pos,
