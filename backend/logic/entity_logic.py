@@ -348,7 +348,7 @@ class MeleeWeapon(Weapon):
                                  entity_uuid: entity_kind != EntityType.PROJECTILE and
                                               entity_uuid != attacker.uuid)
         for attackable in in_range:
-            if attackable.kind == EntityType.MOB == attackable.kind:
+            if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
             attackable.health -= self.damage
             if attackable.health <= MIN_HEALTH:
