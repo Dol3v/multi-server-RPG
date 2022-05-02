@@ -10,7 +10,7 @@ from pyqtree import Index
 # to import from a dir
 # from backend.logic.attacks import attack
 from backend.logic.collision import invalid_movement
-from backend.logic.entity_logic import EntityManager, Player
+from backend.logic.entity_logic import EntityManager, Player, Mob
 from common.message_type import MessageType
 
 sys.path.append('../')
@@ -48,8 +48,8 @@ class Node:
 
         self.died_clients: Set[str] = set()
         self.should_join: Set[str] = set()
-
         self.entities_manager = EntityManager(create_map())
+        self.generate_mobs()
         # Starts the node
         self.run()
 
@@ -182,6 +182,14 @@ class Node:
             if player_uuid != uuid_to_broadcast:
                 self.entities_manager.players[uuid_to_broadcast].incoming_message = \
                     self.entities_manager.players[player_uuid].new_message
+
+    def generate_mobs(self):
+        """Generate the mobs object with a random positions"""
+        for _ in range(MOB_COUNT):
+            mob = Mob()
+            mob.pos = self.entities_manager.get_available_position(EntityType.MOB)
+            mob.weapon = SWORD  # random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+            self.entities_manager.add_entity(mob)
 
     def run(self):
         """Starts node threads and bind & connect sockets"""
