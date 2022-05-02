@@ -1,4 +1,5 @@
 import abc
+import contextlib
 import dataclasses
 import logging
 import threading
@@ -95,16 +96,30 @@ class EntityManager:
         return self.get_entities_in_range(get_entity_bounding_box(entity.pos, entity.kind),
                                           entity_filter=lambda _, entity_id: entity_id != entity.uuid)
 
+    def get_entity_lock(self, entity: Entity):
+        """Returns a matching lock for an entity, or a null context handler otherwise."""
+        match entity.kind:
+            case EntityType.PROJECTILE:
+                logging.debug("thread trying to access projectiles")
+                return self.projectile_lock
+            case EntityType.MOB:
+                logging.debug("thread trying to access mobs")
+                return self.mob_lock
+            case _:
+                return contextlib.nullcontext()
+
     def update_entity_location(self, entity: Entity, new_location: Pos):
-        # logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
+        # with self.get_entity_lock(entity):
+            # logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
         self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
         entity.pos = new_location
         self._grouped_entities[entity.kind][entity.uuid].pos = new_location
         self.spindex.insert((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
 
     def remove_entity(self, entity: Entity):
-        self._grouped_entities[entity.kind].pop(entity.uuid)
-        self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
+        with self.get_entity_lock(entity):
+            self._grouped_entities[entity.kind].pop(entity.uuid)
+            self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
 
     def get_available_position(self, kind: int) -> Pos:
         """Finds a position on the map, such that the bounding box of an entity of type ``kind``
@@ -119,6 +134,7 @@ class EntityManager:
         return pos_x, pos_y
 
     def add_entity(self, entity: Entity):
+        # with self.get_entity_lock(entity):
         self.spindex.insert((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
         self.add_to_dict(entity)
 
@@ -167,8 +183,8 @@ class ServerControlled(Entity, abc.ABC):
     def advance_per_tick(self, manager: EntityManager) -> bool:
         """Wrapper for ``self.action_per_tick`` that also advances the entity's location."""
         res = self.action_per_tick(manager)
-        self.pos = self.pos[0] + int(self.speed * self.direction[0]), \
-                   self.pos[1] + int(self.speed * self.direction[1])
+        manager.update_entity_location(self, (self.pos[0] + int(self.speed * self.direction[0]), \
+                                       self.pos[1] + int(self.speed * self.direction[1])))
         return res
 
 
@@ -196,7 +212,7 @@ class Combatant(Entity):
 
 @dataclass
 class Projectile(ServerControlled, CanHit):
-    damage: ClassVar[int] = 0
+    damage: int = 0
     ttl: int = PROJECTILE_TTL
     kind: ClassVar[EntityType] = EntityType.PROJECTILE
     width: ClassVar[int] = PROJECTILE_WIDTH
@@ -224,6 +240,9 @@ class Projectile(ServerControlled, CanHit):
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
                     hit.health -= self.damage
                     logging.info(f"entity {hit!r} was updated after hit")
+                case EntityType.MOB:
+                    if hit.health <= MIN_HEALTH:
+                        manager.remove_entity(hit)
 
 
 @dataclass
@@ -248,7 +267,7 @@ class Player(Combatant):
 
 
 @dataclass
-class Mob(Combatant, ServerControlled, CanHit):
+class Mob(Combatant, ServerControlled):
     weapon: int = SWORD
     tracked_player_uuid: str | None = None
     kind: ClassVar[EntityType] = EntityType.MOB
@@ -288,8 +307,6 @@ class Mob(Combatant, ServerControlled, CanHit):
             self.direction = dir_x * MOB_SPEED, dir_y * MOB_SPEED
 
     def action_per_tick(self, manager: EntityManager) -> bool:
-        if self.health <= MIN_HEALTH:
-            return True
         self.update_direction(manager)
         colliding = manager.get_collidables_with(self)
         if colliding:
@@ -299,12 +316,7 @@ class Mob(Combatant, ServerControlled, CanHit):
                     self.tracked_player_uuid = ""
                 elif self.has_ranged_weapon or (player in colliding):
                     self.item.on_click(self, manager)
-
-    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
-        for hit in hit_objects:
-            match hit.kind:
-                case EntityType.PLAYER:
-                    self.item.on_click(self, manager)
+        return False
 
 
 @dataclass(frozen=True)
@@ -358,6 +370,7 @@ class RangedWeapon(Weapon):
             damage=self.damage
         )
         manager.add_entity(projectile)
+        logging.debug("thread trying to access projectiles")
         with manager.projectile_lock:
             manager.projectiles[projectile.uuid] = projectile
             logging.info(f"added projectile {projectile}")

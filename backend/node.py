@@ -201,6 +201,7 @@ class Node:
             mob.pos = self.entities_manager.get_available_position(EntityType.MOB)
             mob.weapon = SWORD  # random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
             self.entities_manager.add_entity(mob)
+            logging.info(f"added mob {mob!r}")
 
     def run(self):
         """Starts node threads and bind & connect sockets"""

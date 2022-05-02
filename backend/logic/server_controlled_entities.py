@@ -16,22 +16,23 @@ def server_controlled_entities_update(entities_manager: EntityManager, s):
 
 def update_projectiles(entities_manager: EntityManager):
     """Update projectile position, ttl and existence.
-       In addition, lowers entities HP, and kill them if needed
-       """
+       In addition, lowers entities HP, and kill them if needed"""
+    logging.debug("thread trying to access projectiles")
     with entities_manager.projectile_lock:
-        to_remove = filter(lambda p: not p.advance_per_tick(entities_manager), entities_manager.projectiles.values())
-        for projectile in to_remove:
-            entities_manager.remove_entity(projectile)
-            logging.info(f"[update] removed projectile {projectile.uuid}")
+        to_remove = list(filter(lambda p: not p.advance_per_tick(entities_manager), entities_manager.projectiles.values()))
+    for projectile in to_remove:
+        entities_manager.remove_entity(projectile)
+        logging.info(f"[update] removed projectile {projectile.uuid}")
 
 
 def update_mobs(entities_manager: EntityManager):
     """Update mobs position. In addition, attack if mob is locked on target"""
+    logging.debug("thread trying to access mobs")
     with entities_manager.mob_lock:
-        to_remove = filter(lambda m: not m.advance_per_tick(entities_manager), entities_manager.mobs.values())
-        for mob in to_remove:
-            entities_manager.remove_entity(mob)
-            logging.info(f"[update] killed mob {mob.uuid}")
+        to_remove = list(filter(lambda m: m.advance_per_tick(entities_manager), entities_manager.mobs.values()))
+    for mob in to_remove:
+        entities_manager.remove_entity(mob)
+        logging.info(f"[update] killed mob {mob.uuid}")
 
 
 def server_entities_handler(entities_manager):
