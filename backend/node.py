@@ -77,7 +77,9 @@ class Node:
         """sends server message to the client"""
         player = self.entities_manager.players[player_uuid]
         entities_array = self.entities_manager.get_entities_in_range(
-            get_bounding_box(player.pos, SCREEN_HEIGHT, SCREEN_WIDTH))
+            get_bounding_box(player.pos, SCREEN_HEIGHT, SCREEN_WIDTH),
+            entity_filter=lambda _, entity_uuid: entity_uuid != player.uuid
+        )
         # generate and send message
         update_packet = generate_routine_message(secure_pos, player, entities_array)
         self.server_sock.sendto(update_packet, player.addr)
