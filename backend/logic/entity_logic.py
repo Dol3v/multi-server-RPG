@@ -326,9 +326,10 @@ class Weapon(Item):
     damage: int
 
     def on_click(self, clicked_by: Combatant, manager: EntityManager):
-        self.use_to_attack(clicked_by, manager)
-        clicked_by.last_time_attacked = time.time()
-        clicked_by.current_cooldown = self.cooldown * FRAME_TIME
+        if clicked_by.last_time_attacked + clicked_by.current_cooldown <= time.time():
+            self.use_to_attack(clicked_by, manager)
+            clicked_by.last_time_attacked = time.time()
+            clicked_by.current_cooldown = self.cooldown * FRAME_TIME
 
     @abc.abstractmethod
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
