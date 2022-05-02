@@ -70,7 +70,7 @@ class Node:
                 f", {player.last_updated=}")
             secure_pos = self.entities_manager.players[player.uuid].pos
         else:
-            self.entities_manager.update_entity_location(player, player_pos, EntityType.PLAYER)
+            self.entities_manager.update_entity_location(player, player_pos)
         return secure_pos
 
     def update_client(self, player: Player, secure_pos: Pos):
