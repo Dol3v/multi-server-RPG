@@ -100,10 +100,10 @@ class EntityManager:
         """Returns a matching lock for an entity, or a null context handler otherwise."""
         match entity.kind:
             case EntityType.PROJECTILE:
-                logging.debug("thread trying to access projectiles")
+                logging.debug("thread trying to access projectiles for some specific entity thing idk")
                 return self.projectile_lock
             case EntityType.MOB:
-                logging.debug("thread trying to access mobs")
+                logging.debug("thread trying to access mobs for some entity thing")
                 return self.mob_lock
             case _:
                 return contextlib.nullcontext()
@@ -134,9 +134,9 @@ class EntityManager:
         return pos_x, pos_y
 
     def add_entity(self, entity: Entity):
-        # with self.get_entity_lock(entity):
-        self.spindex.insert((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
-        self.add_to_dict(entity)
+        with self.get_entity_lock(entity):
+            self.spindex.insert((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
+            self.add_to_dict(entity)
 
 
 @dataclass(frozen=True)
@@ -156,17 +156,13 @@ class CanHit(abc.ABC):
     """An interface for game objects that can hit others, such as weapons and projectiles."""
 
     @abc.abstractmethod
-    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager) -> bool:
         """Handles a hit between self and other objects.
 
         :param hit_objects: objects that were hit by self
-        :param manager: entity manager"""
+        :param manager: entity manager
+        :returns: whether the hit was fatal for hte object, i.e if he would be removed after it"""
         ...
-
-
-# class TickInfo(NamedTuple):
-#     """Info describing events that occurred to a server-controlled entity during a tick."""
-#     should_remove: bool
 
 
 class ServerControlled(Entity, abc.ABC):
@@ -227,22 +223,26 @@ class Projectile(ServerControlled, CanHit):
 
         intersection = list(manager.get_collidables_with(self))
         if intersection:
-            self.on_hit(intersection, manager)
-            return True
+            logging.debug(f"gonna remove projectile uuid={self.uuid}, hit, intersection {list(intersection)}")
+            return self.on_hit(intersection, manager)
         return False
 
-    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
+    def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager) -> bool:
+        should_remove = False  # remove only if collided with anything other than projectiles
         for hit in hit_objects:
             match hit.kind:
                 case EntityType.PROJECTILE:
                     continue
                 case EntityType.MOB | EntityType.PLAYER:
+                    should_remove = True
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
                     hit.health -= self.damage
                     logging.info(f"entity {hit!r} was updated after hit")
-                case EntityType.MOB:
-                    if hit.health <= MIN_HEALTH:
+                    if hit.kind == EntityType.MOB and hit.health <= MIN_HEALTH:
                         manager.remove_entity(hit)
+                case _:
+                    should_remove = True
+        return should_remove
 
 
 @dataclass
@@ -370,7 +370,7 @@ class RangedWeapon(Weapon):
             damage=self.damage
         )
         manager.add_entity(projectile)
-        logging.debug("thread trying to access projectiles")
+        logging.debug("thread trying to access projectiles for attack")
         with manager.projectile_lock:
             manager.projectiles[projectile.uuid] = projectile
             logging.info(f"added projectile {projectile}")
