@@ -226,9 +226,9 @@ class Mob(Combatant, ServerControlled, CanHit):
 
     def update_direction(self, manager: EntityManager):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
-        in_range = map(lambda entity: entity.pos,
+        in_range = list(map(lambda entity: entity.pos,
                        manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                     entity_filter=lambda kind, _: kind == EntityType.PLAYER))
+                                                     entity_filter=lambda kind, _: kind == EntityType.PLAYER)))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
             self.on_player = False
