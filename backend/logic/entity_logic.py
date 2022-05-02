@@ -180,8 +180,8 @@ class Combatant(Entity):
     current_cooldown: float = -1
     health: int = MAX_HEALTH
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def item(self) -> Item:
         """Currently held item."""
         ...
