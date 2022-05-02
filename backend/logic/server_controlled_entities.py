@@ -18,8 +18,6 @@ def server_controlled_entities_update(entities_manager: EntityManager, s):
 def update_projectiles(entities_manager: EntityManager):
     """Update projectile position, ttl and existence.
        In addition, lowers entities HP, and kill them if needed
-
-       NOTE: maybe split these parts...
        """
     to_remove = []
     with entities_manager.projectile_lock:

@@ -122,7 +122,7 @@ class EntityManager:
         self.add_to_dict(entity)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Item:
     """An in-game item"""
     type: int
@@ -200,7 +200,7 @@ class Player(Combatant):
     slot: int = 0
     inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
                                                                                           for _ in range(
-            INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
+                           INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
@@ -232,8 +232,8 @@ class Mob(Combatant, ServerControlled, CanHit):
     def update_direction(self, manager: EntityManager):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = list(map(lambda entity: entity.pos,
-                       manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                     entity_filter=lambda kind, _: kind == EntityType.PLAYER)))
+                            manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
+                                                          entity_filter=lambda kind, _: kind == EntityType.PLAYER)))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
             self.on_player = False
@@ -259,7 +259,7 @@ class Mob(Combatant, ServerControlled, CanHit):
         pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class Weapon(Item):
     """An in-game weapon."""
     cooldown: int
@@ -276,16 +276,17 @@ class Weapon(Item):
         ...
 
 
-@dataclass
+@dataclass(frozen=True)
 class MeleeWeapon(Weapon):
     melee_attack_range: int
 
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
-        in_range: Iterable[Combatant] = manager.get_entities_in_range(get_bounding_box(attacker.pos, self.melee_attack_range,
-                                                                  self.melee_attack_range),
-                                        entity_filter=lambda entity_kind,
-                                        entity_uuid: entity_kind != EntityType.PROJECTILE and
-                                        entity_uuid != attacker.uuid)
+        in_range: Iterable[Combatant] = manager.get_entities_in_range(
+            get_bounding_box(attacker.pos, self.melee_attack_range,
+                             self.melee_attack_range),
+            entity_filter=lambda entity_kind,
+                                 entity_uuid: entity_kind != EntityType.PROJECTILE and
+                                              entity_uuid != attacker.uuid)
         for attackable in in_range:
             if attackable.kind == EntityType.MOB == attackable.kind:
                 continue  # mobs shouldn't attack mobs
@@ -296,7 +297,7 @@ class MeleeWeapon(Weapon):
             logging.info(f"updated entity health to {attackable.health}")
 
 
-@dataclass
+@dataclass(frozen=True)
 class RangedWeapon(Weapon):
     projectile_class: Type[Projectile]
     """Projectile type to be shot. Can be any class which inherits from `Projectile`."""
@@ -305,7 +306,8 @@ class RangedWeapon(Weapon):
         projectile = self.projectile_class(
             pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
                  int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
-            direction=attacker.attacking_direction
+            direction=attacker.attacking_direction,
+            damage=self.damage
         )
         manager.add_entity(projectile)
         with manager.projectile_lock:
