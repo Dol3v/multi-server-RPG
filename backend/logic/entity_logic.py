@@ -228,7 +228,7 @@ class Mob(Combatant, ServerControlled, CanHit):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = map(lambda entity: entity.pos,
                        manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                     entity_filter=lambda data: data[0] == EntityType.PLAYER))
+                                                     entity_filter=lambda kind, _: kind == EntityType.PLAYER))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
             self.on_player = False
@@ -278,8 +278,8 @@ class MeleeWeapon(Weapon):
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
         in_range = manager.get_entities_in_range(get_bounding_box(attacker.pos, self.melee_attack_range,
                                                                   self.melee_attack_range),
-                                                 entity_filter=lambda data: data[0] != EntityType.PROJECTILE and data[
-                                                     1] != attacker.uuid)
+                                                 entity_filter=lambda entity_kind, entity_uuid: kind != EntityType.PROJECTILE and
+                                                 entity_uuid != attacker.uuid)
         for kind, attackable in in_range:
             if kind == EntityType.MOB == attackable.kind:
                 continue  # mobs shouldn't attack mobs
