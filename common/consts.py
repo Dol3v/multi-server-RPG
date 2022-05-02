@@ -65,7 +65,7 @@ MAX_WEAPON_NUMBER = 3
 # Entity types
 class EntityType(int, Enum):
     PLAYER = 0
-    ARROW = 1
+    PROJECTILE = 1
     MOB = 2
     OBSTACLE = 3
 

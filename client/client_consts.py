@@ -97,7 +97,7 @@ weapon_data = {
 
 ENTITY_DATA = {
     # (texture, [animation], frame per second, size_multiplier
-    EntityType.ARROW: ("entity/arrow/projectile.png", [], 10, 1),
+    EntityType.PROJECTILE: ("entity/arrow/projectile.png", [], 10, 1),
     EntityType.MOB: ("entity/dino/lizard.png", ["entity/dino/lizard.png", "entity/dino/lizard_run_0.png",
                                                 "entity/dino/lizard_run_1.png",
                                                 "entity/dino/lizard_run_2.png", "entity/dino/lizard_run_3.png"], 1, 4),

@@ -130,12 +130,12 @@ class Entity(pygame.sprite.Sprite):
                                                    frame.get_height() * self.scale_size))
             self.texture = frame
 
-            if self.entity_type == EntityType.ARROW:
+            if self.entity_type == EntityType.PROJECTILE:
                 angle = -(180 - np.rad2deg(np.arctan2(self.direction[0], self.direction[1])))
                 self.texture = pygame.transform.rotate(self.texture, angle)
 
         else:
-            if self.entity_type != EntityType.ARROW:
+            if self.entity_type != EntityType.PROJECTILE:
                 if self.direction[0] < 0:
                     self.texture = pygame.transform.flip(self.original_texture, True, False)
                 else:
