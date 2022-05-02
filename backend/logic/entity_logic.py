@@ -304,7 +304,9 @@ class RangedWeapon(Weapon):
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
         projectile = self.projectile_class(
             pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
-                 int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])))
+                 int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
+            direction=attacker.attacking_direction
+        )
         manager.add_entity(projectile)
         with manager.projectile_lock:
             manager.projectiles[projectile.uuid] = projectile
