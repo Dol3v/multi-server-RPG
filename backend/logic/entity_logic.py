@@ -5,7 +5,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Dict, Tuple, Iterable, List, Type, Callable
+from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar
 
 import numpy as np
 from cryptography.fernet import Fernet
@@ -15,13 +15,14 @@ from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, 
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
-    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH
+    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
 @dataclass
 class Entity(abc.ABC):
-    kind: EntityType
+    speed: ClassVar[int] = 0
+    kind: ClassVar[EntityType]
     pos: Pos = DEFAULT_POS_MARK
     direction: Dir = DEFAULT_DIR
     uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
@@ -75,11 +76,6 @@ class EntityManager:
             self._grouped_entities[entity.kind] = {}
         self._grouped_entities[entity.kind][entity.uuid] = entity
 
-    def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: EntityType) -> Iterable[Tuple[EntityType, str]]:
-        """Get all objects that collide with entity"""
-        return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
-            get_entity_bounding_box(pos, kind)))
-
     def get_entities_in_range(self, bbox: Tuple[int, int, int, int], *,
                               entity_filter: Callable[[EntityType, str], bool] = lambda a, b: True) -> Iterable[Entity]:
         """Returns the entities in a given bounding box, for which ``entity_filter`` returns true.
@@ -94,12 +90,17 @@ class EntityManager:
                        bbox
                    )))
 
-    def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
+    def get_collidables_with(self, entity: Entity) -> Iterable[Entity]:
+        """Get all objects that collide with entity"""
+        return self.get_entities_in_range(get_entity_bounding_box(entity.pos, entity.kind),
+                                          entity_filter=lambda _, entity_id: entity_id != entity.uuid)
+
+    def update_entity_location(self, entity: Entity, new_location: Pos):
         # logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
-        self.spindex.remove((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
+        self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
         entity.pos = new_location
         self._grouped_entities[entity.kind][entity.uuid].pos = new_location
-        self.spindex.insert((kind, entity.uuid), get_entity_bounding_box(entity.pos, kind))
+        self.spindex.insert((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
 
     def remove_entity(self, entity: Entity):
         self._grouped_entities[entity.kind].pop(entity.uuid)
@@ -157,11 +158,18 @@ class ServerControlled(Entity, abc.ABC):
     movement and general behaviour such as mobs and projectiles."""
 
     @abc.abstractmethod
-    def advance_per_tick(self, manager: EntityManager) -> bool:
+    def action_per_tick(self, manager: EntityManager) -> bool:
         """Advances the object per game tick: calculates collisions and updates stats locally (not in the manager).
 
         :returns: whether the entity should be removed from the game"""
         ...
+
+    def advance_per_tick(self, manager: EntityManager) -> bool:
+        """Wrapper for ``self.action_per_tick`` that also advances the entity's location."""
+        res = self.action_per_tick(manager)
+        self.pos = self.pos[0] + int(self.speed * self.direction[0]), \
+                   self.pos[1] + int(self.speed * self.direction[1])
+        return res
 
 
 @dataclass
@@ -172,23 +180,50 @@ class Combatant(Entity):
     current_cooldown: float = -1
     health: int = MAX_HEALTH
 
+    @abc.abstractmethod
+    @property
+    def item(self) -> Item:
+        """Currently held item."""
+        ...
+
+    @property
+    def has_ranged_weapon(self) -> bool:
+        return isinstance(self.item, RangedWeapon)
+
     def serialize(self) -> dict:
         return super().serialize() | {"is_attacking": self.is_attacking}
 
 
 @dataclass
 class Projectile(ServerControlled, CanHit):
-    damage: int = 0
+    damage: ClassVar[int] = 0
     ttl: int = PROJECTILE_TTL
-    kind: int = EntityType.PROJECTILE
-    width: int = PROJECTILE_WIDTH
-    height: int = PROJECTILE_HEIGHT
+    kind: ClassVar[EntityType] = EntityType.PROJECTILE
+    width: ClassVar[int] = PROJECTILE_WIDTH
+    height: ClassVar[int] = PROJECTILE_HEIGHT
+    speed: ClassVar[int] = PROJECTILE_SPEED
 
-    def advance_per_tick(self, manager: EntityManager) -> bool:
-        pass
+    def action_per_tick(self, manager: EntityManager) -> bool:
+        self.ttl -= 1
+        if self.ttl == 0:
+            logging.debug(f"[debug] gonna remove uuid={self.uuid}, ttl=0")
+            return True
+
+        intersection = list(manager.get_collidables_with(self))
+        if intersection:
+            self.on_hit(intersection, manager)
+            return True
+        return False
 
     def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
-        pass
+        for hit in hit_objects:
+            match hit.kind:
+                case EntityType.PROJECTILE:
+                    continue
+                case EntityType.MOB | EntityType.PLAYER:
+                    logging.info(f"projectile {self.uuid} hit entity {hit!r}")
+                    hit.health -= self.damage
+                    logging.info(f"entity {hit!r} was updated after hit")
 
 
 @dataclass
@@ -200,7 +235,7 @@ class Player(Combatant):
     slot: int = 0
     inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
                                                                                           for _ in range(
-                           INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
+            INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
@@ -215,8 +250,9 @@ class Player(Combatant):
 @dataclass
 class Mob(Combatant, ServerControlled, CanHit):
     weapon: int = SWORD
-    on_player: bool = False
-    kind: int = EntityType.MOB
+    tracked_player_uuid: str | None = None
+    kind: ClassVar[EntityType] = EntityType.MOB
+    speed: ClassVar[int] = MOB_SPEED
 
     @property
     def item(self):
@@ -231,32 +267,44 @@ class Mob(Combatant, ServerControlled, CanHit):
 
     def update_direction(self, manager: EntityManager):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
-        in_range = list(map(lambda entity: entity.pos,
-                            manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                          entity_filter=lambda kind, _: kind == EntityType.PLAYER)))
+        in_range = list(manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
+                                                      entity_filter=lambda kind, _: kind == EntityType.PLAYER))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
-            self.on_player = False
+            self.tracked_player_uuid = None
             self.direction = 0.0, 0.0
             return
 
-        nearest_player_pos = min(in_range,
-                                 key=lambda pos: (self.pos[0] - pos[0]) ** 2 + (self.pos[1] - pos[1]) ** 2)
-        self.on_player = True
-        if np.sqrt(((self.pos[0] - nearest_player_pos[0]) ** 2 + (self.pos[1] - nearest_player_pos[1]) ** 2)) <= \
+        nearest_player = min(in_range,
+                             key=lambda p: (self.pos[0] - p.pos[0]) ** 2 + (self.pos[1] - p.pos[1]) ** 2)
+        self.tracked_player_uuid = nearest_player.uuid
+        if np.sqrt(((self.pos[0] - nearest_player.pos[0]) ** 2 + (self.pos[1] - nearest_player.pos[1]) ** 2)) <= \
                 self.get_mob_stop_distance() + MOB_ERROR_TERM:
             self.direction = 0.0, 0.0
-        dir_x, dir_y = nearest_player_pos[0] - self.pos[0], nearest_player_pos[1] - self.pos[1]
+        dir_x, dir_y = nearest_player.pos[0] - self.pos[0], nearest_player.pos[1] - self.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
         self.attacking_direction = dir_x, dir_y
         if self.direction != (0., 0.):
             self.direction = dir_x * MOB_SPEED, dir_y * MOB_SPEED
 
-    def advance_per_tick(self, manager: EntityManager) -> bool:
-        pass
+    def action_per_tick(self, manager: EntityManager) -> bool:
+        if self.health <= MIN_HEALTH:
+            return True
+        self.update_direction(manager)
+        colliding = manager.get_collidables_with(self)
+        if colliding:
+            self.direction = 0., 0.
+            if self.tracked_player_uuid:
+                if not (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
+                    self.tracked_player_uuid = ""
+                elif self.has_ranged_weapon or (player in colliding):
+                    self.item.on_click(self, manager)
 
     def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager):
-        pass
+        for hit in hit_objects:
+            match hit.kind:
+                case EntityType.PLAYER:
+                    self.item.on_click(self, manager)
 
 
 @dataclass(frozen=True)
