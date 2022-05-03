@@ -282,6 +282,10 @@ class Mob(Combatant, ServerControlled):
     def serialize(self) -> dict:
         return super().serialize() | {"weapon": self.weapon}
 
+    def in_attack_range(self, pos: Pos) -> bool:
+        return abs(self.pos[0] - pos[0]) <= MOB_SIGHT_WIDTH and \
+               abs(self.pos[1] - pos[1]) <= MOB_SIGHT_HEIGHT
+
     def get_mob_stop_distance(self) -> float:
         return 0.5 * (np.sqrt(BOT_HEIGHT ** 2 + BOT_WIDTH ** 2) + np.sqrt(CLIENT_HEIGHT ** 2 + CLIENT_WIDTH ** 2)) + \
                (RANGED_OFFSET if isinstance(self.item, RangedWeapon) else 0)
@@ -313,18 +317,14 @@ class Mob(Combatant, ServerControlled):
 
     def action_per_tick(self, manager: EntityManager) -> bool:
         self.update_direction(manager)
-        if self.tracked_player_uuid:
-            self.item.on_click(self, manager)
-
+        if self.tracked_player_uuid and (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
+            if self.in_attack_range(player.pos):
+                self.item.on_click(self, manager)
         colliding = list(manager.get_collidables_with(self))
         if colliding:
             if self.tracked_player_uuid:
                 self.direction = (0.0, 0.0)
                 logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
-                if not (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
-                    self.tracked_player_uuid = None
-                elif self.has_ranged_weapon or (player in colliding):
-                    self.item.on_click(self, manager)
         return False
 
 
@@ -364,7 +364,7 @@ class MeleeWeapon(Weapon):
             if attackable.health <= MIN_HEALTH:
                 manager.remove_entity(attackable)
                 logging.info(f"killed {attackable=}")
-            logging.info(f"updated entity health to {attackable.health}")
+            logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
 
 
 @dataclass(frozen=True)
