@@ -110,7 +110,7 @@ class EntityManager:
 
     def update_entity_location(self, entity: Entity, new_location: Pos):
         # with self.get_entity_lock(entity):
-            # logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
+        # logging.debug(f"[debug] updating entity uuid={entity.uuid} of {kind=} to {new_location=}")
         self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
         entity.pos = new_location
         self._grouped_entities[entity.kind][entity.uuid].pos = new_location
@@ -179,8 +179,10 @@ class ServerControlled(Entity, abc.ABC):
     def advance_per_tick(self, manager: EntityManager) -> bool:
         """Wrapper for ``self.action_per_tick`` that also advances the entity's location."""
         res = self.action_per_tick(manager)
-        manager.update_entity_location(self, (self.pos[0] + int(self.speed * self.direction[0]), \
-                                       self.pos[1] + int(self.speed * self.direction[1])))
+        manager.update_entity_location(self, (self.pos[0] + int(self.speed * self.direction[0]),
+                                              self.pos[1] + int(self.speed * self.direction[1])))
+        if self.kind != EntityType.PROJECTILE:
+            logging.debug(f"updated mob location to {self.pos}, {self.speed=}, {self.direction=}, {self.uuid}")
         return res
 
 
@@ -297,23 +299,30 @@ class Mob(Combatant, ServerControlled):
         nearest_player = min(in_range,
                              key=lambda p: (self.pos[0] - p.pos[0]) ** 2 + (self.pos[1] - p.pos[1]) ** 2)
         self.tracked_player_uuid = nearest_player.uuid
+        logging.debug(f"mob {self.uuid} tracking player {self.tracked_player_uuid}")
         if np.sqrt(((self.pos[0] - nearest_player.pos[0]) ** 2 + (self.pos[1] - nearest_player.pos[1]) ** 2)) <= \
                 self.get_mob_stop_distance() + MOB_ERROR_TERM:
+            logging.debug(f"mob {self.uuid} staying put cuz stop distance")
             self.direction = 0.0, 0.0
         dir_x, dir_y = nearest_player.pos[0] - self.pos[0], nearest_player.pos[1] - self.pos[1]
         dir_x, dir_y = normalize_vec(dir_x, dir_y)
         self.attacking_direction = dir_x, dir_y
         if self.direction != (0., 0.):
-            self.direction = dir_x * MOB_SPEED, dir_y * MOB_SPEED
+            self.direction = (dir_x * MOB_SPEED, dir_y * MOB_SPEED)
+            logging.debug(f"mob {self.uuid} has updated direction {self.direction}")
 
     def action_per_tick(self, manager: EntityManager) -> bool:
         self.update_direction(manager)
-        colliding = manager.get_collidables_with(self)
+        if self.tracked_player_uuid:
+            self.item.on_click(self, manager)
+
+        colliding = list(manager.get_collidables_with(self))
         if colliding:
-            self.direction = 0., 0.
             if self.tracked_player_uuid:
+                self.direction = (0.0, 0.0)
+                logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
                 if not (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
-                    self.tracked_player_uuid = ""
+                    self.tracked_player_uuid = None
                 elif self.has_ranged_weapon or (player in colliding):
                     self.item.on_click(self, manager)
         return False
