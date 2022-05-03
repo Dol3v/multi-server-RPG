@@ -115,7 +115,15 @@ class Game:
         pos, inventory, health, entities = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
                                            contents["entities"]
 
-        print(f"{pos=} {health=} {inventory=}")
+        print("-" * 10)
+        print(f"{pos=}, {inventory=}, {health=}, {entities=}")
+        if health <= MIN_HEALTH:
+            print("ded")
+            pygame.quit()
+            sys.exit(0)
+
+        self.player.current_health = health
+
         for i, tool_id in enumerate(inventory):  # I know its ugly code, but I don't care enough to change it lmao
             weapon_type = items.get_weapon_type(tool_id)
             if weapon_type:
@@ -142,20 +150,10 @@ class Game:
             self.player.rect.centerx = valid_pos[0]
             self.player.rect.centery = valid_pos[1]
 
-        if health >= MIN_HEALTH:
-            self.player.current_health = health
-        else:
-            print("ded")
-            self.running = False
-            # TODO: start here login screen
-            pygame.quit()
-            sys.exit(0)
-
     def render_entities(self, entities: List[dict]) -> None:
         """
         Use: prints the other clients by the given info about them
         """
-        print("-" * 10)
         for entity in entities:
             entity_type, entity_uuid, pos, entity_dir = entity["type"], entity["uuid"], entity["pos"], entity["dir"]
             print(f"received entity {entity_uuid=} {entity_type=} {pos=} {entity_dir=}")

@@ -1,6 +1,7 @@
 """Utils for checking collision between players."""
-
-from common.consts import Pos, SPEED
+from backend.logic.entity_logic import Player, EntityManager
+from common.consts import Pos, SPEED, WORLD_WIDTH, WORLD_HEIGHT, EntityType
+from common.utils import is_empty
 
 
 def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
@@ -10,3 +11,12 @@ def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
     if diff2 := abs(new[1] - prev[1]) != 0:
         bound += SPEED
     return diff1 + diff2 <= bound * seqn_delta
+
+
+def invalid_movement(entity: Player, player_pos: Pos, seqn: int, manager: EntityManager) -> bool:
+    """check if a given player movement is valid"""
+    return entity.last_updated != -1 and (not moved_reasonable_distance(
+        player_pos, entity.pos, seqn - entity.last_updated) or
+                                          not is_empty(manager.get_collidables_with(entity))
+                                          or not (0 <= player_pos[0] <= WORLD_WIDTH)
+                                          or not (0 <= player_pos[1] <= WORLD_HEIGHT))

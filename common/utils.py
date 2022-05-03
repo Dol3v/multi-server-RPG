@@ -94,7 +94,7 @@ def get_entity_bounding_box(pos: Pos, entity_type: int):
     match entity_type:
         case EntityType.PLAYER:
             width, height = CLIENT_WIDTH, CLIENT_HEIGHT
-        case EntityType.ARROW:
+        case EntityType.PROJECTILE:
             width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
         case EntityType.MOB:
             width, height = BOT_WIDTH, BOT_HEIGHT

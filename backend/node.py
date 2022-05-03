@@ -1,4 +1,3 @@
-import json
 import logging
 import queue
 import sys
@@ -9,21 +8,22 @@ from typing import Set
 from pyqtree import Index
 
 # to import from a dir
-from backend.logic.attacks import attack
-from backend.logic.server_controlled_entities import server_entities_handler
-from client.map_manager import Map, Layer, TilesetData
+# from backend.logic.attacks import attack
+from backend.logic.collision import invalid_movement
+from backend.logic.entity_logic import EntityManager, Player, Mob
 from common.message_type import MessageType
 
 sys.path.append('../')
 
-from logic.entities_management import EntityManager
 from common.consts import *
 from common.utils import *
 from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
-from backend.logic.entities import *
 from backend.networks.networking import parse_message_from_client, \
     generate_routine_message, S2SMessageType
+
+from backend.logic.server_controlled_entities import server_entities_handler
+from client.map_manager import Map, Layer, TilesetData
 
 
 class Node:
@@ -46,10 +46,10 @@ class Node:
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
-        self.died_clients: Set[str] = set()
+        self.dead_clients: Set[str] = set()
         self.should_join: Set[str] = set()
-
         self.entities_manager = EntityManager(create_map())
+        self.generate_mobs()
         # Starts the node
         self.run()
 
@@ -64,19 +64,21 @@ class Node:
         """
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if self.entities_manager.invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
+        if invalid_movement(player, player_pos, seqn, self.entities_manager) or seqn != player.last_updated + 1:
             logging.info(
                 f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}"
                 f", {player.last_updated=}")
             secure_pos = self.entities_manager.players[player.uuid].pos
         else:
-            self.entities_manager.update_entity_location(player, player_pos, EntityType.PLAYER)
+            self.entities_manager.update_entity_location(player, player_pos)
         return secure_pos
 
-    def update_client(self, player_uuid: str, secure_pos: Pos):
-        """sends server message to the client"""
-        player = self.entities_manager.players[player_uuid]
-        entities_array = self.entities_manager.entities_in_rendering_range(player)
+    def update_client(self, player: Player, secure_pos: Pos):
+        """Sends server message to the client"""
+        entities_array = self.entities_manager.get_entities_in_range(
+            get_bounding_box(player.pos, SCREEN_HEIGHT, SCREEN_WIDTH),
+            entity_filter=lambda _, entity_uuid: entity_uuid != player.uuid
+        )
         # generate and send message
         update_packet = generate_routine_message(secure_pos, player, entities_array)
         self.server_sock.sendto(update_packet, player.addr)
@@ -85,9 +87,12 @@ class Node:
     def routine_message_handler(self, player_uuid: str, contents: dict):
         """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
         try:
-            player_pos, seqn, chat, attack_dir, slot_index, attacked, did_swap = tuple(contents["pos"]), contents["seqn"], \
-                                        contents["chat"], contents["dir"], contents["slot"], contents["is_attacking"], \
-                                        contents["did_swap"]
+            player_pos, seqn, chat, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents[
+                "seqn"], \
+                                                                                      contents["chat"], contents["dir"], \
+                                                                                      contents["slot"], contents[
+                                                                                          "is_attacking"], \
+                                                                                      contents["did_swap"]
             swap_indices = (-1, -1)
             if did_swap:
                 swap_indices = contents["swap"]
@@ -95,9 +100,12 @@ class Node:
             logging.warning(f"[security] invalid message given by {player_uuid=}")
             return
         if player_uuid in self.should_join:
-            self.entities_manager.add_entity(EntityType.PLAYER, player_uuid,
-                                             player_pos, CLIENT_HEIGHT, CLIENT_WIDTH)
+            player = self.entities_manager.pop(player_uuid, EntityType.PLAYER)
+            self.entities_manager.add_entity(player)
             self.should_join.remove(player_uuid)
+
+        if player_uuid in self.dead_clients:
+            return
 
         if slot_index > MAX_SLOT or slot_index < 0:
             return
@@ -113,14 +121,16 @@ class Node:
         secure_pos = self.update_location(player_pos, seqn, player)
 
         if did_swap:
-            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]],\
+            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]], \
                                                                                    player.inventory[swap_indices[0]]
         player.slot = slot_index
-        if attacked:
-            attack(self.entities_manager, player, player.hotbar[player.slot])
+        if clicked_mouse:
+            player.item.on_click(player, self.entities_manager)
 
+        if player.health <= MIN_HEALTH:
+            self.dead_clients.add(player.uuid)
         # self.broadcast_clients(player.uuid)
-        self.update_client(player.uuid, secure_pos)
+        self.update_client(player, secure_pos)
         player.last_updated = seqn
 
     def client_handler(self):
@@ -156,9 +166,11 @@ class Node:
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
 
             self.should_join.add(player_uuid)
-            self.entities_manager.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
-                                                                fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                                                pos=initial_pos)
+            self.entities_manager.add_to_dict(Player(uuid=player_uuid, addr=(ip, port),
+                                                     fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                                     pos=initial_pos))
+            if player_uuid in self.dead_clients:
+                self.dead_clients.remove(player_uuid)
         except KeyError as e:
             logging.warning(f"[error] invalid message from root message, {data=}, {e=}")
 
@@ -175,12 +187,21 @@ class Node:
             except KeyError | ValueError as e:
                 logging.warning(f"[error] prelogin message from root has an invalid format, {data=}, {e=}")
 
-    def broadcast_clients(self, player_uuid: str):
-        """Broadcast clients new messages to each other."""
-        for uuid_to_broadcast in self.entities_manager.players:
-            if player_uuid != uuid_to_broadcast:
-                self.entities_manager.players[uuid_to_broadcast].incoming_message = \
-                    self.entities_manager.players[player_uuid].new_message
+    # def broadcast_clients(self, player_uuid: str):
+    #     """Broadcast clients new messages to each other."""
+    #     for uuid_to_broadcast in self.entities_manager.players:
+    #         if player_uuid != uuid_to_broadcast:
+    #             self.entities_manager.players[uuid_to_broadcast].incoming_message = \
+    #                 self.entities_manager.players[player_uuid].new_message
+
+    def generate_mobs(self):
+        """Generate the mobs object with a random positions"""
+        for _ in range(MOB_COUNT):
+            mob = Mob()
+            mob.pos = self.entities_manager.get_available_position(EntityType.MOB)
+            mob.weapon = SWORD  # random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
+            self.entities_manager.add_entity(mob)
+            logging.info(f"added mob {mob!r}")
 
     def run(self):
         """Starts node threads and bind & connect sockets"""
@@ -212,5 +233,5 @@ def create_map():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.DEBUG)
     Node(NODE_PORT)

@@ -144,11 +144,10 @@ class Player(pygame.sprite.Sprite):
     def draw_main_item(self):
         item = self.hotbar[self.current_hotbar_slot]
         if item:
-            print(item)
-            item.draw_item(self)
+            item.draw(self)
             self.hand.hide()
         else:
-            self.hand.draw_hand(self)
+            self.hand.draw(self)
 
     def set_item_in_slot(self, slot, item):
         self.inv.items[slot] = item

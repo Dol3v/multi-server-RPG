@@ -1,9 +1,10 @@
 """utils for database, using SqlDatabase class"""
 from sqlalchemy import select, insert, delete
+
+from backend.logic.entity_logic import Player
 from common.utils import *
 from backend.database.sql_database import SqlDatabase
 from backend.database.consts import USERNAME_COL, HASH_COL, SALT_COL, UUID_COL
-from backend.logic.entities import Player
 
 
 def save_user_info(db: SqlDatabase, user: Player):
@@ -11,7 +12,7 @@ def save_user_info(db: SqlDatabase, user: Player):
     stmt = (
         insert(db.users_table).values(uuid=user.uuid, position=user.pos,
                                       direction=user.direction, last_seqn=user.last_updated, health=user.health,
-                                      slot=user.slot, tools=user.tools)
+                                      slot=user.slot, tools=user.inventory)
     )
     return db.exec(stmt)
 
