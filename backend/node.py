@@ -10,6 +10,8 @@ from pyqtree import Index
 
 # to import from a dir
 # from backend.logic.attacks import attack
+from backend.database import SqlDatabase, DB_PASS
+from backend.database.database_utils import update_user_info
 from backend.logic.collision import invalid_movement
 from backend.logic.entity_logic import EntityManager, Player, Mob
 from common.message_type import MessageType
@@ -21,7 +23,7 @@ from common.utils import *
 from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT, AFK_THRESHOLD_SECS
 
 from backend.networks.networking import parse_message_from_client, \
-    generate_routine_message, S2SMessageType
+    generate_routine_message, S2SMessageType, generate_status_message
 
 from backend.logic.server_controlled_entities import server_entities_handler
 from client.map_manager import Map, Layer, TilesetData
@@ -30,7 +32,7 @@ from client.map_manager import Map, Layer, TilesetData
 class Node:
     """Server that receive and transfer data to the clients and root server"""
 
-    def __init__(self, port):
+    def __init__(self, port, db_conn: SqlDatabase):
         # TODO: uncomment when coding on prod
         # self.node_ip = socket.gethostbyname(socket.gethostname())
         self.node_ip = "127.0.0.1"
@@ -38,6 +40,7 @@ class Node:
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_sock = socket.socket()
+        self.db = db_conn
         # TODO: remove when actually deploying exe
         # root_ip = enter_ip("Enter root's IP: ")
 
@@ -73,6 +76,13 @@ class Node:
         else:
             self.entities_manager.update_entity_location(player, player_pos)
         return secure_pos
+
+    def kill_player(self, player: Player):
+        logging.info(f"killing {player!r}")
+        self.server_sock.sendto(generate_status_message(MessageType.DIED_SERVER, player.fernet), player.addr)
+        self.entities_manager.remove_entity(player)
+        update_user_info(self.db, player)
+        self.dead_clients.add(player.uuid)
 
     def update_client(self, player: Player, secure_pos: Pos):
         """Sends server message to the client"""
@@ -120,6 +130,9 @@ class Node:
             logging.info(f"Got outdated packet from {player_uuid=}")
             return
 
+        if player.health <= MIN_HEALTH:
+            self.kill_player(player)
+
         player.attacking_direction = attack_dir
         player.new_message = chat
         secure_pos = self.update_location(player_pos, seqn, player)
@@ -132,8 +145,6 @@ class Node:
         if clicked_mouse:
             player.item.on_click(player, self.entities_manager)
 
-        if player.health <= MIN_HEALTH:
-            self.dead_clients.add(player.uuid)
         # self.broadcast_clients(player.uuid)
         self.update_client(player, secure_pos)
         player.last_updated_seqn = seqn
@@ -241,4 +252,5 @@ def create_map():
 
 if __name__ == "__main__":
     logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.INFO)
-    Node(NODE_PORT)
+    db= SqlDatabase("127.0.0.1", DB_PASS)
+    Node(NODE_PORT, db)
