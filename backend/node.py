@@ -199,7 +199,6 @@ class Node:
                                                       , player.fernet), player.addr)
                 # TODO: update root server
 
-
     def generate_mobs(self):
         """Generate the mobs object with a random positions"""
         for _ in range(MOB_COUNT):
