@@ -87,7 +87,7 @@ class Entity(pygame.sprite.Sprite):
         self.texture = pygame.image.load("assets/" + consts.ENTITY_DATA[entity_type][0]).convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * self.scale_size,
                                                              self.texture.get_height() * self.scale_size))
-
+        self.animation_ticks = 0 # Animation running delay so it won't look buggy
         anim = []
 
         for path in consts.ENTITY_DATA[entity_type][1]:
@@ -108,6 +108,8 @@ class Entity(pygame.sprite.Sprite):
         self.last_y = self.y
         self.x = x
         self.y = y
+        if (self.last_x != self.x) or (self.last_y != self.y):
+            self.animation_ticks = 0
 
     def draw_entity(self):
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()),
@@ -119,10 +121,12 @@ class Entity(pygame.sprite.Sprite):
     def update(self):
         self.update_entity_animation()
         self.draw_entity()
+        if self.animation_ticks < 10:
+            self.animation_ticks += 1
 
     def update_entity_animation(self):
         # Movement
-        if self.last_x != self.x or self.last_y != self.y:
+        if (self.last_x != self.x or self.last_y != self.y) or (self.animation_ticks < 10):
             frame = self.animation.get_next_frame()
             if self.direction[0] < 0:
                 frame = pygame.transform.flip(frame, True, False)
