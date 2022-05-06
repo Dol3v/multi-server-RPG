@@ -135,6 +135,8 @@ class Node:
 
     def closed_game_handler(self, player_uuid: str, data: dict):
         logging.info(f"player {player_uuid} exited the game.")
+        if player := self.entities_manager.get(player_uuid, EntityType.PLAYER):
+            self.entities_manager.remove_entity(player)
 
     def client_handler(self):
         """Communicate with client"""
