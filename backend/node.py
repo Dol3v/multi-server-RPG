@@ -207,8 +207,8 @@ class Node:
 
             else:
                 self.should_join[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
-                                                         fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                                         pos=initial_pos)
+                                                       fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                                       pos=initial_pos)
             if player_uuid in self.dead_clients:
                 self.dead_clients.remove(player_uuid)
         except KeyError as e:
