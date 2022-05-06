@@ -148,13 +148,10 @@ class Node:
                 continue
 
             match message_type:
-
                 case MessageType.ROUTINE_CLIENT:
                     self.routine_message_handler(data["uuid"], data["contents"])
-
                 case MessageType.CHAT_PACKET:
-                    self.broadcast_chat(data["uuid"], data["contents"]["new_message"])
-
+                    self.chat_handler(data["uuid"], data["contents"])
                 case _:
                     logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
@@ -190,8 +187,14 @@ class Node:
             except KeyError | ValueError as e:
                 logging.warning(f"[error] prelogin message from root has an invalid format, {data=}, {e=}")
 
-    def broadcast_chat(self, player_uuid: str, new_message: str):
+    def chat_handler(self, player_uuid: str, contents: dict):
         """Broadcast clients new messages to each other."""
+        try:
+            new_message = contents["new_message"]
+        except KeyError:
+            logging.warning(f"[error] new_message is not a field in {contents=}")
+            return
+
         for uuid_to_broadcast in self.entities_manager.players:
             if player_uuid != uuid_to_broadcast:
                 player = self.entities_manager.get(uuid_to_broadcast, EntityType.PLAYER)

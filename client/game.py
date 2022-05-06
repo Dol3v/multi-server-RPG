@@ -122,7 +122,6 @@ class Game:
                     self.player.set_item_in_slot(i, weapon)
             else:
                 self.player.set_item_in_slot(i, None)
-
         self.render_entities(entities)
         self.update_player_status(pos, health)
 
@@ -132,25 +131,20 @@ class Game:
                                                         self.player, self.fernet)
         self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
-
         # receive server update
         try:
             packet, addr = self.recv_queue.get(block=False)
         except queue.Empty:
             return
-
         if addr != self.server_addr:
             return
         contents = parse_message(packet, self.fernet)
 
         match MessageType(contents["id"]):
-
             case MessageType.ROUTINE_SERVER:
                 self.server_routine_handler(contents)
-
             case MessageType.CHAT_PACKET:
                 self.chat.add_message(contents["new_message"])
-
             case _:
                 print("invalid message type")
 
@@ -321,4 +315,3 @@ class Game:
     def draw_map(self):
         for layer in self.map.layers:
             layer.draw_layer(self.visible_sprites)
-
