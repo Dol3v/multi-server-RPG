@@ -2,7 +2,7 @@
 import struct
 import socket
 from typing import Tuple
-from enum import Enum
+from enum import IntEnum, auto
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 
@@ -26,6 +26,8 @@ PROJECTILE_WIDTH = 20
 
 BOT_HEIGHT = 20
 BOT_WIDTH = 20
+BAG_WIDTH = 20
+BAG_HEIGHT = 20
 
 # Types
 Pos = Tuple[int, int]
@@ -57,17 +59,18 @@ EMPTY_SLOT = 0
 SWORD = 1
 AXE = 2
 BOW = 3
-MAHAK = 5
+MAHAK = 4
 MIN_WEAPON_NUMBER = 1
-MAX_WEAPON_NUMBER = 3
+MAX_WEAPON_NUMBER = 4
 
 
 # Entity types
-class EntityType(int, Enum):
-    PLAYER = 0
-    PROJECTILE = 1
-    MOB = 2
-    OBSTACLE = 3
+class EntityType(IntEnum):
+    PLAYER = auto()
+    PROJECTILE = auto()
+    MOB = auto()
+    BAG = auto()
+    OBSTACLE = auto()
 
 
 # ECDH Consts
@@ -75,7 +78,7 @@ COMPRESSED_POINT_SIZE = 49
 ELLIPTIC_CURVE = SECP384R1()
 SHARED_KEY_SIZE = 32
 
-MOB_COUNT = 50
+MOB_COUNT = 100
 PROJECTILE_TTL = 120
 # Some temporary consts
 ROOT_IP = "127.0.0.1"

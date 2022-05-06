@@ -6,17 +6,20 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
+import random
 from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar
 
 import numpy as np
 from cryptography.fernet import Fernet
 from pyqtree import Index
 
-from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET
+from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET, \
+    BAG_SIZE
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
-    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED
+    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
+    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -152,6 +155,14 @@ class Item:
         ...
 
 
+@dataclass
+class Bag(Entity):
+    kind = EntityType.BAG
+    items: List = dataclasses.field(
+        default_factory=lambda: [random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER) for _ in range(BAG_SIZE)]
+    )
+
+
 class CanHit(abc.ABC):
     """An interface for game objects that can hit others, such as weapons and projectiles."""
 
@@ -230,20 +241,16 @@ class Projectile(ServerControlled, CanHit):
         return False
 
     def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager) -> bool:
-        should_remove = False  # remove only if collided with anything other than projectiles
+        should_remove = True
         for hit in hit_objects:
             match hit.kind:
                 case EntityType.PROJECTILE:
-                    continue
+                    should_remove = False
                 case EntityType.MOB | EntityType.PLAYER:
-                    should_remove = True
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
                     hit.health -= self.damage
                     logging.info(f"entity {hit!r} was updated after hit")
-                    if hit.kind == EntityType.MOB and hit.health <= MIN_HEALTH:
-                        manager.remove_entity(hit)
-                case _:
-                    should_remove = True
+
         return should_remove
 
 
@@ -266,6 +273,16 @@ class Player(Combatant):
 
     def serialize(self) -> dict:
         return super().serialize() | {"tool": self.inventory[self.slot]}
+
+    def fill_inventory(self, bag: Bag):
+        """Fills player's inventory with the bag's items."""
+        new_item_slot = 0
+        for index, item in enumerate(self.inventory):
+            if new_item_slot == len(bag.items):
+                break
+            if item == EMPTY_SLOT:
+                self.inventory[index] = bag.items[new_item_slot]
+                new_item_slot += 1
 
 
 @dataclass
@@ -316,16 +333,20 @@ class Mob(Combatant, ServerControlled):
             logging.debug(f"mob {self.uuid} has updated direction {self.direction}")
 
     def action_per_tick(self, manager: EntityManager) -> bool:
+        """Update mob direction, mob attack is suitable, collision between
+        TODO: collision doens't work that well
+        returns: if mob died or not"""
         self.update_direction(manager)
         if self.tracked_player_uuid and (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
             if self.in_attack_range(player.pos):
                 self.item.on_click(self, manager)
+
         colliding = list(manager.get_collidables_with(self))
-        if colliding:
-            if self.tracked_player_uuid:
-                self.direction = (0.0, 0.0)
-                logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
-        return False
+        if colliding and self.tracked_player_uuid:
+            self.direction = (0.0, 0.0)
+            logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
+
+        return self.health <= MIN_HEALTH
 
 
 @dataclass(frozen=True)
@@ -361,9 +382,6 @@ class MeleeWeapon(Weapon):
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
             attackable.health -= self.damage
-            if attackable.health <= MIN_HEALTH:
-                manager.remove_entity(attackable)
-                logging.info(f"killed {attackable=}")
             logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
 
 

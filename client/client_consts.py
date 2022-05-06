@@ -38,7 +38,7 @@ HOTBAR_LENGTH = INVENTORY_COLUMNS
 weapon_data = {
     'sword':
         {
-            "id": 1, "is_ranged": False, 'cooldown': 100, 'damage': 15, 'graphics': "assets/items/sword/full.png",
+            "id": 1, "is_ranged": False, 'cooldown': 25, 'damage': 15, 'graphics': "assets/items/sword/full.png",
             'icon': "assets/items/sword/full.png",
             "resize_icon": False,
             "hand_position": (9, 45), "size_multiplier": 1,
@@ -49,7 +49,7 @@ weapon_data = {
 
     'axe':
         {
-            "id": 2, "is_ranged": False, 'cooldown': 300, 'damage': 30, 'graphics': "assets/items/axe/full.png",
+            "id": 2, "is_ranged": False, 'cooldown': 50, 'damage': 30, 'graphics': "assets/items/axe/full.png",
             'icon': "assets/items/axe/full.png",
             "resize_icon": True,
             "hand_position": (15, 40), "size_multiplier": 1,
@@ -60,7 +60,7 @@ weapon_data = {
 
     'bow':
         {
-            "id": 3, "is_ranged": True, 'cooldown': 400, 'damage': 40, 'graphics': "assets/items/bow/full.png",
+            "id": 3, "is_ranged": True, 'cooldown': 100, 'damage': 40, 'graphics': "assets/items/bow/full.png",
             'icon': "assets/items/bow/full.png",
             "resize_icon": True,
             "hand_position": (20, 15), "size_multiplier": 1,
@@ -103,7 +103,8 @@ ENTITY_DATA = {
                                                 "entity/dino/lizard_run_2.png", "entity/dino/lizard_run_3.png"], 1, 4),
     EntityType.PLAYER: ("character/knight/knight.png", ["character/knight/move_0.png",
                                                         "character/knight/move_1.png", "character/knight/move_2.png"],
-                        10, PLAYER_SIZE_MULTIPLIER)
+                        10, PLAYER_SIZE_MULTIPLIER),
+    EntityType.BAG: ("character/knight/knight.png", [], 10, PLAYER_SIZE_MULTIPLIER)
 }
 
 # Actions format
