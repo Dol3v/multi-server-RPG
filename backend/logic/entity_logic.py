@@ -237,8 +237,6 @@ class Projectile(ServerControlled, CanHit):
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
                     hit.health -= self.damage
                     logging.info(f"entity {hit!r} was updated after hit")
-                    if hit.kind == EntityType.MOB and hit.health <= MIN_HEALTH:
-                        manager.remove_entity(hit)
                 case _:
                     should_remove = True
         return should_remove
@@ -266,7 +264,7 @@ class Player(Combatant):
         return super().serialize() | {"tool": self.inventory[self.slot]}
 
     def __repr__(self):
-        return f"Player(uuid={self.uuid},addr={self.addr},pos={self.pos},item={self.item!r})"
+        return f"Player(uuid={self.uuid}, addr={self.addr}, pos={self.pos}, item={self.item!r}, health={self.health})"
 
 
 @dataclass
@@ -317,6 +315,9 @@ class Mob(Combatant, ServerControlled):
             logging.debug(f"mob {self.uuid} has updated direction {self.direction}")
 
     def action_per_tick(self, manager: EntityManager) -> bool:
+        if self.health <= MIN_HEALTH:
+            return True
+
         self.update_direction(manager)
         if self.tracked_player_uuid and (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
             if self.in_attack_range(player.pos):
@@ -362,9 +363,6 @@ class MeleeWeapon(Weapon):
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
             attackable.health -= self.damage
-            if attackable.health <= MIN_HEALTH:
-                manager.remove_entity(attackable)
-                logging.info(f"killed {attackable=}")
             logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
 
 
