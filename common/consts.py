@@ -26,6 +26,8 @@ PROJECTILE_WIDTH = 20
 
 BOT_HEIGHT = 20
 BOT_WIDTH = 20
+BAG_WIDTH = 20
+BAG_HEIGHT = 20
 
 # Types
 Pos = Tuple[int, int]

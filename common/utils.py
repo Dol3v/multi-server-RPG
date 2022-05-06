@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, CLIENT_WIDTH, \
-    CLIENT_HEIGHT, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT, EntityType
+    CLIENT_HEIGHT, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT, EntityType, BAG_WIDTH, BAG_HEIGHT
 
 
 def enter_ip(enter_string: str):
@@ -98,6 +98,8 @@ def get_entity_bounding_box(pos: Pos, entity_type: int):
             width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
         case EntityType.MOB:
             width, height = BOT_WIDTH, BOT_HEIGHT
+        case EntityType.BAG:
+            width, height = BAG_WIDTH, BAG_HEIGHT
         case _:
             raise ValueError("Non-existent type entered to get_entity_bounding_box")
 

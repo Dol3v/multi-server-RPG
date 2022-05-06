@@ -157,6 +157,7 @@ class Item:
 
 @dataclass
 class Bag(Entity):
+    kind = EntityType.BAG
     items: List = dataclasses.field(
         default_factory=lambda: [Item(type=random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER))] * BAG_SIZE)
 
@@ -239,20 +240,17 @@ class Projectile(ServerControlled, CanHit):
         return False
 
     def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager) -> bool:
-        should_remove = False  # remove only if collided with anything other than projectiles
+        """hit the given objects and return true if the object wasn't projectile"""
+        should_remove = True  # remove only if collided with anything other than projectiles
         for hit in hit_objects:
             match hit.kind:
                 case EntityType.PROJECTILE:
-                    continue
+                    should_remove = False
                 case EntityType.MOB | EntityType.PLAYER:
-                    should_remove = True
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
                     hit.health -= self.damage
                     logging.info(f"entity {hit!r} was updated after hit")
-                    if hit.kind == EntityType.MOB and hit.health <= MIN_HEALTH:
-                        manager.remove_entity(hit)
-                case _:
-                    should_remove = True
+
         return should_remove
 
 
@@ -275,6 +273,14 @@ class Player(Combatant):
 
     def serialize(self) -> dict:
         return super().serialize() | {"tool": self.inventory[self.slot]}
+
+    def fill_inventory(self, bag: Bag):
+        """fills player's inventory with the bag's items"""
+        print(f"before {self.inventory=}")
+        for inventory_item, bag_item in zip(self.inventory, bag.items):
+            if inventory_item == 0:
+                inventory_item = bag_item
+        print(f"after filling: {self.inventory=}")
 
 
 @dataclass
@@ -325,16 +331,20 @@ class Mob(Combatant, ServerControlled):
             logging.debug(f"mob {self.uuid} has updated direction {self.direction}")
 
     def action_per_tick(self, manager: EntityManager) -> bool:
+        """Update mob direction, mob attack is suitable, collision between
+        TODO: collision doens't work that well
+        returns: if mob died or not"""
         self.update_direction(manager)
         if self.tracked_player_uuid and (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
             if self.in_attack_range(player.pos):
                 self.item.on_click(self, manager)
+
         colliding = list(manager.get_collidables_with(self))
-        if colliding:
-            if self.tracked_player_uuid:
-                self.direction = (0.0, 0.0)
-                logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
-        return False
+        if colliding and self.tracked_player_uuid:
+            self.direction = (0.0, 0.0)
+            logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
+
+        return self.health <= MIN_HEALTH
 
 
 @dataclass(frozen=True)
@@ -370,9 +380,6 @@ class MeleeWeapon(Weapon):
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
             attackable.health -= self.damage
-            if attackable.health <= MIN_HEALTH:
-                manager.remove_entity(attackable)
-                logging.info(f"killed {attackable=}")
             logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
 
 

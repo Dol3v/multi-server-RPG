@@ -125,7 +125,14 @@ class Node:
         if clicked_mouse:
             player.item.on_click(player, self.entities_manager)
 
+        collidables = self.entities_manager.get_collidables_with(player)
+        for entity in collidables:
+            if entity.kind == EntityType.BAG:
+                player.fill_inventory(entity)
+                self.entities_manager.remove_entity(entity)
+
         if player.health <= MIN_HEALTH:
+            self.entities_manager.remove_entity(player)
             self.dead_clients.add(player.uuid)
         # self.broadcast_clients(player.uuid)
         self.update_client(player, secure_pos)
@@ -241,5 +248,5 @@ def create_map():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(NODE_PORT)
