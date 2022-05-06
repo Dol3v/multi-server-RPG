@@ -70,7 +70,8 @@ class Game:
 
         # inventory init
         self.inventory = pygame.image.load("assets/inventory.png")
-        self.inventory = pygame.transform.scale(self.inventory, (self.inventory.get_width() * 2.5, self.inventory.get_height() * 2.5))
+        self.inventory = pygame.transform.scale(self.inventory,
+                                                (self.inventory.get_width() * 2.5, self.inventory.get_height() * 2.5))
         self.inventory.set_alpha(150)
 
         self.chat_msg = ""
@@ -93,25 +94,8 @@ class Game:
         while True:
             self.recv_queue.put(self.conn.recvfrom(UDP_RECV_CHUNK))
 
-    def server_update(self):
-        """communicate with the server over UDP."""
-        if self.msg_to_send:
-            self.chat_msg = self.msg_to_send
-            self.msg_to_send = ""
-        update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
-                                                        self.player, self.chat_msg, self.fernet)
-        self.conn.sendto(update_packet, self.server_addr)
-        self.seqn += 1
-
-        # receive server update
-        try:
-            packet, addr = self.recv_queue.get(block=False)
-        except queue.Empty:
-            return
-
-        if addr != self.server_addr:
-            return
-        contents = parse_message(packet, self.fernet)
+    def server_routine_handler(self, contents: dict):
+        """update clients stats by server new message"""
         pos, inventory, health, entities = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
                                            contents["entities"]
 
@@ -141,6 +125,34 @@ class Game:
 
         self.render_entities(entities)
         self.update_player_status(pos, health)
+
+    def server_update(self):
+        """communicate with the server over UDP."""
+        update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
+                                                        self.player, self.fernet)
+        self.conn.sendto(update_packet, self.server_addr)
+        self.seqn += 1
+
+        # receive server update
+        try:
+            packet, addr = self.recv_queue.get(block=False)
+        except queue.Empty:
+            return
+
+        if addr != self.server_addr:
+            return
+        contents = parse_message(packet, self.fernet)
+
+        match MessageType(contents["id"]):
+
+            case MessageType.ROUTINE_SERVER:
+                self.server_routine_handler(contents)
+
+            case MessageType.CHAT_PACKET:
+                self.chat.add_message(contents["new_message"])
+
+            case _:
+                print("invalid message type")
 
     def update_player_status(self, valid_pos: Pos, health: int) -> None:
         """update player status by the server message"""
@@ -223,7 +235,10 @@ class Game:
 
                         elif event.key == pygame.K_RETURN:  # Check if enter is clicked and sends the message
                             self.chat.add_message(self.chat_msg)
-                            self.msg_to_send = self.chat_msg
+                            chat_packet = craft_client_message(MessageType.CHAT_PACKET, self.player_uuid,
+                                                               {"new_message": self.chat_msg}, self.fernet)
+                            self.conn.sendto(chat_packet, self.server_addr)
+
                             self.chat_msg = ""
                             self.player.is_typing = not self.player.is_typing
 
@@ -306,3 +321,4 @@ class Game:
     def draw_map(self):
         for layer in self.map.layers:
             layer.draw_layer(self.visible_sprites)
+

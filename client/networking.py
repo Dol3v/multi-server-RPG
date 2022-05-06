@@ -18,12 +18,11 @@ def craft_client_message(message_type: MessageType, client_uuid: str, contents: 
                                                                               contents).encode())).decode()}).encode()
 
 
-def generate_client_routine_message(player_uuid: str, seqn: int, x: int, y: int, player: Player, chat_message: str,
+def generate_client_routine_message(player_uuid: str, seqn: int, x: int, y: int, player: Player,
                                     fernet: Fernet) -> bytes:
     data = {
         "pos": (x, y),
         "seqn": seqn,
-        "chat": chat_message,
         "dir": player.get_direction_vec(),
         "slot": player.current_hotbar_slot,
         "is_attacking": player.attacking,
