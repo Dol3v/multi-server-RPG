@@ -120,10 +120,7 @@ class EntryNode:
                 continue
 
             target_node = self.get_minimal_load_server()
-            conn.send(serialize_json({"ip": target_node.ip,
-                                      "initial_pos": initial_pos,
-                                      "uuid": user_uuid,
-                                      "success": True}, fernet))
+
             data = {"id": S2SMessageType.PLAYER_LOGIN,
                     "key": base64.b64encode(shared_key).decode(),
                     "uuid": user_uuid,
@@ -135,10 +132,17 @@ class EntryNode:
             if is_login:
                 user_data = load_user_info(self.db_conn, user_uuid)
                 data["is_login"] = True
-                data["initial_pos"] = user_data[1]
-                data = data | {"initial_hp": MAX_HEALTH if user_data[2] < MIN_HEALTH else user_data[2],
-                               "initial_slot": user_data[3],
-                               "initial_inventory": user_data[4]}
+                for row in user_data:  # there's really only one row
+                    (_, initial_pos, hp, slot, inventory) = row
+                    data["initial_pos"] = initial_pos
+                    data = data | {"initial_hp": MAX_HEALTH if hp < MIN_HEALTH else hp,
+                                   "initial_slot": slot,
+                                   "initial_inventory": inventory}
+
+            conn.send(serialize_json({"ip": target_node.ip,
+                                      "initial_pos": initial_pos,
+                                      "uuid": user_uuid,
+                                      "success": True}, fernet))
 
             self.server_send_queue.put(([target_node], data))
             conn.close()
