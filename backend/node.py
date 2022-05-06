@@ -3,14 +3,14 @@ import queue
 import sys
 import threading
 from collections import defaultdict
-from typing import Set
+from typing import Set, Dict
 
 from pyqtree import Index
 
 # to import from a dir
 # from backend.logic.attacks import attack
 from backend.logic.collision import invalid_movement
-from backend.logic.entity_logic import EntityManager, Player, Mob
+from backend.logic.entity_logic import EntityManager, Player, Mob, Entity
 from common.message_type import MessageType
 
 sys.path.append('../')
@@ -20,7 +20,7 @@ from common.utils import *
 from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
 from backend.networks.networking import parse_message_from_client, \
-    generate_routine_message, S2SMessageType
+    generate_routine_message, S2SMessageType, craft_message
 
 from backend.logic.server_controlled_entities import server_entities_handler
 from client.map_manager import Map, Layer, TilesetData
@@ -47,7 +47,7 @@ class Node:
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
         self.dead_clients: Set[str] = set()
-        self.should_join: Set[str] = set()
+        self.should_join: Dict[str, Player] = {}
         self.entities_manager = EntityManager(create_map())
         self.generate_mobs()
         # Starts the node
@@ -87,9 +87,9 @@ class Node:
     def routine_message_handler(self, player_uuid: str, contents: dict):
         """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
         try:
-            player_pos, seqn, chat, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents[
+            player_pos, seqn, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents[
                 "seqn"], \
-                                                                                      contents["chat"], contents["dir"], \
+                                                                                      contents["dir"], \
                                                                                       contents["slot"], contents[
                                                                                           "is_attacking"], \
                                                                                       contents["did_swap"]
@@ -100,9 +100,8 @@ class Node:
             logging.warning(f"[security] invalid message given by {player_uuid=}")
             return
         if player_uuid in self.should_join:
-            player = self.entities_manager.pop(player_uuid, EntityType.PLAYER)
+            player = self.should_join.pop(player_uuid)
             self.entities_manager.add_entity(player)
-            self.should_join.remove(player_uuid)
 
         if player_uuid in self.dead_clients:
             return
@@ -117,7 +116,6 @@ class Node:
             return
 
         player.attacking_direction = attack_dir
-        player.new_message = chat
         secure_pos = self.update_location(player_pos, seqn, player)
 
         if did_swap:
@@ -137,7 +135,7 @@ class Node:
         """Communicate with client"""
         while True:
             data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-            data = parse_message_from_client(data, self.entities_manager)
+            data = parse_message_from_client(data, self.entities_manager, self.should_join)
             if not data:
                 continue
             try:
@@ -152,6 +150,8 @@ class Node:
             match message_type:
                 case MessageType.ROUTINE_CLIENT:
                     self.routine_message_handler(data["uuid"], data["contents"])
+                case MessageType.CHAT_PACKET:
+                    self.chat_handler(data["uuid"], data["contents"])
                 case _:
                     logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
@@ -165,10 +165,10 @@ class Node:
                                                              data["initial_pos"], data["client_ip"], data["client_port"]
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
 
-            self.should_join.add(player_uuid)
-            self.entities_manager.add_to_dict(Player(uuid=player_uuid, addr=(ip, port),
+            self.should_join[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                      fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                                     pos=initial_pos))
+                                                     pos=initial_pos)
+
             if player_uuid in self.dead_clients:
                 self.dead_clients.remove(player_uuid)
         except KeyError as e:
@@ -187,12 +187,20 @@ class Node:
             except KeyError | ValueError as e:
                 logging.warning(f"[error] prelogin message from root has an invalid format, {data=}, {e=}")
 
-    # def broadcast_clients(self, player_uuid: str):
-    #     """Broadcast clients new messages to each other."""
-    #     for uuid_to_broadcast in self.entities_manager.players:
-    #         if player_uuid != uuid_to_broadcast:
-    #             self.entities_manager.players[uuid_to_broadcast].incoming_message = \
-    #                 self.entities_manager.players[player_uuid].new_message
+    def chat_handler(self, player_uuid: str, contents: dict):
+        """Broadcast clients new messages to each other."""
+        try:
+            new_message = contents["new_message"]
+        except KeyError:
+            logging.warning(f"[error] new_message is not a field in {contents=}")
+            return
+
+        for uuid_to_broadcast in self.entities_manager.players:
+            if player_uuid != uuid_to_broadcast:
+                player = self.entities_manager.get(uuid_to_broadcast, EntityType.PLAYER)
+                self.server_sock.sendto(craft_message(MessageType.CHAT_PACKET, {"new_message": new_message}
+                                                      , player.fernet), player.addr)
+                # TODO: update root server
 
     def generate_mobs(self):
         """Generate the mobs object with a random positions"""

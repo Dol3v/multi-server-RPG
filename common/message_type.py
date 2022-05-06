@@ -7,6 +7,6 @@ class MessageType(IntEnum):
     CLOSED_GAME_CLIENT = auto()
 
     ROUTINE_SERVER = auto()
-    NEW_CHAT_SERVER = auto()
+    CHAT_PACKET = auto()
     REDIRECT_SERVER = auto()
     DIED_SERVER = auto()
