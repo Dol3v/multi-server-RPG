@@ -19,7 +19,7 @@ from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
     ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
-    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER
+    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER, FIRE_BALL
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -90,9 +90,8 @@ class EntityManager:
             the entity with uuid `entity_uuid`
         """
         return map(lambda data: self.get(data[1], data[0]),
-                   filter(lambda data: entity_filter(*data) and data[0] != EntityType.OBSTACLE, self.spindex.intersect(
-                       bbox
-                   )))
+                   filter(lambda data: entity_filter(*data) and data[0] != EntityType.OBSTACLE,
+                          self.spindex.intersect(bbox)))
 
     def get_collidables_with(self, entity: Entity) -> Iterable[Entity]:
         """Get all objects that collide with entity"""
@@ -261,9 +260,9 @@ class Player(Combatant):
     addr: Addr = ("127.0.0.1", 10000)
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
-    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
-                                                                                          for _ in range(
-            INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
+    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, FIRE_BALL] + [EMPTY_SLOT
+                                                                                                     for _ in range(
+            INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
@@ -377,7 +376,8 @@ class MeleeWeapon(Weapon):
                              self.melee_attack_range),
             entity_filter=lambda entity_kind,
                                  entity_uuid: entity_kind != EntityType.PROJECTILE and
-                                              entity_uuid != attacker.uuid)
+                                              entity_uuid != attacker.uuid and
+                                              entity_kind != EntityType.BAG)
         for attackable in in_range:
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
@@ -408,7 +408,8 @@ _item_pool: Dict[int, Item] = {
     SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
     AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
     BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
-    MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile)
+    MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile),
+    FIRE_BALL: RangedWeapon(type=FIRE_BALL, cooldown=200, damage=100, projectile_class=Projectile)
 }
 
 

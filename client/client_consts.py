@@ -92,6 +92,18 @@ weapon_data = {
             "description":
                 ["This is an ancient legendary weapon", "that is used to kill gods",
                  "(or some kids in cyber class)"]
+        },
+    "fire_ball":
+        {
+            "id": 6, "is_ranged": False, 'cooldown': 200, 'damage': 100, "hand_position": (25, 50),
+            'graphics': "assets/items/mahak/mahak2.png",
+            'icon': "assets/items/mahak/mahak2.png",
+            "display_name": ("Fireball", (255, 215, 0), True),
+            "resize_icon": False,
+            "size_multiplier": 1,
+            "description":
+                ["Your hands can shoot fireballs", "use this skill wisely",
+                 "(or ...)"]
         }
 }
 

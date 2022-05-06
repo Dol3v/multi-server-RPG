@@ -125,11 +125,13 @@ class Node:
         if clicked_mouse:
             player.item.on_click(player, self.entities_manager)
 
-        collidables = self.entities_manager.get_collidables_with(player)
-        for entity in collidables:
-            if entity.kind == EntityType.BAG:
-                player.fill_inventory(entity)
-                self.entities_manager.remove_entity(entity)
+        bags = self.entities_manager.get_entities_in_range(
+            get_entity_bounding_box(player.pos, player.kind),
+            entity_filter=lambda entity_type, _: entity_type == EntityType.BAG
+        )
+        for bag in bags:
+            player.fill_inventory(bag)
+            self.entities_manager.remove_entity(bag)
 
         if player.health <= MIN_HEALTH:
             self.entities_manager.remove_entity(player)
