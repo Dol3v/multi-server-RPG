@@ -2,11 +2,11 @@ import abc
 import contextlib
 import dataclasses
 import logging
+import random
 import threading
 import time
 import uuid
 from dataclasses import dataclass
-import random
 from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar
 
 import numpy as np
@@ -14,7 +14,7 @@ from cryptography.fernet import Fernet
 from pyqtree import Index
 
 from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET, \
-    BAG_SIZE
+    BAG_SIZE, PET_SPAWN_X_DELTA, PET_SPAWN_Y_DELTA
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
@@ -124,16 +124,17 @@ class EntityManager:
             self._grouped_entities[entity.kind].pop(entity.uuid)
             self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
 
-    def get_available_position(self, kind: int) -> Pos:
+    def get_available_position(self, kind: EntityType, x_min: int = 0, x_max: int = WORLD_WIDTH // 3, y_min: int = 0,
+                               y_max: int = WORLD_HEIGHT // 3) -> Pos:
         """Finds a position on the map, such that the bounding box of an entity of type ``kind``
            doesn't intersect with any existing object on the map.
 
         :param: kind entity type
         :returns: available position"""
-        pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
+        pos_x, pos_y = int(np.random.uniform(x_min, x_max)), int(np.random.uniform(y_min, y_max))
 
         while len(self.spindex.intersect(get_entity_bounding_box((pos_x, pos_y), kind))) != 0:
-            pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
+            pos_x, pos_y = int(np.random.uniform(x_min, x_max)), int(np.random.uniform(y_min, y_max))
         return pos_x, pos_y
 
     def add_entity(self, entity: Entity):
@@ -311,8 +312,9 @@ class Mob(Combatant, ServerControlled):
     def update_direction(self, manager: EntityManager):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = list(manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                      entity_filter=lambda kind, uuid: kind == EntityType.PLAYER and
-                                                                                       uuid != self.parent_uuid))
+                                                      entity_filter=lambda kind,
+                                                                           entity_uuid: kind == EntityType.PLAYER and
+                                                                                        entity_uuid != self.parent_uuid))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
             self.tracked_player_uuid = None
@@ -409,29 +411,48 @@ class RangedWeapon(Weapon):
 
 @dataclass(frozen=True)
 class OneClickItem(Item):
+
     def on_click(self, clicked_by: Player, manager: EntityManager):
+        self.action(clicked_by, manager)
+        clicked_by.inventory[clicked_by.slot] = EMPTY_SLOT
+
+    @abc.abstractmethod
+    def action(self, clicked_by: Player, manager: EntityManager):
         ...
 
 
 @dataclass(frozen=True)
-class PetEgg(Item):
-    def on_click(self, clicked_by: Player, manager: EntityManager):
-        manager.add_entity(Mob(parent_uuid=clicked_by.uuid))
+class PetEgg(OneClickItem):
+    """Spawns a friendly mob that can attack other players."""
+
+    def action(self, clicked_by: Player, manager: EntityManager):
+        to_spawn = Mob(parent_uuid=clicked_by.uuid, pos=manager.get_available_position
+        (EntityType.MOB, *get_bounding_box(clicked_by.pos, PET_SPAWN_X_DELTA, PET_SPAWN_Y_DELTA)))
+        manager.add_entity(to_spawn)
 
 
 @dataclass(frozen=True)
-class RegenerationPotion(Item):
+class RegenerationPotion(OneClickItem):
     type = REGENERATION_POTION
 
+    def action(self, clicked_by: Player, manager: EntityManager):
+        ...
+
 
 @dataclass(frozen=True)
-class DamagePotion(Item):
+class DamagePotion(OneClickItem):
     type = DAMAGE_POTION
 
+    def action(self, clicked_by: Player, manager: EntityManager):
+        ...
+
 
 @dataclass(frozen=True)
-class ResistancePotion(Item):
+class ResistancePotion(OneClickItem):
     type = RESISTANCE_POTION
+
+    def action(self, clicked_by: Player, manager: EntityManager):
+        ...
 
 
 @dataclass(frozen=True)
