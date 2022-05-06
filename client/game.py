@@ -209,7 +209,7 @@ class Game:
                         self.player.inv.next_hotbar_slot()
 
                 if event.type == pygame.QUIT:
-                    self.on_game_exit()
+                    on_game_exit(self)
 
                 if event.type == pygame.MOUSEBUTTONDOWN and self.is_showing_chat:
                     self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
@@ -256,13 +256,6 @@ class Game:
             self.can_recv = True
             pygame.display.update()
             self.clock.tick(FPS)
-
-    @atexit.register
-    def on_game_exit(self):
-        if self.can_recv:  # making sure we don't try to send a message to the server before we interacted with it
-            pygame.quit()
-            self.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, self.player_uuid, {}, self.fernet),
-                             self.server_addr)
 
     def draw_chat(self, event_list):
         if self.is_showing_chat:
@@ -312,3 +305,13 @@ class Game:
     def draw_map(self):
         for layer in self.map.layers:
             layer.draw_layer(self.visible_sprites)
+
+
+@atexit.register
+def on_game_exit(game: Game | None = None):
+    """Handles game closure."""
+    pygame.quit()
+    if game:
+        game.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, game.player_uuid, {}),
+                         game.server_addr)
+    sys.exit(0)
