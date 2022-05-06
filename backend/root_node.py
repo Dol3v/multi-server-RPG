@@ -3,9 +3,7 @@ import base64
 import json
 import logging
 import queue
-import select
 import socket
-import struct
 import sys
 import uuid
 from dataclasses import dataclass
@@ -14,8 +12,10 @@ from typing import List, Iterable
 
 # to import from a dir
 import numpy as np
+import select
 from cryptography.fernet import Fernet
 
+from backend.database.database_utils import load_user_info
 from backend.networks.networking import S2SMessageType
 
 sys.path.append('../')
@@ -27,7 +27,7 @@ from networks import do_ecdh
 
 from common.utils import deserialize_json, serialize_json
 from common.consts import ROOT_IP, ROOT_PORT, Addr, DEFAULT_ADDR, RECV_CHUNK, NUM_NODES, \
-    WORLD_WIDTH, WORLD_HEIGHT
+    WORLD_WIDTH, WORLD_HEIGHT, MIN_HEALTH
 from backend_consts import ROOT_SERVER2SERVER_PORT
 
 
@@ -124,12 +124,23 @@ class EntryNode:
                                       "initial_pos": initial_pos,
                                       "uuid": user_uuid,
                                       "success": True}, fernet))
-            self.server_send_queue.put(([target_node], {"id": S2SMessageType.PLAYER_LOGIN,
-                                                        "key": base64.b64encode(shared_key).decode(),
-                                                        "uuid": user_uuid,
-                                                        "initial_pos": initial_pos,
-                                                        "client_ip": client_game_addr[0],
-                                                        "client_port": client_game_addr[1]}))
+            data = {"id": S2SMessageType.PLAYER_LOGIN,
+                    "key": base64.b64encode(shared_key).decode(),
+                    "uuid": user_uuid,
+                    "initial_pos": initial_pos,
+                    "client_ip": client_game_addr[0],
+                    "client_port": client_game_addr[1],
+                    "is_login": False}
+
+            if is_login:
+                user_data = load_user_info(self.db_conn, user_uuid)
+                data["is_login"] = True
+                data["initial_pos"] = user_data[1]
+                data = data | {"initial_hp": 0 if user_data[2] < MIN_HEALTH else user_data[2],
+                               "initial_slot": user_data[3],
+                               "initial_inventory": user_data[4]}
+
+            self.server_send_queue.put(([target_node], data))
             conn.close()
             logging.info(f"client redirected to {target_node.ip}")
 
