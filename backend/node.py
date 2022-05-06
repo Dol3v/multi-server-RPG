@@ -155,6 +155,7 @@ class Node:
         logging.info(f"player {player_uuid} exited the game.")
         if player := self.entities_manager.get(player_uuid, EntityType.PLAYER):
             self.entities_manager.remove_entity(player)
+            update_user_info(self.db, player)
 
     def client_handler(self):
         """Communicate with client"""
