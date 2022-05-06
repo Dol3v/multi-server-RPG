@@ -62,7 +62,7 @@ weapon_data = {
         {
             "id": 3, "is_ranged": True, 'cooldown': 100, 'damage': 40, 'graphics': "assets/items/bow/full.png",
             'icon': "assets/items/bow/full.png",
-            "resize_icon": True,
+            "resize_icon": False,
             "hand_position": (20, 15), "size_multiplier": 1,
             "display_name": ("Bow", (255, 255, 255), False),
             "description":

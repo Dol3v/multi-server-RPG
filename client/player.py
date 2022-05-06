@@ -150,6 +150,8 @@ class Player(pygame.sprite.Sprite):
             self.hand.draw(self)
 
     def set_item_in_slot(self, slot, item):
+        if self.inv.items[slot]:
+            self.inv.items[slot].hide()
         self.inv.items[slot] = item
 
     def get_item_in_slot(self, slot) -> Item:
