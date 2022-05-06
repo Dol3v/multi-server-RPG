@@ -54,6 +54,13 @@ class Node:
         # Starts the node
         self.run()
 
+    def watchdog(self):
+        """Or garbage collector. I couldn't decide what's the better name.
+
+        Checks for effectively-dead players and removes them from the game."""
+        while True:
+            ...
+
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
 

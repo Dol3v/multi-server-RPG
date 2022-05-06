@@ -1,7 +1,7 @@
 """General consts for client side"""
 # Images
 
-from common.consts import EntityType
+from common.consts import EntityType, INVENTORY_COLUMNS
 
 PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
@@ -27,8 +27,6 @@ ATTACK_COOLDOWN = 250
 MAX_HEALTH = 100
 
 # inventory data
-INVENTORY_ROWS = 4
-INVENTORY_COLUMNS = 9
 INVENTORY_SIZE_MULTIPLIER = 3
 ICON_SIZE = 16 * INVENTORY_SIZE_MULTIPLIER
 

@@ -5,13 +5,13 @@ from typing import List
 
 import pygame
 
-from common.consts import SCREEN_WIDTH
+from common.consts import SCREEN_WIDTH, INVENTORY_ROWS, INVENTORY_COLUMNS
 
 try:
-    from client_consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
+    from client_consts import ICON_SIZE, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
     from items import Item
 except ModuleNotFoundError:
-    from client.client_consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
+    from client.client_consts import ICON_SIZE, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
     from client.items import Item
 
 

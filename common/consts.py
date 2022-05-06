@@ -27,6 +27,9 @@ PROJECTILE_WIDTH = 20
 BOT_HEIGHT = 20
 BOT_WIDTH = 20
 
+INVENTORY_ROWS = 4
+INVENTORY_COLUMNS = 9
+
 # Types
 Pos = Tuple[int, int]
 Addr = Tuple[str, int]

@@ -1,4 +1,4 @@
-from common.consts import SWORD, AXE, BOW
+from common.consts import SWORD, AXE, BOW, INVENTORY_ROWS, INVENTORY_COLUMNS
 
 # Scrypt Consts
 SCRYPT_KEY_LENGTH = 32
@@ -16,7 +16,7 @@ WEAPON_DATA = {
     BOW: {'cooldown': 100, 'damage': 45, 'is_melee': False}
 }
 FRAME_TIME = 1 / 60
-MAX_SLOT = 6
+MAX_SLOT = INVENTORY_ROWS * INVENTORY_COLUMNS
 
 # Server communication ports
 ROOT_SERVER2SERVER_PORT = 35000

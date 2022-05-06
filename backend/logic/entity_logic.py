@@ -13,10 +13,7 @@ from cryptography.fernet import Fernet
 from pyqtree import Index
 
 from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET
-from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
-from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
-    PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
-    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED
+from common.consts import *
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
