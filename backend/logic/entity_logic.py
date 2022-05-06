@@ -6,12 +6,20 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
+import random
 from typing import Dict, Iterable, List, Type, Callable, ClassVar
 
 import numpy as np
 from cryptography.fernet import Fernet
 from pyqtree import Index
 
+from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET, \
+    BAG_SIZE
+from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
+from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
+    PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
+    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
+    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER, FIRE_BALL
 from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET
 from common.consts import *
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
@@ -84,9 +92,8 @@ class EntityManager:
             the entity with uuid `entity_uuid`
         """
         return map(lambda data: self.get(data[1], data[0]),
-                   filter(lambda data: entity_filter(*data) and data[0] != EntityType.OBSTACLE, self.spindex.intersect(
-                       bbox
-                   )))
+                   filter(lambda data: entity_filter(*data) and data[0] != EntityType.OBSTACLE,
+                          self.spindex.intersect(bbox)))
 
     def get_collidables_with(self, entity: Entity) -> Iterable[Entity]:
         """Get all objects that collide with entity"""
@@ -147,6 +154,14 @@ class Item:
         :param clicked_by: entity who clicked on the item
         :param manager: entity manager"""
         ...
+
+
+@dataclass
+class Bag(Entity):
+    kind = EntityType.BAG
+    items: List = dataclasses.field(
+        default_factory=lambda: [random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER) for _ in range(BAG_SIZE)]
+    )
 
 
 class CanHit(abc.ABC):
@@ -227,18 +242,16 @@ class Projectile(ServerControlled, CanHit):
         return False
 
     def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager) -> bool:
-        should_remove = False  # remove only if collided with anything other than projectiles
+        should_remove = True
         for hit in hit_objects:
             match hit.kind:
                 case EntityType.PROJECTILE:
-                    continue
+                    should_remove = False
                 case EntityType.MOB | EntityType.PLAYER:
-                    should_remove = True
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
                     hit.health -= self.damage
                     logging.info(f"entity {hit!r} was updated after hit")
-                case _:
-                    should_remove = True
+
         return should_remove
 
 
@@ -250,9 +263,9 @@ class Player(Combatant):
     last_updated_seqn: int = -1  # latest sequence number basically
     last_updated_time: float = dataclasses.field(default_factory=time.time)
     slot: int = 0
-    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
-                                                                                          for _ in range(
-            INVENTORY_COLUMNS * INVENTORY_ROWS - 3)])
+    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, FIRE_BALL] + [EMPTY_SLOT
+                                                                                                     for _ in range(
+            INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
@@ -265,6 +278,16 @@ class Player(Combatant):
 
     def __repr__(self):
         return f"Player(uuid={self.uuid}, addr={self.addr}, pos={self.pos}, item={self.item!r}, health={self.health})"
+
+    def fill_inventory(self, bag: Bag):
+        """Fills player's inventory with the bag's items."""
+        new_item_slot = 0
+        for index, item in enumerate(self.inventory):
+            if new_item_slot == len(bag.items):
+                break
+            if item == EMPTY_SLOT:
+                self.inventory[index] = bag.items[new_item_slot]
+                new_item_slot += 1
 
 
 @dataclass
@@ -322,11 +345,12 @@ class Mob(Combatant, ServerControlled):
         if self.tracked_player_uuid and (player := manager.get(self.tracked_player_uuid, EntityType.PLAYER)):
             if self.in_attack_range(player.pos):
                 self.item.on_click(self, manager)
+
         colliding = list(manager.get_collidables_with(self))
-        if colliding:
-            if self.tracked_player_uuid:
-                self.direction = (0.0, 0.0)
-                logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
+        if colliding and self.tracked_player_uuid:
+            self.direction = (0.0, 0.0)
+            logging.debug(f"mob {self.uuid} stopped due to colliding with {colliding}")
+
         return False
 
 
@@ -353,12 +377,13 @@ class MeleeWeapon(Weapon):
     melee_attack_range: int
 
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
-        in_range: Iterable[Combatant] = manager.get_entities_in_range(
+        in_range = manager.get_entities_in_range(
             get_bounding_box(attacker.pos, self.melee_attack_range,
                              self.melee_attack_range),
             entity_filter=lambda entity_kind,
                                  entity_uuid: entity_kind != EntityType.PROJECTILE and
-                                              entity_uuid != attacker.uuid)
+                                              entity_uuid != attacker.uuid and
+                                              entity_kind != EntityType.BAG)
         for attackable in in_range:
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
@@ -389,7 +414,8 @@ _item_pool: Dict[int, Item] = {
     SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
     AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
     BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
-    MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile)
+    MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile),
+    FIRE_BALL: RangedWeapon(type=FIRE_BALL, cooldown=200, damage=100, projectile_class=Projectile)
 }
 
 

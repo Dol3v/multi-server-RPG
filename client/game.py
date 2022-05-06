@@ -97,25 +97,8 @@ class Game:
         while True:
             self.recv_queue.put(self.conn.recvfrom(UDP_RECV_CHUNK))
 
-    def server_update(self):
-        """communicate with the server over UDP."""
-        if self.msg_to_send:
-            self.chat_msg = self.msg_to_send
-            self.msg_to_send = ""
-        update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
-                                                        self.player, self.chat_msg, self.fernet)
-        self.conn.sendto(update_packet, self.server_addr)
-        self.seqn += 1
-
-        # receive server update
-        try:
-            packet, addr = self.recv_queue.get(block=False)
-        except queue.Empty:
-            return
-
-        if addr != self.server_addr:
-            return
-        contents = parse_message(packet, self.fernet)
+    def server_routine_handler(self, contents: dict):
+        """update clients stats by server new message"""
         pos, inventory, health, entities = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
                                            contents["entities"]
 
@@ -140,9 +123,31 @@ class Game:
                     self.player.set_item_in_slot(i, weapon)
             else:
                 self.player.set_item_in_slot(i, None)
-
         self.render_entities(entities)
         self.update_player_status(pos, health)
+
+    def server_update(self):
+        """communicate with the server over UDP."""
+        update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
+                                                        self.player, self.fernet)
+        self.conn.sendto(update_packet, self.server_addr)
+        self.seqn += 1
+        # receive server update
+        try:
+            packet, addr = self.recv_queue.get(block=False)
+        except queue.Empty:
+            return
+        if addr != self.server_addr:
+            return
+        contents = parse_message(packet, self.fernet)
+
+        match MessageType(contents["id"]):
+            case MessageType.ROUTINE_SERVER:
+                self.server_routine_handler(contents)
+            case MessageType.CHAT_PACKET:
+                self.chat.add_message(contents["new_message"])
+            case _:
+                print("invalid message type")
 
     def update_player_status(self, valid_pos: Pos, health: int) -> None:
         """update player status by the server message"""
@@ -167,14 +172,19 @@ class Game:
                 if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != entity["tool"]:
                     self.entities[entity_uuid].update_tool(entity["tool"])
             else:
-                if entity_type == EntityType.PLAYER:
-                    print("creating player")
-                    self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
-                                                              entity_dir, entity["tool"], self.map_collision)
-                else:
-                    print(f"creating entity of type={entity_type}")
-                    self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
-                                                        *pos, entity_dir)
+                match entity_type:
+                    case EntityType.PLAYER:
+                        print("creating player")
+                        self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
+                                                                  entity_dir, entity["tool"], self.map_collision)
+                    case EntityType.BAG:
+                        print(f"creating bag")
+                        self.entities[entity_uuid] = Entity((self.visible_sprites,), entity_type,
+                                                            *pos, entity_dir)
+                    case _:
+                        print(f"creating entity of type {entity_type}")
+                        self.entities[entity_uuid] = Entity((self.visible_sprites, self.obstacles_sprites), entity_type,
+                                                    *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info["uuid"], entities))
@@ -228,7 +238,10 @@ class Game:
 
                         elif event.key == pygame.K_RETURN:  # Check if enter is clicked and sends the message
                             self.chat.add_message(self.chat_msg)
-                            self.msg_to_send = self.chat_msg
+                            chat_packet = craft_client_message(MessageType.CHAT_PACKET, self.player_uuid,
+                                                               {"new_message": self.chat_msg}, self.fernet)
+                            self.conn.sendto(chat_packet, self.server_addr)
+
                             self.chat_msg = ""
                             self.player.is_typing = not self.player.is_typing
 

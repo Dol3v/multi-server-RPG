@@ -2,7 +2,7 @@
 import struct
 import socket
 from typing import Tuple
-from enum import Enum
+from enum import IntEnum, auto
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 
@@ -26,6 +26,8 @@ PROJECTILE_WIDTH = 20
 
 BOT_HEIGHT = 20
 BOT_WIDTH = 20
+BAG_WIDTH = 20
+BAG_HEIGHT = 20
 
 INVENTORY_ROWS = 4
 INVENTORY_COLUMNS = 9
@@ -40,7 +42,7 @@ NODE_PORT = 42069
 DEFAULT_NODE_IP = "127.0.0.1"
 RECV_CHUNK = 1024
 UDP_RECV_CHUNK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM).getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-THREADS_COUNT = 1
+THREADS_COUNT = 10
 NODE_COUNT = 1
 
 # Networking conventions
@@ -60,17 +62,20 @@ EMPTY_SLOT = 0
 SWORD = 1
 AXE = 2
 BOW = 3
+ORANGE_POTION = 4
 MAHAK = 5
+FIRE_BALL = 6
 MIN_WEAPON_NUMBER = 1
-MAX_WEAPON_NUMBER = 3
+MAX_WEAPON_NUMBER = 5
 
 
 # Entity types
-class EntityType(int, Enum):
-    PLAYER = 0
-    PROJECTILE = 1
-    MOB = 2
-    OBSTACLE = 3
+class EntityType(IntEnum):
+    PLAYER = auto()
+    PROJECTILE = auto()
+    MOB = auto()
+    BAG = auto()
+    OBSTACLE = auto()
 
 
 # ECDH Consts
@@ -78,7 +83,7 @@ COMPRESSED_POINT_SIZE = 49
 ELLIPTIC_CURVE = SECP384R1()
 SHARED_KEY_SIZE = 32
 
-MOB_COUNT = 50
+MOB_COUNT = 100
 PROJECTILE_TTL = 120
 # Some temporary consts
 ROOT_IP = "127.0.0.1"

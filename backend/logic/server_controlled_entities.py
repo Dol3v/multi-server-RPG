@@ -3,7 +3,8 @@ import sched
 import time
 
 from backend.backend_consts import FRAME_TIME
-from backend.logic.entity_logic import EntityManager
+from backend.logic.entity_logic import EntityManager, Bag
+from common.consts import EntityType
 
 
 def server_controlled_entities_update(entities_manager: EntityManager, s):
@@ -32,6 +33,7 @@ def update_mobs(entities_manager: EntityManager):
         to_remove = list(filter(lambda m: m.advance_per_tick(entities_manager), entities_manager.mobs.values()))
     for mob in to_remove:
         entities_manager.remove_entity(mob)
+        entities_manager.add_entity(Bag(pos=mob.pos))
         logging.info(f"[update] killed mob {mob.uuid}")
 
 
