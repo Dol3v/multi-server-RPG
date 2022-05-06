@@ -6,7 +6,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar
+from typing import Dict, Iterable, List, Type, Callable, ClassVar
 
 import numpy as np
 from cryptography.fernet import Fernet
@@ -264,6 +264,9 @@ class Player(Combatant):
 
     def serialize(self) -> dict:
         return super().serialize() | {"tool": self.inventory[self.slot]}
+
+    def __repr__(self):
+        return f"Player(uuid={self.uuid},addr={self.addr},pos={self.pos},item={self.item!r})"
 
 
 @dataclass

@@ -131,6 +131,7 @@ class Node:
         if did_swap:
             player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]], \
                                                                                    player.inventory[swap_indices[0]]
+            logging.info(f"{player=!r} swaped inventory slot {swap_indices[0]} with slot {swap_indices[1]}")
         player.slot = slot_index
         if clicked_mouse:
             player.item.on_click(player, self.entities_manager)
