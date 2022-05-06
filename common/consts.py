@@ -2,7 +2,7 @@
 import struct
 import socket
 from typing import Tuple
-from enum import Enum
+from enum import Enum, IntEnum, auto
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 
@@ -63,11 +63,12 @@ MAX_WEAPON_NUMBER = 4
 
 
 # Entity types
-class EntityType(int, Enum):
-    PLAYER = 0
-    PROJECTILE = 1
-    MOB = 2
-    OBSTACLE = 3
+class EntityType(IntEnum):
+    PLAYER = auto()
+    PROJECTILE = auto()
+    MOB = auto()
+    BAG = auto()
+    OBSTACLE = auto()
 
 
 # ECDH Consts
