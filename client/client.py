@@ -1,5 +1,6 @@
 """Runs the client stages"""
 import os
+import signal
 import sys
 
 sys.path.append('../')
@@ -27,6 +28,8 @@ def init_pygame() -> pygame.Surface:
 
 def main():
     screen = init_pygame()
+    signal.signal(signal.SIGINT, game.on_game_exit)
+    signal.signal(signal.SIGTERM, game.on_game_exit)
 
     connection_screen = connect_screen.ConnectScreen(screen, 10000)
     connection_screen.run()

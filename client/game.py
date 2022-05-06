@@ -209,7 +209,7 @@ class Game:
                         self.player.inv.next_hotbar_slot()
 
                 if event.type == pygame.QUIT:
-                    on_game_exit(self)
+                    on_game_exit(game=self)
 
                 if event.type == pygame.MOUSEBUTTONDOWN and self.is_showing_chat:
                     self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
@@ -308,10 +308,10 @@ class Game:
 
 
 @atexit.register
-def on_game_exit(game: Game | None = None):
+def on_game_exit(*args, game: Game | None = None):
     """Handles game closure."""
     pygame.quit()
     if game:
-        game.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, game.player_uuid, {}),
+        game.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, game.player_uuid, {}, fernet=game.fernet),
                          game.server_addr)
     sys.exit(0)

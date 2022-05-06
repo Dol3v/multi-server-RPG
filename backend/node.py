@@ -18,7 +18,7 @@ sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
-from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
+from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT, AFK_THRESHOLD_SECS
 
 from backend.networks.networking import parse_message_from_client, \
     generate_routine_message, S2SMessageType
@@ -54,12 +54,22 @@ class Node:
         # Starts the node
         self.run()
 
-    def watchdog(self):
-        """Or garbage collector. I couldn't decide what's the better name.
-
-        Checks for effectively-dead players and removes them from the game."""
-        while True:
-            ...
+    # def watchdog(self):
+    #     """Or garbage collector. I couldn't decide what's the better name.
+    #
+    #     Checks for effectively-dead players and removes them from the game."""
+    #     to_remove = []
+    #     while True:
+    #         for player in self.entities_manager.players.values():
+    #             if player.uuid not in self.should_join and time.time() - player.last_updated_time >= AFK_THRESHOLD_SECS:
+    #                 logging.info(f"trying to remove {player!r}, time discrepancy: {time.time()}, {player.last_updated_time}")
+    #                 to_remove.append(player)
+    #         if to_remove:
+    #             for player in to_remove:
+    #                 self.entities_manager.remove_entity(player)
+    #                 logging.info(f"{player=!r} was removed, afk")
+    #             to_remove = []
+    #         time.sleep(AFK_THRESHOLD_SECS)
 
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -94,6 +104,16 @@ class Node:
 
     def routine_message_handler(self, player_uuid: str, contents: dict):
         """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
+        if player_uuid in self.should_join:
+            player = self.entities_manager.pop(player_uuid, EntityType.PLAYER)
+            player.last_updated_time = time.time()
+            logging.info(f"adding {player=!r} to the game")
+            self.entities_manager.add_entity(player)
+            self.should_join.remove(player_uuid)
+
+        if player_uuid in self.dead_clients:
+            return
+
         try:
             player_pos, seqn, chat, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents[
                 "seqn"], \
@@ -106,13 +126,6 @@ class Node:
                 swap_indices = contents["swap"]
         except KeyError:
             logging.warning(f"[security] invalid message given by {player_uuid=}")
-            return
-        if player_uuid in self.should_join:
-            player = self.entities_manager.pop(player_uuid, EntityType.PLAYER)
-            self.entities_manager.add_entity(player)
-            self.should_join.remove(player_uuid)
-
-        if player_uuid in self.dead_clients:
             return
 
         if slot_index > MAX_SLOT or slot_index < 0:
