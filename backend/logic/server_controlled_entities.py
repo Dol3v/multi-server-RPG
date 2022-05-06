@@ -31,7 +31,6 @@ def update_mobs(entities_manager: EntityManager):
     logging.debug("thread trying to access mobs for update")
     with entities_manager.mob_lock:
         to_remove = list(filter(lambda m: m.advance_per_tick(entities_manager), entities_manager.mobs.values()))
-    # NOTE: always to_remove will be None
     for mob in to_remove:
         entities_manager.remove_entity(mob)
         entities_manager.add_entity(Bag(pos=mob.pos))

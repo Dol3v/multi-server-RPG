@@ -171,14 +171,19 @@ class Game:
                 if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != entity["tool"]:
                     self.entities[entity_uuid].update_tool(entity["tool"])
             else:
-                if entity_type == EntityType.PLAYER:
-                    print("creating player")
-                    self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
-                                                              entity_dir, entity["tool"], self.map_collision)
-                else:
-                    print(f"creating entity of type={entity_type}")
-                    self.entities[entity_uuid] = Entity((self.visible_sprites,), entity_type,
-                                                        *pos, entity_dir)
+                match entity_type:
+                    case EntityType.PLAYER:
+                        print("creating player")
+                        self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
+                                                                  entity_dir, entity["tool"], self.map_collision)
+                    case EntityType.BAG:
+                        print(f"creating bag")
+                        self.entities[entity_uuid] = Entity((self.visible_sprites,), entity_type,
+                                                            *pos, entity_dir)
+                    case _:
+                        print(f"creating entity of type {entity_type}")
+                        self.entities[entity_uuid] = Entity((self.visible_sprites, self.obstacles_sprites), entity_type,
+                                                    *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info["uuid"], entities))

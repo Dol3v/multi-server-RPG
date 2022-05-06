@@ -2,7 +2,7 @@
 import struct
 import socket
 from typing import Tuple
-from enum import Enum, IntEnum, auto
+from enum import IntEnum, auto
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 

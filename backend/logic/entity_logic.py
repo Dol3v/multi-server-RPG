@@ -13,7 +13,8 @@ import numpy as np
 from cryptography.fernet import Fernet
 from pyqtree import Index
 
-from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET
+from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET, \
+    BAG_SIZE
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
@@ -158,9 +159,8 @@ class Item:
 class Bag(Entity):
     kind = EntityType.BAG
     items: List = dataclasses.field(
-        default_factory=lambda: [random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER),
-                                 random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER),
-                                 random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER)] )
+        default_factory=lambda: [random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER) for _ in range(BAG_SIZE)]
+    )
 
 
 class CanHit(abc.ABC):
@@ -241,8 +241,7 @@ class Projectile(ServerControlled, CanHit):
         return False
 
     def on_hit(self, hit_objects: Iterable[Entity], manager: EntityManager) -> bool:
-        """hit the given objects and return true if the object wasn't projectile"""
-        should_remove = True  # remove only if collided with anything other than projectiles
+        should_remove = True
         for hit in hit_objects:
             match hit.kind:
                 case EntityType.PROJECTILE:
@@ -276,19 +275,14 @@ class Player(Combatant):
         return super().serialize() | {"tool": self.inventory[self.slot]}
 
     def fill_inventory(self, bag: Bag):
-        """fills player's inventory with the bag's items"""
-        print(f"before {self.inventory=}, {bag=}")
-
+        """Fills player's inventory with the bag's items."""
         new_item_slot = 0
         for index, item in enumerate(self.inventory):
-            print(item)
             if new_item_slot == len(bag.items):
                 break
-            if item == 0:
+            if item == EMPTY_SLOT:
                 self.inventory[index] = bag.items[new_item_slot]
                 new_item_slot += 1
-
-        print(f"after filling: {self.inventory=}")
 
 
 @dataclass
