@@ -20,7 +20,7 @@ sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
-from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT, AFK_THRESHOLD_SECS
+from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
 from backend.networks.networking import parse_message_from_client, \
     generate_routine_message, S2SMessageType, generate_status_message
@@ -151,7 +151,7 @@ class Node:
         player.last_updated_seqn = seqn
         player.last_updated_time = time.time()
 
-    def closed_game_handler(self, player_uuid: str, data: dict):
+    def closed_game_handler(self, player_uuid: str):
         logging.info(f"player {player_uuid} exited the game.")
         if player := self.entities_manager.get(player_uuid, EntityType.PLAYER):
             self.entities_manager.remove_entity(player)
@@ -178,7 +178,7 @@ class Node:
                 case MessageType.ROUTINE_CLIENT:
                     self.routine_message_handler(client_uuid, data["contents"])
                 case MessageType.CLOSED_GAME_CLIENT:
-                    self.closed_game_handler(client_uuid, data["contents"])
+                    self.closed_game_handler(client_uuid)
                 case _:
                     logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
@@ -193,9 +193,16 @@ class Node:
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
 
             self.should_join.add(player_uuid)
-            self.entities_manager.add_to_dict(Player(uuid=player_uuid, addr=(ip, port),
-                                                     fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                                     pos=initial_pos))
+            if data["is_login"]:
+                self.entities_manager.add_to_dict(Player(uuid=player_uuid, addr=(ip, port),
+                                                         fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                                         pos=initial_pos, slot=data["initial_slot"],
+                                                         health=data["initial_hp"], inventory=data["initial_inventory"])
+                                                  )
+            else:
+                self.entities_manager.add_to_dict(Player(uuid=player_uuid, addr=(ip, port),
+                                                         fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                                         pos=initial_pos))
             if player_uuid in self.dead_clients:
                 self.dead_clients.remove(player_uuid)
         except KeyError as e:
@@ -254,5 +261,5 @@ def create_map():
 
 if __name__ == "__main__":
     logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.INFO)
-    db= SqlDatabase("127.0.0.1", DB_PASS)
+    db = SqlDatabase("127.0.0.1", DB_PASS)
     Node(NODE_PORT, db)

@@ -27,7 +27,7 @@ from networks import do_ecdh
 
 from common.utils import deserialize_json, serialize_json
 from common.consts import ROOT_IP, ROOT_PORT, Addr, DEFAULT_ADDR, RECV_CHUNK, NUM_NODES, \
-    WORLD_WIDTH, WORLD_HEIGHT, MIN_HEALTH
+    WORLD_WIDTH, WORLD_HEIGHT, MIN_HEALTH, MAX_HEALTH
 from backend_consts import ROOT_SERVER2SERVER_PORT
 
 
@@ -136,7 +136,7 @@ class EntryNode:
                 user_data = load_user_info(self.db_conn, user_uuid)
                 data["is_login"] = True
                 data["initial_pos"] = user_data[1]
-                data = data | {"initial_hp": 0 if user_data[2] < MIN_HEALTH else user_data[2],
+                data = data | {"initial_hp": MAX_HEALTH if user_data[2] < MIN_HEALTH else user_data[2],
                                "initial_slot": user_data[3],
                                "initial_inventory": user_data[4]}
 
