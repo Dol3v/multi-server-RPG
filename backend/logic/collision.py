@@ -15,8 +15,8 @@ def moved_reasonable_distance(new: Pos, prev: Pos, seqn_delta: int) -> bool:
 
 def invalid_movement(entity: Player, player_pos: Pos, seqn: int, manager: EntityManager) -> bool:
     """check if a given player movement is valid"""
-    return entity.last_updated != -1 and (not moved_reasonable_distance(
-        player_pos, entity.pos, seqn - entity.last_updated) or
-                                          not is_empty(manager.get_collidables_with(entity))
-                                          or not (0 <= player_pos[0] <= WORLD_WIDTH)
-                                          or not (0 <= player_pos[1] <= WORLD_HEIGHT))
+    return entity.last_updated_seqn != -1 and (not moved_reasonable_distance(
+        player_pos, entity.pos, seqn - entity.last_updated_seqn) or
+                                               not is_empty(manager.get_collidables_with(entity))
+                                               or not (0 <= player_pos[0] <= WORLD_WIDTH)
+                                               or not (0 <= player_pos[1] <= WORLD_HEIGHT))

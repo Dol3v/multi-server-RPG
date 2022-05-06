@@ -252,7 +252,8 @@ class Player(Combatant):
     new_message: str = ""
     incoming_message: str = ""  # List[str] = field(default_factory=lambda: [])
     addr: Addr = ("127.0.0.1", 10000)
-    last_updated: int = -1  # latest sequence number basically
+    last_updated_seqn: int = -1  # latest sequence number basically
+    last_updated_time: int = 0
     slot: int = 0
     inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW] + [EMPTY_SLOT
                                                                                           for _ in range(

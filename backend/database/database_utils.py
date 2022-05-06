@@ -11,7 +11,7 @@ def save_user_info(db: SqlDatabase, user: Player):
     """Insert a new row inside the users_info table"""
     stmt = (
         insert(db.users_table).values(uuid=user.uuid, position=user.pos,
-                                      direction=user.direction, last_seqn=user.last_updated, health=user.health,
+                                      direction=user.direction, last_seqn=user.last_updated_seqn, health=user.health,
                                       slot=user.slot, tools=user.inventory)
     )
     return db.exec(stmt)

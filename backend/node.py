@@ -2,6 +2,7 @@ import logging
 import queue
 import sys
 import threading
+import time
 from collections import defaultdict
 from typing import Set
 
@@ -64,10 +65,10 @@ class Node:
         """
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if invalid_movement(player, player_pos, seqn, self.entities_manager) or seqn != player.last_updated + 1:
+        if invalid_movement(player, player_pos, seqn, self.entities_manager) or seqn != player.last_updated_seqn + 1:
             logging.info(
                 f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}"
-                f", {player.last_updated=}")
+                f", {player.last_updated_seqn=}")
             secure_pos = self.entities_manager.players[player.uuid].pos
         else:
             self.entities_manager.update_entity_location(player, player_pos)
@@ -112,7 +113,7 @@ class Node:
 
         player = self.entities_manager.players[player_uuid]
         logging.debug(f"{player=} sent a routine message")
-        if seqn <= player.last_updated != 0:
+        if seqn <= player.last_updated_seqn != 0:
             logging.info(f"Got outdated packet from {player_uuid=}")
             return
 
@@ -131,7 +132,8 @@ class Node:
             self.dead_clients.add(player.uuid)
         # self.broadcast_clients(player.uuid)
         self.update_client(player, secure_pos)
-        player.last_updated = seqn
+        player.last_updated_seqn = seqn
+        player.last_updated_time = time.time()
 
     def closed_game_handler(self, player_uuid: str, data: dict):
         logging.info(f"player {player_uuid} exited the game.")
@@ -147,8 +149,9 @@ class Node:
                 continue
             try:
                 message_type = MessageType(data["contents"]["id"])
+                client_uuid = data["uuid"]
             except KeyError as e:
-                logging.warning(f"[security] invalid message, no id present {data=}, {e=}")
+                logging.warning(f"[security] invalid message, no id/uuid present {data=}, {e=}")
                 continue
             except ValueError as e:
                 logging.warning(f"[security] invalid id, {data=}, {e=}")
@@ -156,9 +159,9 @@ class Node:
 
             match message_type:
                 case MessageType.ROUTINE_CLIENT:
-                    self.routine_message_handler(data["uuid"], data["contents"])
+                    self.routine_message_handler(client_uuid, data["contents"])
                 case MessageType.CLOSED_GAME_CLIENT:
-                    self.closed_game_handler(data["uuid"], data["contents"])
+                    self.closed_game_handler(client_uuid, data["contents"])
                 case _:
                     logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
