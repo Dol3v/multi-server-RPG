@@ -52,6 +52,11 @@ def craft_message(message_type: MessageType, message_contents: dict, fernet: Fer
     return fernet.encrypt(json.dumps({"id": int(message_type)} | message_contents).encode())
 
 
+def generate_status_message(status: MessageType, fernet: Fernet) -> bytes:
+    """Generates a message with no contents` useful for status updates."""
+    return craft_message(status, {}, fernet)
+
+
 def generate_routine_message(valid_pos: Pos, player: Player, sent_entities: Iterable[Entity]) -> bytes:
     return craft_message(MessageType.ROUTINE_SERVER, {"valid_pos": valid_pos,
                                                       "health": player.health,
