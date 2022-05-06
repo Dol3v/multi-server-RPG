@@ -132,6 +132,7 @@ class Node:
 
         if player.health <= MIN_HEALTH:
             self.kill_player(player)
+            return
 
         player.attacking_direction = attack_dir
         player.new_message = chat
