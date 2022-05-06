@@ -133,6 +133,9 @@ class Node:
         self.update_client(player, secure_pos)
         player.last_updated = seqn
 
+    def closed_game_handler(self, player_uuid: str, data: dict):
+        logging.info(f"player {player_uuid} exited the game.")
+
     def client_handler(self):
         """Communicate with client"""
         while True:
@@ -152,6 +155,8 @@ class Node:
             match message_type:
                 case MessageType.ROUTINE_CLIENT:
                     self.routine_message_handler(data["uuid"], data["contents"])
+                case MessageType.CLOSED_GAME_CLIENT:
+                    self.closed_game_handler(data["uuid"], data["contents"])
                 case _:
                     logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
@@ -186,13 +191,6 @@ class Node:
                         self.handle_player_prelogin(data)
             except KeyError | ValueError as e:
                 logging.warning(f"[error] prelogin message from root has an invalid format, {data=}, {e=}")
-
-    # def broadcast_clients(self, player_uuid: str):
-    #     """Broadcast clients new messages to each other."""
-    #     for uuid_to_broadcast in self.entities_manager.players:
-    #         if player_uuid != uuid_to_broadcast:
-    #             self.entities_manager.players[uuid_to_broadcast].incoming_message = \
-    #                 self.entities_manager.players[player_uuid].new_message
 
     def generate_mobs(self):
         """Generate the mobs object with a random positions"""
@@ -233,5 +231,5 @@ def create_map():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.INFO)
     Node(NODE_PORT)

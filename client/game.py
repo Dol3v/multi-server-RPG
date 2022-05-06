@@ -1,4 +1,5 @@
 """Game loop and communication with the server"""
+import atexit
 import queue
 import sys
 import threading
@@ -70,7 +71,8 @@ class Game:
 
         # inventory init
         self.inventory = pygame.image.load("assets/inventory.png")
-        self.inventory = pygame.transform.scale(self.inventory, (self.inventory.get_width() * 2.5, self.inventory.get_height() * 2.5))
+        self.inventory = pygame.transform.scale(self.inventory,
+                                                (self.inventory.get_width() * 2.5, self.inventory.get_height() * 2.5))
         self.inventory.set_alpha(150)
 
         self.chat_msg = ""
@@ -118,9 +120,7 @@ class Game:
         print("-" * 10)
         print(f"{pos=}, {inventory=}, {health=}, {entities=}")
         if health <= MIN_HEALTH:
-            print("ded")
-            pygame.quit()
-            sys.exit(0)
+            raise KeyboardInterrupt()  # temporary for checking purposes
 
         self.player.current_health = health
 
@@ -209,8 +209,7 @@ class Game:
                         self.player.inv.next_hotbar_slot()
 
                 if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
+                    self.on_game_exit()
 
                 if event.type == pygame.MOUSEBUTTONDOWN and self.is_showing_chat:
                     self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
@@ -257,6 +256,13 @@ class Game:
             self.can_recv = True
             pygame.display.update()
             self.clock.tick(FPS)
+
+    @atexit.register
+    def on_game_exit(self):
+        if self.can_recv:  # making sure we don't try to send a message to the server before we interacted with it
+            pygame.quit()
+            self.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, self.player_uuid, {}, self.fernet),
+                             self.server_addr)
 
     def draw_chat(self, event_list):
         if self.is_showing_chat:
