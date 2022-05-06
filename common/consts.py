@@ -42,7 +42,7 @@ NODE_PORT = 42069
 DEFAULT_NODE_IP = "127.0.0.1"
 RECV_CHUNK = 1024
 UDP_RECV_CHUNK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM).getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-THREADS_COUNT = 10
+THREADS_COUNT = 1
 NODE_COUNT = 1
 
 # Networking conventions
