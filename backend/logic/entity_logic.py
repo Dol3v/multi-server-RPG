@@ -6,17 +6,20 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
+import random
 from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar
 
 import numpy as np
 from cryptography.fernet import Fernet
 from pyqtree import Index
 
-from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET
+from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET, \
+    BAG_SIZE
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
-    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED
+    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
+    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -150,6 +153,12 @@ class Item:
         :param clicked_by: entity who clicked on the item
         :param manager: entity manager"""
         ...
+
+
+@dataclass
+class Bag(Entity):
+    items: List = dataclasses.field(
+        default_factory=lambda: [Item(type=random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER))] * BAG_SIZE)
 
 
 class CanHit(abc.ABC):
