@@ -19,7 +19,8 @@ from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
     ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
-    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER, FIRE_BALL
+    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER, FIRE_BALL, REGENERATION_POTION, DAMAGE_POTION, RESISTANCE_POTION, \
+    USELESS_ITEM, PET_EGG
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -260,8 +261,8 @@ class Player(Combatant):
     addr: Addr = ("127.0.0.1", 10000)
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
-    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, FIRE_BALL] + [EMPTY_SLOT
-                                                                                                     for _ in range(
+    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, PET_EGG] + [EMPTY_SLOT
+                                                                                                   for _ in range(
             INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
@@ -290,6 +291,7 @@ class Mob(Combatant, ServerControlled):
     tracked_player_uuid: str | None = None
     kind: ClassVar[EntityType] = EntityType.MOB
     speed: ClassVar[int] = MOB_SPEED
+    parent_uuid: str = ""
 
     @property
     def item(self):
@@ -309,7 +311,8 @@ class Mob(Combatant, ServerControlled):
     def update_direction(self, manager: EntityManager):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = list(manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                      entity_filter=lambda kind, _: kind == EntityType.PLAYER))
+                                                      entity_filter=lambda kind, uuid: kind == EntityType.PLAYER and
+                                                                                       uuid != self.parent_uuid))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
             self.tracked_player_uuid = None
@@ -371,7 +374,7 @@ class MeleeWeapon(Weapon):
     melee_attack_range: int
 
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
-        in_range: Iterable[Combatant] = manager.get_entities_in_range(
+        in_range = manager.get_entities_in_range(
             get_bounding_box(attacker.pos, self.melee_attack_range,
                              self.melee_attack_range),
             entity_filter=lambda entity_kind,
@@ -404,12 +407,45 @@ class RangedWeapon(Weapon):
             logging.info(f"added projectile {projectile}")
 
 
+@dataclass(frozen=True)
+class OneClickItem(Item):
+    def on_click(self, clicked_by: Player, manager: EntityManager):
+        ...
+
+
+@dataclass(frozen=True)
+class PetEgg(Item):
+    def on_click(self, clicked_by: Player, manager: EntityManager):
+        manager.add_entity(Mob(parent_uuid=clicked_by.uuid))
+
+
+@dataclass(frozen=True)
+class RegenerationPotion(Item):
+    type = REGENERATION_POTION
+
+
+@dataclass(frozen=True)
+class DamagePotion(Item):
+    type = DAMAGE_POTION
+
+
+@dataclass(frozen=True)
+class ResistancePotion(Item):
+    type = RESISTANCE_POTION
+
+
+@dataclass(frozen=True)
+class UselessItem(Item):
+    type = USELESS_ITEM
+
+
 _item_pool: Dict[int, Item] = {
     SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
     AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
     BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
     MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile),
-    FIRE_BALL: RangedWeapon(type=FIRE_BALL, cooldown=200, damage=100, projectile_class=Projectile)
+    FIRE_BALL: RangedWeapon(type=FIRE_BALL, cooldown=200, damage=100, projectile_class=Projectile),
+    PET_EGG: PetEgg(PET_EGG)
 }
 
 
