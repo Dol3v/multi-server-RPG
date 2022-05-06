@@ -371,7 +371,7 @@ class MeleeWeapon(Weapon):
     melee_attack_range: int
 
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
-        in_range: Iterable[Combatant] = manager.get_entities_in_range(
+        in_range = manager.get_entities_in_range(
             get_bounding_box(attacker.pos, self.melee_attack_range,
                              self.melee_attack_range),
             entity_filter=lambda entity_kind,
