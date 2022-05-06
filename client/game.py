@@ -177,7 +177,7 @@ class Game:
                                                               entity_dir, entity["tool"], self.map_collision)
                 else:
                     print(f"creating entity of type={entity_type}")
-                    self.entities[entity_uuid] = Entity((self.obstacles_sprites, self.visible_sprites), entity_type,
+                    self.entities[entity_uuid] = Entity((self.visible_sprites,), entity_type,
                                                         *pos, entity_dir)
 
         remove_entities = []

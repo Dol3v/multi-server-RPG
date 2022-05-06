@@ -13,8 +13,7 @@ import numpy as np
 from cryptography.fernet import Fernet
 from pyqtree import Index
 
-from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET, \
-    BAG_SIZE
+from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET
 from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
@@ -159,7 +158,9 @@ class Item:
 class Bag(Entity):
     kind = EntityType.BAG
     items: List = dataclasses.field(
-        default_factory=lambda: [Item(type=random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER))] * BAG_SIZE)
+        default_factory=lambda: [random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER),
+                                 random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER),
+                                 random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER)] )
 
 
 class CanHit(abc.ABC):
@@ -276,10 +277,17 @@ class Player(Combatant):
 
     def fill_inventory(self, bag: Bag):
         """fills player's inventory with the bag's items"""
-        print(f"before {self.inventory=}")
-        for inventory_item, bag_item in zip(self.inventory, bag.items):
-            if inventory_item == 0:
-                inventory_item = bag_item
+        print(f"before {self.inventory=}, {bag=}")
+
+        new_item_slot = 0
+        for index, item in enumerate(self.inventory):
+            print(item)
+            if new_item_slot == len(bag.items):
+                break
+            if item == 0:
+                self.inventory[index] = bag.items[new_item_slot]
+                new_item_slot += 1
+
         print(f"after filling: {self.inventory=}")
 
 
