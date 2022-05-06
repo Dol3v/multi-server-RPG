@@ -54,23 +54,6 @@ class Node:
         # Starts the node
         self.run()
 
-    # def watchdog(self):
-    #     """Or garbage collector. I couldn't decide what's the better name.
-    #
-    #     Checks for effectively-dead players and removes them from the game."""
-    #     to_remove = []
-    #     while True:
-    #         for player in self.entities_manager.players.values():
-    #             if player.uuid not in self.should_join and time.time() - player.last_updated_time >= AFK_THRESHOLD_SECS:
-    #                 logging.info(f"trying to remove {player!r}, time discrepancy: {time.time()}, {player.last_updated_time}")
-    #                 to_remove.append(player)
-    #         if to_remove:
-    #             for player in to_remove:
-    #                 self.entities_manager.remove_entity(player)
-    #                 logging.info(f"{player=!r} was removed, afk")
-    #             to_remove = []
-    #         time.sleep(AFK_THRESHOLD_SECS)
-
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
 

@@ -1,6 +1,8 @@
 """Game loop and communication with the server"""
 import atexit
+import functools
 import queue
+import signal
 import sys
 import threading
 
@@ -196,6 +198,10 @@ class Game:
         recv_thread = threading.Thread(target=self.receiver)
         recv_thread.start()
         self.draw_map()
+
+        # modifying callbacks for signals
+        signal.signal(signal.SIGINT, functools.partial(on_game_exit, kwargs={"game": self}))
+        signal.signal(signal.SIGTERM, functools.partial(on_game_exit, kwargs={"game": self}))
 
         # Game loop
         while self.running:
