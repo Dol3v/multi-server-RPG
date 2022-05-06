@@ -98,11 +98,11 @@ weapon_data = {
             "id": 6, "is_ranged": False, 'cooldown': 200, 'damage': 100, "hand_position": (25, 50),
             'graphics': "assets/items/mahak/mahak2.png",
             'icon': "assets/items/mahak/mahak2.png",
-            "display_name": ("Fire ball", (255, 215, 0), True),
+            "display_name": ("Fireball", (255, 215, 0), True),
             "resize_icon": False,
             "size_multiplier": 1,
             "description":
-                ["Your hands can shoot fire balls", "use this skill wisely",
+                ["Your hands can shoot fireballs", "use this skill wisely",
                  "(or ...)"]
         }
 }
