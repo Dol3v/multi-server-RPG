@@ -26,13 +26,13 @@ def update_user_info(db: SqlDatabase, user: Player):
 
 def load_user_info(db: SqlDatabase, uuid: str):
     """Select and return the result of the given uuid."""
-    stmt = select(db.users_table).where(db.users_table.uuid == uuid)
+    stmt = select(db.users_table).where(db.users_table.c.uuid == uuid)
     return db.exec(stmt)
 
 
 def delete_user_info(db: SqlDatabase, uuid: str):
     """Delete the row of the given uuid"""
-    stmt = delete().where(db.users_table.uuid == uuid)
+    stmt = delete().where(db.users_table.c.uuid == uuid)
     return db.exec(stmt)
 
 
