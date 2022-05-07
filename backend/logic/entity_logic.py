@@ -501,9 +501,10 @@ class PetEggSkill(Skill):
 
 
 _item_pool: Dict[int, Item] = {
-    SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
-    AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
-    BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
+    EMPTY_SLOT: UselessItem(USELESS_ITEM),
+    SWORD: MeleeWeapon(type=SWORD, cooldown=25, damage=15, melee_attack_range=100),
+    AXE: MeleeWeapon(type=AXE, cooldown=100, damage=40, melee_attack_range=150),
+    BOW: RangedWeapon(type=BOW, cooldown=100, damage=30, projectile_class=Projectile),
     USELESS_ITEM: UselessItem(USELESS_ITEM),
     REGENERATION_POTION: RegenerationPotion(type=REGENERATION_POTION),
     DAMAGE_POTION: DamagePotion(type=DAMAGE_POTION),
