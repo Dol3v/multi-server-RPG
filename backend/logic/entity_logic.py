@@ -444,16 +444,6 @@ class OneClickItem(Item):
 
 
 @dataclass(frozen=True)
-class PetEgg(OneClickItem):
-    """Spawns a friendly mob that can attack other players."""
-
-    def action(self, clicked_by: Player, manager: EntityManager):
-        to_spawn = Mob(parent_uuid=clicked_by.uuid, pos=manager.get_available_position
-        (EntityType.MOB, *get_bounding_box(clicked_by.pos, PET_SPAWN_X_DELTA, PET_SPAWN_Y_DELTA)))
-        manager.add_entity(to_spawn)
-
-
-@dataclass(frozen=True)
 class RegenerationPotion(OneClickItem):
     type = REGENERATION_POTION
     regen_strength: ClassVar[int] = 35
@@ -495,13 +485,21 @@ class FireballSkill(Skill, RangedWeapon):
     projectile_class = Projectile
 
 
+class PetEggSkill(Skill):
+
+    def use_to_attack(self, player: Player, manager: EntityManager):
+        to_spawn = Mob(parent_uuid=player.uuid, pos=manager.get_available_position
+        (EntityType.MOB, *get_bounding_box(player.pos, PET_SPAWN_X_DELTA, PET_SPAWN_Y_DELTA)))
+        manager.add_entity(to_spawn)
+
+
 _item_pool: Dict[int, Item] = {
     SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
     AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
     BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
     MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile),
     FIRE_BALL: FireballSkill(type=FIRE_BALL, cooldown=200, damage=100),
-    PET_EGG: PetEgg(PET_EGG)
+    PET_EGG: PetEggSkill(type=PET_EGG, cooldown=300)
 }
 
 
