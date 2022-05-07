@@ -6,6 +6,7 @@ import random
 import threading
 import time
 import uuid
+from abc import ABC
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Type, Callable, ClassVar
 
@@ -13,9 +14,13 @@ import numpy as np
 from cryptography.fernet import Fernet
 from pyqtree import Index
 
-from backend.backend_consts import BAG_SIZE
-from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET
-from common.consts import *
+from backend.backend_consts import FRAME_TIME, MOB_ERROR_TERM, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT, RANGED_OFFSET, \
+    BAG_SIZE
+from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
+from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
+    PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
+    ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
+    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER, FIRE_BALL
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -119,16 +124,17 @@ class EntityManager:
             self._grouped_entities[entity.kind].pop(entity.uuid)
             self.spindex.remove((entity.kind, entity.uuid), get_entity_bounding_box(entity.pos, entity.kind))
 
-    def get_available_position(self, kind: int) -> Pos:
+    def get_available_position(self, kind: EntityType, x_min: int = 0, x_max: int = WORLD_WIDTH // 3, y_min: int = 0,
+                               y_max: int = WORLD_HEIGHT // 3) -> Pos:
         """Finds a position on the map, such that the bounding box of an entity of type ``kind``
            doesn't intersect with any existing object on the map.
 
         :param: kind entity type
         :returns: available position"""
-        pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
+        pos_x, pos_y = int(np.random.uniform(x_min, x_max)), int(np.random.uniform(y_min, y_max))
 
         while len(self.spindex.intersect(get_entity_bounding_box((pos_x, pos_y), kind))) != 0:
-            pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH // 3)), int(np.random.uniform(0, WORLD_HEIGHT // 3))
+            pos_x, pos_y = int(np.random.uniform(x_min, x_max)), int(np.random.uniform(y_min, y_max))
         return pos_x, pos_y
 
     def add_entity(self, entity: Entity):
@@ -154,7 +160,7 @@ class Item:
 class Bag(Entity):
     kind = EntityType.BAG
     items: List = dataclasses.field(
-        default_factory=lambda: [random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER) for _ in range(BAG_SIZE)]
+        default_factory=lambda: [random.randint(MIN_ITEM_NUMBER, MAX_ITEM_NUMBER) for _ in range(BAG_SIZE)]
     )
 
 
@@ -199,6 +205,8 @@ class Combatant(Entity):
     last_time_attacked: float = -1
     current_cooldown: float = -1
     health: int = MAX_HEALTH
+    resistance: int = 0
+    damage_multiplier: int = 1
 
     @property
     @abc.abstractmethod
@@ -210,14 +218,21 @@ class Combatant(Entity):
     def has_ranged_weapon(self) -> bool:
         return isinstance(self.item, RangedWeapon)
 
+    def deal_damage_to(self, other, damage: int):
+        """Deals some amount of damage to another combatant, factoring in the resistance/damage boost of both."""
+        other.health -= (damage * self.damage_multiplier) + other.resistance
+
     def serialize(self) -> dict:
-        return super().serialize() | {"is_attacking": self.is_attacking}
+        return super().serialize() | {"is_attacking": self.is_attacking,
+                                      "hp": self.health,
+                                      "resistance": self.resistance}
 
 
 @dataclass
 class Projectile(ServerControlled, CanHit):
     damage: int = 0
     ttl: int = PROJECTILE_TTL
+    shot_by: Combatant = dataclasses.field(default_factory=lambda: Combatant())
     kind: ClassVar[EntityType] = EntityType.PROJECTILE
     width: ClassVar[int] = PROJECTILE_WIDTH
     height: ClassVar[int] = PROJECTILE_HEIGHT
@@ -243,7 +258,7 @@ class Projectile(ServerControlled, CanHit):
                     should_remove = False
                 case EntityType.MOB | EntityType.PLAYER:
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
-                    hit.health -= self.damage
+                    self.shot_by.deal_damage_to(hit, self.damage)
                     logging.info(f"entity {hit!r} was updated after hit")
 
         return should_remove
@@ -251,24 +266,25 @@ class Projectile(ServerControlled, CanHit):
 
 @dataclass
 class Player(Combatant):
-    new_message: str = ""
-    incoming_message: str = ""  # List[str] = field(default_factory=lambda: [])
-    addr: Addr = ("127.0.0.1", 10000)
+    addr: Addr = ("", 0)
     last_updated_seqn: int = -1  # latest sequence number basically
     last_updated_time: float = dataclasses.field(default_factory=time.time)
     slot: int = 0
-    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, FIRE_BALL] + [EMPTY_SLOT
-                                                                                                     for _ in range(
+    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, REGENERATION_POTION] + [EMPTY_SLOT
+                                                                                                   for _ in range(
             INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
+    skill: int = dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
+    last_time_used_skill: int = 0
+    skill_cooldown: int = -1
 
     @property
     def item(self) -> Item:
         return get_item(self.inventory[self.slot])
 
     def serialize(self) -> dict:
-        return super().serialize() | {"tool": self.inventory[self.slot]}
+        return super().serialize() | {"tool": self.inventory[self.slot], "skill": self.skill}
 
     def __repr__(self):
         return f"Player(uuid={self.uuid}, addr={self.addr}, pos={self.pos}, item={self.item!r}, health={self.health})"
@@ -286,10 +302,11 @@ class Player(Combatant):
 
 @dataclass
 class Mob(Combatant, ServerControlled):
-    weapon: int = SWORD
+    weapon: int = dataclasses.field(default_factory=lambda: random.randint(MOB_MIN_WEAPON, MOB_MAX_WEAPON))
     tracked_player_uuid: str | None = None
     kind: ClassVar[EntityType] = EntityType.MOB
     speed: ClassVar[int] = MOB_SPEED
+    parent_uuid: str = ""
 
     @property
     def item(self):
@@ -309,7 +326,9 @@ class Mob(Combatant, ServerControlled):
     def update_direction(self, manager: EntityManager):
         """Updates mob's attacking/movement directions, and updates whether he is currently tracking a player."""
         in_range = list(manager.get_entities_in_range(get_bounding_box(self.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT),
-                                                      entity_filter=lambda kind, _: kind == EntityType.PLAYER))
+                                                      entity_filter=lambda kind,
+                                                                           entity_uuid: kind == EntityType.PLAYER and
+                                                                                        entity_uuid != self.parent_uuid))
         self.direction = -1, -1  # used to reset calculations each iteration
         if not in_range:
             self.tracked_player_uuid = None
@@ -355,7 +374,7 @@ class Weapon(Item):
     damage: int
 
     def on_click(self, clicked_by: Combatant, manager: EntityManager):
-        if clicked_by.last_time_attacked + clicked_by.current_cooldown <= time.time():
+        if clicked_by.current_cooldown == -1 or clicked_by.last_time_attacked + clicked_by.current_cooldown <= time.time():
             self.use_to_attack(clicked_by, manager)
             clicked_by.last_time_attacked = time.time()
             clicked_by.current_cooldown = self.cooldown * FRAME_TIME
@@ -364,6 +383,16 @@ class Weapon(Item):
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
         """Attack using this weapon."""
         ...
+
+
+@dataclass(frozen=True)
+class Skill(Weapon, ABC):
+
+    def on_click(self, player: Player, manager: EntityManager):
+        if player.skill_cooldown == -1 or player.last_time_used_skill + player.skill_cooldown <= time.time():
+            self.use_to_attack(player, manager)
+            player.last_time_used_skill = time.time()
+            player.skill_cooldown = self.cooldown * FRAME_TIME
 
 
 @dataclass(frozen=True)
@@ -381,7 +410,7 @@ class MeleeWeapon(Weapon):
         for attackable in in_range:
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
-            attackable.health -= self.damage
+            attacker.deal_damage_to(attackable, self.damage)
             logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
 
 
@@ -395,21 +424,97 @@ class RangedWeapon(Weapon):
             pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
                  int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
             direction=attacker.attacking_direction,
-            damage=self.damage
+            damage=self.damage,
+            shot_by=attacker
         )
         manager.add_entity(projectile)
-        logging.debug("thread trying to access projectiles for attack")
-        with manager.projectile_lock:
-            manager.projectiles[projectile.uuid] = projectile
-            logging.info(f"added projectile {projectile}")
+        logging.debug(f"added projectile {projectile}")
+
+
+@dataclass(frozen=True)
+class OneClickItem(Item):
+    """An Item that disappears after one click."""
+
+    def on_click(self, clicked_by: Player, manager: EntityManager):
+        self.action(clicked_by, manager)
+        clicked_by.inventory[clicked_by.slot] = EMPTY_SLOT
+
+    @abc.abstractmethod
+    def action(self, clicked_by: Player, manager: EntityManager):
+        ...
+
+
+@dataclass(frozen=True)
+class RegenerationPotion(OneClickItem):
+    type = REGENERATION_POTION
+    regen_strength: ClassVar[int] = 35
+
+    def action(self, clicked_by: Player, manager: EntityManager):
+        prev_health = clicked_by.health
+        clicked_by.health += self.regen_strength
+        clicked_by.health = min(MAX_HEALTH, clicked_by.health)
+        logging.info(f"player {clicked_by!r} had his health regenerated to {clicked_by.health} from {prev_health}")
+
+
+@dataclass(frozen=True)
+class DamagePotion(OneClickItem):
+    """Increases the damage done by an entity. The effect stacks, meaning applying some damage potions
+    will increase the damage continuously."""
+    type = DAMAGE_POTION
+    damage_multiplier: ClassVar[int] = 1.1
+
+    def action(self, clicked_by: Player, manager: EntityManager):
+        clicked_by.damage_multiplier *= self.damage_multiplier
+
+
+@dataclass(frozen=True)
+class ResistancePotion(OneClickItem):
+    """Adds damage resistance to an entity. The boost stacks until the resistance reaches a known threshold."""
+    type = RESISTANCE_POTION
+    resistance_strength: ClassVar[int] = 5
+    max_resistance: ClassVar[int] = 25
+
+    def action(self, clicked_by: Player, manager: EntityManager):
+        clicked_by.resistance += self.resistance_strength
+        clicked_by.resistance = min(self.max_resistance, clicked_by.resistance)
+
+
+@dataclass(frozen=True)
+class UselessItem(Item):
+    type = USELESS_ITEM
+
+
+class FireballSkill(Skill, RangedWeapon):
+    type = FIRE_BALL
+    projectile_class = Projectile
+
+
+class EraserSkill(Skill, RangedWeapon):
+    type: int = MAHAK
+    projectile_class = Projectile
+
+
+class PetEggSkill(Skill):
+    type = PET_EGG
+
+    def use_to_attack(self, player: Player, manager: EntityManager):
+        to_spawn = Mob(parent_uuid=player.uuid, pos=manager.get_available_position
+        (EntityType.MOB, *get_bounding_box(player.pos, PET_SPAWN_X_DELTA, PET_SPAWN_Y_DELTA)))
+        manager.add_entity(to_spawn)
 
 
 _item_pool: Dict[int, Item] = {
-    SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
-    AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
-    BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
-    MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile),
-    FIRE_BALL: RangedWeapon(type=FIRE_BALL, cooldown=200, damage=100, projectile_class=Projectile)
+    EMPTY_SLOT: UselessItem(USELESS_ITEM),
+    SWORD: MeleeWeapon(type=SWORD, cooldown=25, damage=15, melee_attack_range=100),
+    AXE: MeleeWeapon(type=AXE, cooldown=100, damage=40, melee_attack_range=150),
+    BOW: RangedWeapon(type=BOW, cooldown=100, damage=30, projectile_class=Projectile),
+    USELESS_ITEM: UselessItem(USELESS_ITEM),
+    REGENERATION_POTION: RegenerationPotion(type=REGENERATION_POTION),
+    DAMAGE_POTION: DamagePotion(type=DAMAGE_POTION),
+    RESISTANCE_POTION: ResistancePotion(type=RESISTANCE_POTION),
+    MAHAK: EraserSkill(type=MAHAK, cooldown=200, damage=100),
+    FIRE_BALL: FireballSkill(type=FIRE_BALL, cooldown=200, damage=100),
+    PET_EGG: PetEggSkill(type=PET_EGG, cooldown=300, damage=0)
 }
 
 
