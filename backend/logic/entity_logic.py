@@ -444,23 +444,30 @@ class RegenerationPotion(OneClickItem):
 
     def action(self, clicked_by: Player, manager: EntityManager):
         clicked_by.health += self.regen_strength
-        clicked_by.health = MAX_HEALTH if clicked_by.health >= MAX_HEALTH else clicked_by.health
+        clicked_by.health = max(MAX_HEALTH, clicked_by.health)
 
 
 @dataclass(frozen=True)
 class DamagePotion(OneClickItem):
+    """Increases the damage done by an entity. The effect stacks, meaning applying some damage potions
+    will increase the damage continuously."""
     type = DAMAGE_POTION
+    damage_multiplier: ClassVar[int] = 1.1
 
     def action(self, clicked_by: Player, manager: EntityManager):
-        ...
+        clicked_by.damage_multiplier *= self.damage_multiplier
 
 
 @dataclass(frozen=True)
 class ResistancePotion(OneClickItem):
+    """Adds damage resistance to an entity. The boost stacks until the resistance reaches a known threshold."""
     type = RESISTANCE_POTION
+    resistance_strength: ClassVar[int] = 5
+    max_resistance: ClassVar[int] = 25
 
     def action(self, clicked_by: Player, manager: EntityManager):
-        ...
+        clicked_by.resistance += self.resistance_strength
+        clicked_by.resistance = max(self.max_resistance, clicked_by.resistance)
 
 
 @dataclass(frozen=True)
