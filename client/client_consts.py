@@ -108,15 +108,16 @@ weapon_data = {
 }
 
 ENTITY_DATA = {
-    # (texture, [animation], frame per second, size_multiplier
-    EntityType.PROJECTILE: ("entity/arrow/projectile.png", [], 10, 1),
+    # (texture, [animation], frame per second, size_multiplier, draw_hp
+    EntityType.PROJECTILE: ("entity/arrow/projectile.png", [], 10, 1, False),
     EntityType.MOB: ("entity/dino/lizard.png", ["entity/dino/lizard.png", "entity/dino/lizard_run_0.png",
                                                 "entity/dino/lizard_run_1.png",
-                                                "entity/dino/lizard_run_2.png", "entity/dino/lizard_run_3.png"], 4, 4),
+                                                "entity/dino/lizard_run_2.png", "entity/dino/lizard_run_3.png"], 4, 4,
+                     True),
     EntityType.PLAYER: ("character/knight/knight.png", ["character/knight/move_0.png",
                                                         "character/knight/move_1.png", "character/knight/move_2.png"],
-                        10, PLAYER_SIZE_MULTIPLIER),
-    EntityType.BAG: ("character/knight/knight.png", [], 10, PLAYER_SIZE_MULTIPLIER)
+                        10, PLAYER_SIZE_MULTIPLIER, True),
+    EntityType.BAG: ("character/knight/knight.png", [], 10, PLAYER_SIZE_MULTIPLIER, True)
 }
 
 # Actions format

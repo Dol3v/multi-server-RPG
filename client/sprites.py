@@ -76,10 +76,15 @@ class Entity(pygame.sprite.Sprite):
 
         self.entity_type = entity_type
 
+        self.max_health = consts.MAX_HEALTH
+        self.health = self.max_health
+
         self.last_x = x
         self.last_y = y
 
         self.scale_size = consts.ENTITY_DATA[entity_type][3]
+
+        self.draw_hp = consts.ENTITY_DATA[entity_type][4]
 
         if entity_type == "player":
             return
@@ -87,7 +92,7 @@ class Entity(pygame.sprite.Sprite):
         self.texture = pygame.image.load("assets/" + consts.ENTITY_DATA[entity_type][0]).convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * self.scale_size,
                                                              self.texture.get_height() * self.scale_size))
-        self.animation_ticks = 0 # Animation running delay so it won't look buggy
+        self.animation_ticks = 0  # Animation running delay so it won't look buggy
         anim = []
 
         for path in consts.ENTITY_DATA[entity_type][1]:
@@ -116,6 +121,10 @@ class Entity(pygame.sprite.Sprite):
                                     pygame.SRCALPHA)
 
         self.image.blit(self.texture, (0, 0))
+        if self.draw_hp:
+            self.image.fill((255, 0, 0),
+                            (0, 0, (self.texture.get_width()) * (self.health / self.max_health),
+                             self.texture.get_height() * 0.02))
         self.rect = self.image.get_rect(center=(self.x, self.y))
 
     def update(self):
@@ -213,4 +222,3 @@ class PlayerEntity(Entity):
         self.draw_entity()
         self.hand.draw(self)
         self.update_entity_animation()
-

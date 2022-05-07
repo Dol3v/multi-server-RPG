@@ -11,7 +11,8 @@ try:
     from client_consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
     from items import Item
 except ModuleNotFoundError:
-    from client.client_consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, HOTBAR_LENGTH
+    from client.client_consts import ICON_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE_MULTIPLIER, \
+        HOTBAR_LENGTH
     from client.items import Item
 
 
@@ -365,7 +366,8 @@ class Inventory:
         self.selected_slot = -1
         self.move = -1, -1
         self.item_info = ItemInfo(0, 0, self.items[0])
-
+        self.rect = pygame.rect.Rect((SCREEN_WIDTH - self.image.get_width(), 0), (self.image.get_width()
+                                                                             , self.image.get_height()))
         self.init_icon_rects()
 
     def init_icon_rects(self):
