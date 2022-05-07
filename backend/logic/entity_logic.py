@@ -8,7 +8,7 @@ import time
 import uuid
 from abc import ABC
 from dataclasses import dataclass
-from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar, Self
+from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar
 
 import numpy as np
 from cryptography.fernet import Fernet
@@ -219,7 +219,7 @@ class Combatant(Entity):
     def has_ranged_weapon(self) -> bool:
         return isinstance(self.item, RangedWeapon)
 
-    def deal_damage_to(self, other: Self, damage: int):
+    def deal_damage_to(self, other, damage: int):
         """Deals some amount of damage to another combatant, factoring in the resistance/damage boost of both."""
         other.health -= (damage * self.damage_multiplier) + other.resistance
 
@@ -482,10 +482,17 @@ class UselessItem(Item):
 
 
 class FireballSkill(Skill, RangedWeapon):
+    type = FIRE_BALL
+    projectile_class = Projectile
+
+
+class EraserSkill(Skill, RangedWeapon):
+    type: int = MAHAK
     projectile_class = Projectile
 
 
 class PetEggSkill(Skill):
+    type = PET_EGG
 
     def use_to_attack(self, player: Player, manager: EntityManager):
         to_spawn = Mob(parent_uuid=player.uuid, pos=manager.get_available_position
@@ -497,9 +504,13 @@ _item_pool: Dict[int, Item] = {
     SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
     AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
     BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
-    MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile),
+    USELESS_ITEM: UselessItem(USELESS_ITEM),
+    REGENERATION_POTION: RegenerationPotion(type=REGENERATION_POTION),
+    DAMAGE_POTION: DamagePotion(type=DAMAGE_POTION),
+    RESISTANCE_POTION: ResistancePotion(type=RESISTANCE_POTION),
+    MAHAK: EraserSkill(type=MAHAK, cooldown=200, damage=100),
     FIRE_BALL: FireballSkill(type=FIRE_BALL, cooldown=200, damage=100),
-    PET_EGG: PetEggSkill(type=PET_EGG, cooldown=300)
+    PET_EGG: PetEggSkill(type=PET_EGG, cooldown=300, damage=0)
 }
 
 
