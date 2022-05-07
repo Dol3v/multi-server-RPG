@@ -223,7 +223,9 @@ class Combatant(Entity):
         other.health -= (damage * self.damage_multiplier) + other.resistance
 
     def serialize(self) -> dict:
-        return super().serialize() | {"is_attacking": self.is_attacking}
+        return super().serialize() | {"is_attacking": self.is_attacking,
+                                      "hp": self.health,
+                                      "resistance": self.resistance}
 
 
 @dataclass
