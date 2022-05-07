@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar
+from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar, Self
 
 import numpy as np
 from cryptography.fernet import Fernet
@@ -205,6 +205,8 @@ class Combatant(Entity):
     last_time_attacked: float = -1
     current_cooldown: float = -1
     health: int = MAX_HEALTH
+    resistance: int = 0
+    damage_multiplier: int = 1
 
     @property
     @abc.abstractmethod
@@ -216,6 +218,10 @@ class Combatant(Entity):
     def has_ranged_weapon(self) -> bool:
         return isinstance(self.item, RangedWeapon)
 
+    def deal_damage_to(self, other: Self, damage: int):
+        """Deals some amount of damage to another combatant, factoring in the resistance/damage boost of both."""
+        other.health -= (damage * self.damage_multiplier) + other.resistance
+
     def serialize(self) -> dict:
         return super().serialize() | {"is_attacking": self.is_attacking}
 
@@ -224,6 +230,7 @@ class Combatant(Entity):
 class Projectile(ServerControlled, CanHit):
     damage: int = 0
     ttl: int = PROJECTILE_TTL
+    shot_by: Combatant = dataclasses.field(default_factory=lambda: Combatant())
     kind: ClassVar[EntityType] = EntityType.PROJECTILE
     width: ClassVar[int] = PROJECTILE_WIDTH
     height: ClassVar[int] = PROJECTILE_HEIGHT
@@ -249,7 +256,7 @@ class Projectile(ServerControlled, CanHit):
                     should_remove = False
                 case EntityType.MOB | EntityType.PLAYER:
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
-                    hit.health -= self.damage
+                    self.shot_by.deal_damage_to(hit, self.damage)
                     logging.info(f"entity {hit!r} was updated after hit")
 
         return should_remove
@@ -386,7 +393,7 @@ class MeleeWeapon(Weapon):
         for attackable in in_range:
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
-            attackable.health -= self.damage
+            attacker.deal_damage_to(attackable, self.damage)
             logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
 
 
@@ -400,17 +407,16 @@ class RangedWeapon(Weapon):
             pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
                  int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
             direction=attacker.attacking_direction,
-            damage=self.damage
+            damage=self.damage,
+            shot_by=attacker
         )
         manager.add_entity(projectile)
-        logging.debug("thread trying to access projectiles for attack")
-        with manager.projectile_lock:
-            manager.projectiles[projectile.uuid] = projectile
-            logging.info(f"added projectile {projectile}")
+        logging.debug(f"added projectile {projectile}")
 
 
 @dataclass(frozen=True)
 class OneClickItem(Item):
+    """An Item that disappears after one click."""
 
     def on_click(self, clicked_by: Player, manager: EntityManager):
         self.action(clicked_by, manager)
