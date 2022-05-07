@@ -1,7 +1,7 @@
 """General consts for client side"""
 # Images
 
-from common.consts import EntityType
+from common.consts import EntityType, SWORD, AXE, BOW, REGENERATION_POTION, MAHAK, DAMAGE_POTION, RESISTANCE_POTION
 
 PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
@@ -38,7 +38,7 @@ HOTBAR_LENGTH = INVENTORY_COLUMNS
 weapon_data = {
     'sword':
         {
-            "id": 1, "is_ranged": False, 'cooldown': 25, 'damage': 15, 'graphics': "assets/items/sword/full.png",
+            "id": SWORD, "is_ranged": False, 'cooldown': 25, 'damage': 15, 'graphics': "assets/items/sword/full.png",
             'icon': "assets/items/sword/full.png",
             "resize_icon": False,
             "hand_position": (9, 45), "size_multiplier": 1,
@@ -49,7 +49,7 @@ weapon_data = {
 
     'axe':
         {
-            "id": 2, "is_ranged": False, 'cooldown': 50, 'damage': 30, 'graphics': "assets/items/axe/full.png",
+            "id": AXE, "is_ranged": False, 'cooldown': 50, 'damage': 30, 'graphics': "assets/items/axe/full.png",
             'icon': "assets/items/axe/full.png",
             "resize_icon": True,
             "hand_position": (15, 40), "size_multiplier": 1,
@@ -60,7 +60,7 @@ weapon_data = {
 
     'bow':
         {
-            "id": 3, "is_ranged": True, 'cooldown': 100, 'damage': 40, 'graphics': "assets/items/bow/full.png",
+            "id": BOW, "is_ranged": True, 'cooldown': 100, 'damage': 40, 'graphics': "assets/items/bow/full.png",
             'icon': "assets/items/bow/full.png",
             "resize_icon": True,
             "hand_position": (20, 15), "size_multiplier": 1,
@@ -71,7 +71,7 @@ weapon_data = {
 
     'health_potion':
         {
-            "id": 4, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
+            "id": REGENERATION_POTION, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
             'graphics': "assets/items/health_potion/full.png",
             'icon': "assets/items/health_potion/full.png",
             "resize_icon": True,
@@ -81,9 +81,33 @@ weapon_data = {
                 ["A regular health potion", "Basically go slurp and get some health"]
         },
 
+    'damage_potion':
+        {
+            "id": DAMAGE_POTION, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
+            'graphics': "assets/items/health_potion/full.png",
+            'icon': "assets/items/health_potion/full.png",
+            "resize_icon": True,
+            "size_multiplier": 3,
+            "display_name": ("Damage Potion", (255, 51, 51), False),
+            "description":
+                ["damage", "Basically go slurp and get some damage"]
+        },
+
+    'resistance_potion':
+        {
+            "id": RESISTANCE_POTION, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
+            'graphics': "assets/items/health_potion/full.png",
+            'icon': "assets/items/health_potion/full.png",
+            "resize_icon": True,
+            "size_multiplier": 3,
+            "display_name": ("Resistance Potion", (255, 51, 51), False),
+            "description":
+                ["resistance", "Basically go slurp and get some resistance"]
+        },
+
     "shmulik_mahak":
         {
-            "id": 5, "is_ranged": False, 'cooldown': 200, 'damage': 100, "hand_position": (25, 50),
+            "id": MAHAK, "is_ranged": False, 'cooldown': 200, 'damage': 100, "hand_position": (25, 50),
             'graphics': "assets/items/mahak/mahak2.png",
             'icon': "assets/items/mahak/mahak2.png",
             "resize_icon": False,
