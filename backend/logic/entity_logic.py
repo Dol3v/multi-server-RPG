@@ -440,9 +440,11 @@ class PetEgg(OneClickItem):
 @dataclass(frozen=True)
 class RegenerationPotion(OneClickItem):
     type = REGENERATION_POTION
+    regen_strength: ClassVar[int] = 35
 
     def action(self, clicked_by: Player, manager: EntityManager):
-        ...
+        clicked_by.health += self.regen_strength
+        clicked_by.health = MAX_HEALTH if clicked_by.health >= MAX_HEALTH else clicked_by.health
 
 
 @dataclass(frozen=True)
