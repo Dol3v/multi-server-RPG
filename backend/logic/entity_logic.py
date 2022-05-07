@@ -6,6 +6,7 @@ import random
 import threading
 import time
 import uuid
+from abc import ABC
 from dataclasses import dataclass
 from typing import Dict, Tuple, Iterable, List, Type, Callable, ClassVar, Self
 
@@ -277,6 +278,8 @@ class Player(Combatant):
     skill: int = dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
+    last_time_used_skill: int = 0
+    skill_cooldown: int = -1
 
     @property
     def item(self) -> Item:
@@ -370,7 +373,7 @@ class Weapon(Item):
     damage: int
 
     def on_click(self, clicked_by: Combatant, manager: EntityManager):
-        if clicked_by.last_time_attacked + clicked_by.current_cooldown <= time.time():
+        if clicked_by.current_cooldown == -1 or clicked_by.last_time_attacked + clicked_by.current_cooldown <= time.time():
             self.use_to_attack(clicked_by, manager)
             clicked_by.last_time_attacked = time.time()
             clicked_by.current_cooldown = self.cooldown * FRAME_TIME
@@ -379,6 +382,16 @@ class Weapon(Item):
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
         """Attack using this weapon."""
         ...
+
+
+@dataclass(frozen=True)
+class Skill(Weapon, ABC):
+
+    def on_click(self, player: Player, manager: EntityManager):
+        if player.skill_cooldown == -1 or player.last_time_used_skill + player.skill_cooldown <= time.time():
+            self.use_to_attack(player, manager)
+            player.last_time_used_skill = time.time()
+            player.skill_cooldown = self.cooldown * FRAME_TIME
 
 
 @dataclass(frozen=True)
@@ -478,12 +491,16 @@ class UselessItem(Item):
     type = USELESS_ITEM
 
 
+class FireballSkill(Skill, RangedWeapon):
+    projectile_class = Projectile
+
+
 _item_pool: Dict[int, Item] = {
     SWORD: MeleeWeapon(type=SWORD, cooldown=100, damage=15, melee_attack_range=100),
     AXE: MeleeWeapon(type=AXE, cooldown=300, damage=40, melee_attack_range=150),
     BOW: RangedWeapon(type=BOW, cooldown=400, damage=30, projectile_class=Projectile),
     MAHAK: RangedWeapon(type=MAHAK, cooldown=200, damage=100, projectile_class=Projectile),
-    FIRE_BALL: RangedWeapon(type=FIRE_BALL, cooldown=200, damage=100, projectile_class=Projectile),
+    FIRE_BALL: FireballSkill(type=FIRE_BALL, cooldown=200, damage=100),
     PET_EGG: PetEgg(PET_EGG)
 }
 
