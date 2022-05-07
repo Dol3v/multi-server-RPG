@@ -76,8 +76,7 @@ class Entity(pygame.sprite.Sprite):
 
         self.entity_type = entity_type
 
-        self.max_health = consts.MAX_HEALTH
-        self.health = self.max_health
+        self.health = consts.MAX_HEALTH
 
         self.last_x = x
         self.last_y = y
@@ -123,7 +122,7 @@ class Entity(pygame.sprite.Sprite):
         self.image.blit(self.texture, (0, 0))
         if self.draw_hp:
             self.image.fill((255, 0, 0),
-                            (0, 0, (self.texture.get_width()) * (self.health / self.max_health),
+                            (0, 0, (self.texture.get_width()) * (self.health / consts.MAX_HEALTH),
                              self.texture.get_height() * 0.02))
         self.rect = self.image.get_rect(center=(self.x, self.y))
 
