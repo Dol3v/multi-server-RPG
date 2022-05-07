@@ -21,7 +21,7 @@ from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, A
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
     ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
     MAX_ITEM_NUMBER, MIN_ITEM_NUMBER, FIRE_BALL, REGENERATION_POTION, DAMAGE_POTION, RESISTANCE_POTION, \
-    USELESS_ITEM, PET_EGG, MAX_SKILL, MIN_SKILL
+    USELESS_ITEM, PET_EGG, MAX_SKILL, MIN_SKILL, MOB_MIN_WEAPON, MOB_MAX_WEAPON
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -267,9 +267,7 @@ class Projectile(ServerControlled, CanHit):
 
 @dataclass
 class Player(Combatant):
-    new_message: str = ""
-    incoming_message: str = ""  # List[str] = field(default_factory=lambda: [])
-    addr: Addr = ("127.0.0.1", 10000)
+    addr: Addr = ("", 0)
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
     inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, REGENERATION_POTION] + [EMPTY_SLOT
@@ -301,7 +299,7 @@ class Player(Combatant):
 
 @dataclass
 class Mob(Combatant, ServerControlled):
-    weapon: int = SWORD
+    weapon: int = dataclasses.field(default_factory=lambda: random.randint(MOB_MIN_WEAPON, MOB_MAX_WEAPON))
     tracked_player_uuid: str | None = None
     kind: ClassVar[EntityType] = EntityType.MOB
     speed: ClassVar[int] = MOB_SPEED

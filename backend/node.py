@@ -216,7 +216,6 @@ class Node:
         for _ in range(MOB_COUNT):
             mob = Mob()
             mob.pos = self.entities_manager.get_available_position(EntityType.MOB)
-            mob.weapon = SWORD  # random.randint(MIN_ITEM_NUMBER, MAX_ITEM_NUMBER)
             self.entities_manager.add_entity(mob)
             logging.info(f"added mob {mob!r}")
 
