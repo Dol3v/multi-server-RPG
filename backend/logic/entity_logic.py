@@ -272,7 +272,7 @@ class Player(Combatant):
     addr: Addr = ("127.0.0.1", 10000)
     last_updated: int = -1  # latest sequence number basically
     slot: int = 0
-    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, PET_EGG] + [EMPTY_SLOT
+    inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, REGENERATION_POTION] + [EMPTY_SLOT
                                                                                                    for _ in range(
             INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
     skill: int = dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
@@ -449,8 +449,10 @@ class RegenerationPotion(OneClickItem):
     regen_strength: ClassVar[int] = 35
 
     def action(self, clicked_by: Player, manager: EntityManager):
+        prev_health = clicked_by.health
         clicked_by.health += self.regen_strength
-        clicked_by.health = max(MAX_HEALTH, clicked_by.health)
+        clicked_by.health = min(MAX_HEALTH, clicked_by.health)
+        logging.info(f"player {clicked_by!r} had his health regenerated to {clicked_by.health} from {prev_health}")
 
 
 @dataclass(frozen=True)
@@ -473,7 +475,7 @@ class ResistancePotion(OneClickItem):
 
     def action(self, clicked_by: Player, manager: EntityManager):
         clicked_by.resistance += self.resistance_strength
-        clicked_by.resistance = max(self.max_resistance, clicked_by.resistance)
+        clicked_by.resistance = min(self.max_resistance, clicked_by.resistance)
 
 
 @dataclass(frozen=True)
