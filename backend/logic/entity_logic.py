@@ -19,8 +19,8 @@ from client.client_consts import INVENTORY_COLUMNS, INVENTORY_ROWS
 from common.consts import Pos, DEFAULT_POS_MARK, Dir, DEFAULT_DIR, EntityType, Addr, SWORD, AXE, BOW, EMPTY_SLOT, \
     PROJECTILE_TTL, PROJECTILE_HEIGHT, PROJECTILE_WIDTH, MAX_HEALTH, WORLD_WIDTH, WORLD_HEIGHT, MAHAK, MIN_HEALTH, \
     ARROW_OFFSET_FACTOR, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, PROJECTILE_SPEED, \
-    MAX_WEAPON_NUMBER, MIN_WEAPON_NUMBER, FIRE_BALL, REGENERATION_POTION, DAMAGE_POTION, RESISTANCE_POTION, \
-    USELESS_ITEM, PET_EGG
+    MAX_ITEM_NUMBER, MIN_ITEM_NUMBER, FIRE_BALL, REGENERATION_POTION, DAMAGE_POTION, RESISTANCE_POTION, \
+    USELESS_ITEM, PET_EGG, MAX_SKILL, MIN_SKILL
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -160,7 +160,7 @@ class Item:
 class Bag(Entity):
     kind = EntityType.BAG
     items: List = dataclasses.field(
-        default_factory=lambda: [random.randint(MIN_WEAPON_NUMBER - 1, MAX_WEAPON_NUMBER) for _ in range(BAG_SIZE)]
+        default_factory=lambda: [random.randint(MIN_ITEM_NUMBER - 1, MAX_ITEM_NUMBER) for _ in range(BAG_SIZE)]
     )
 
 
@@ -274,6 +274,7 @@ class Player(Combatant):
     inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, PET_EGG] + [EMPTY_SLOT
                                                                                                    for _ in range(
             INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
+    skill: int = dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
 
@@ -282,7 +283,7 @@ class Player(Combatant):
         return get_item(self.inventory[self.slot])
 
     def serialize(self) -> dict:
-        return super().serialize() | {"tool": self.inventory[self.slot]}
+        return super().serialize() | {"tool": self.inventory[self.slot], "skill": self.skill}
 
     def fill_inventory(self, bag: Bag):
         """Fills player's inventory with the bag's items."""
