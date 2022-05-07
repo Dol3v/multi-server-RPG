@@ -7,6 +7,7 @@ import sys
 import threading
 
 # to import from a dir
+import pygame
 
 sys.path.append('../')
 
@@ -105,7 +106,8 @@ class Game:
         print("-" * 10)
         print(f"{pos=}, {inventory=}, {health=}, {entities=}")
         if health <= MIN_HEALTH:
-            raise KeyboardInterrupt()  # temporary for checking purposes
+            on_game_exit(self)
+            return
 
         self.player.current_health = health
 
@@ -333,4 +335,4 @@ def on_game_exit(*args, game: Game | None = None):
     if game:
         game.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, game.player_uuid, {}, fernet=game.fernet),
                          game.server_addr)
-    sys.exit(0)
+        game.running = False
