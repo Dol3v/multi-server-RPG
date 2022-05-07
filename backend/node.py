@@ -105,11 +105,11 @@ class Node:
             return
 
         try:
-            player_pos, seqn, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), contents[
-                "seqn"], \
+            player_pos, seqn, attack_dir, slot_index, clicked_mouse, did_swap = tuple(contents["pos"]), \
+                                                                                contents["seqn"], \
                                                                                 contents["dir"], \
-                                                                                contents["slot"], contents[
-                                                                                    "is_attacking"], \
+                                                                                contents["slot"], \
+                                                                                contents["is_attacking"], \
                                                                                 contents["did_swap"]
             swap_indices = (-1, -1)
             if did_swap:
@@ -183,7 +183,6 @@ class Node:
                     self.routine_message_handler(data["uuid"], data["contents"])
                 case MessageType.CHAT_PACKET:
                     self.chat_handler(data["uuid"], data["contents"])
-                    self.routine_message_handler(client_uuid, data["contents"])
                 case MessageType.CLOSED_GAME_CLIENT:
                     self.closed_game_handler(client_uuid)
                 case _:
@@ -205,7 +204,7 @@ class Node:
                                                        pos=initial_pos, slot=data["initial_slot"],
                                                        health=data["initial_hp"], inventory=data["initial_inventory"])
 
-            else:
+            else:  # on signup
                 self.should_join[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                        fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
                                                        pos=initial_pos)
