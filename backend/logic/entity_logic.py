@@ -51,8 +51,8 @@ class EntityManager:
         """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
         projectile/player/mob, and the uuid being, well, the uuid."""
 
-        self.mob_lock = threading.Lock()
-        self.projectile_lock = threading.Lock()
+        self.mob_lock = threading.RLock()
+        self.projectile_lock = threading.RLock()
 
     @property
     def players(self) -> dict:
@@ -108,6 +108,8 @@ class EntityManager:
             case EntityType.MOB:
                 logging.debug("thread trying to access mobs for some entity thing")
                 return self.mob_lock
+            case EntityType.PLAYER:
+                return entity.lock
             case _:
                 return contextlib.nullcontext()
 
@@ -258,8 +260,9 @@ class Projectile(ServerControlled, CanHit):
                     should_remove = False
                 case EntityType.MOB | EntityType.PLAYER:
                     logging.info(f"projectile {self.uuid} hit entity {hit!r}")
-                    self.shot_by.deal_damage_to(hit, self.damage)
-                    logging.info(f"entity {hit!r} was updated after hit")
+                    with manager.get_entity_lock(hit):
+                        self.shot_by.deal_damage_to(hit, self.damage)
+                        logging.info(f"entity {hit!r} was updated after hit")
 
         return should_remove
 
@@ -278,6 +281,7 @@ class Player(Combatant):
     kind: int = EntityType.PLAYER
     last_time_used_skill: int = 0
     skill_cooldown: int = -1
+    lock: threading.RLock = threading.RLock()
 
     @property
     def item(self) -> Item:
@@ -410,8 +414,9 @@ class MeleeWeapon(Weapon):
         for attackable in in_range:
             if attackable.kind == EntityType.MOB == attacker.kind:
                 continue  # mobs shouldn't attack mobs
-            attacker.deal_damage_to(attackable, self.damage)
-            logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
+            with manager.get_entity_lock(attackable):
+                attacker.deal_damage_to(attackable, self.damage)
+                logging.info(f"updated entity (uuid={attackable.uuid}) health to {attackable.health}")
 
 
 @dataclass(frozen=True)
@@ -436,8 +441,9 @@ class OneClickItem(Item):
     """An Item that disappears after one click."""
 
     def on_click(self, clicked_by: Player, manager: EntityManager):
-        self.action(clicked_by, manager)
-        clicked_by.inventory[clicked_by.slot] = EMPTY_SLOT
+        with clicked_by.lock:
+            self.action(clicked_by, manager)
+            clicked_by.inventory[clicked_by.slot] = EMPTY_SLOT
 
     @abc.abstractmethod
     def action(self, clicked_by: Player, manager: EntityManager):

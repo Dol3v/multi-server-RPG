@@ -29,8 +29,8 @@ def init_pygame() -> pygame.Surface:
 
 
 def main():
-    signal.signal(signal.SIGINT, game.on_game_exit)
-    signal.signal(signal.SIGTERM, game.on_game_exit)
+    # signal.signal(signal.SIGINT, game.on_game_exit)
+    # signal.signal(signal.SIGTERM, game.on_game_exit)
     while True:
         screen = init_pygame()
         connection_screen = connect_screen.ConnectScreen(screen, get_random_port())

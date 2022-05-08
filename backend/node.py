@@ -127,20 +127,24 @@ class Node:
             logging.info(f"Got outdated packet from {player_uuid=}")
             return
 
-        if player.health <= MIN_HEALTH:
-            self.kill_player(player)
-            return
+        with player.lock:
+            if player.health <= MIN_HEALTH:
+                self.kill_player(player)
+                return
 
-        player.attacking_direction = attack_dir
-        secure_pos = self.update_location(player_pos, seqn, player)
+            player.attacking_direction = attack_dir
+            secure_pos = self.update_location(player_pos, seqn, player)
 
-        if did_swap:
-            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]], \
-                                                                                   player.inventory[swap_indices[0]]
-            logging.info(f"{player=!r} swaped inventory slot {swap_indices[0]} with slot {swap_indices[1]}")
-        player.slot = slot_index
-        if clicked_mouse:
-            player.item.on_click(player, self.entities_manager)
+            if did_swap:
+                player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]], \
+                                                                                       player.inventory[swap_indices[0]]
+                logging.info(f"{player=!r} swaped inventory slot {swap_indices[0]} with slot {swap_indices[1]}")
+            player.slot = slot_index
+            if clicked_mouse:
+                player.item.on_click(player, self.entities_manager)
+
+            player.last_updated_seqn = seqn
+            player.last_updated_time = time.time()
 
         bags = self.entities_manager.get_entities_in_range(
             get_entity_bounding_box(player.pos, player.kind),
@@ -152,8 +156,6 @@ class Node:
 
         # self.broadcast_clients(player.uuid)
         self.update_client(player, secure_pos)
-        player.last_updated_seqn = seqn
-        player.last_updated_time = time.time()
 
     def closed_game_handler(self, player_uuid: str):
         logging.info(f"player {player_uuid} exited the game.")

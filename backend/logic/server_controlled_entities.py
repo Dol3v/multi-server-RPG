@@ -21,9 +21,9 @@ def update_projectiles(entities_manager: EntityManager):
     logging.debug("thread trying to access projectiles for update")
     with entities_manager.projectile_lock:
         to_remove = list(filter(lambda p: p.advance_per_tick(entities_manager), entities_manager.projectiles.values()))
-    for projectile in to_remove:
-        entities_manager.remove_entity(projectile)
-        logging.info(f"[update] removed projectile {projectile.uuid}")
+        for projectile in to_remove:
+            entities_manager.remove_entity(projectile)
+            logging.info(f"[update] removed projectile {projectile.uuid}")
 
 
 def update_mobs(entities_manager: EntityManager):
@@ -31,10 +31,10 @@ def update_mobs(entities_manager: EntityManager):
     logging.debug("thread trying to access mobs for update")
     with entities_manager.mob_lock:
         to_remove = list(filter(lambda m: m.advance_per_tick(entities_manager), entities_manager.mobs.values()))
-    for mob in to_remove:
-        entities_manager.remove_entity(mob)
-        entities_manager.add_entity(Bag(pos=mob.pos))
-        logging.info(f"[update] killed mob {mob.uuid}")
+        for mob in to_remove:
+            entities_manager.remove_entity(mob)
+            entities_manager.add_entity(Bag(pos=mob.pos))
+            logging.info(f"[update] killed mob {mob.uuid}")
 
 
 def server_entities_handler(entities_manager):

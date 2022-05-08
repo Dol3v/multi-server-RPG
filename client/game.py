@@ -212,8 +212,8 @@ class Game:
         self.draw_map()
 
         # modifying callbacks for signals
-        signal.signal(signal.SIGINT, functools.partial(on_game_exit, kwargs={"game": self}))
-        signal.signal(signal.SIGTERM, functools.partial(on_game_exit, kwargs={"game": self}))
+        # signal.signal(signal.SIGINT, functools.partial(on_game_exit, kwargs={"game": self}))
+        # signal.signal(signal.SIGTERM, functools.partial(on_game_exit, kwargs={"game": self}))
 
         # Game loop
         while self.running:
