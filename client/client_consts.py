@@ -71,7 +71,7 @@ weapon_data = {
 
     'health_potion':
         {
-            "id": 4, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
+            "id": 4, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (7, 15),
             'graphics': "assets/items/health_potion/full.png",
             'icon': "assets/items/health_potion/full.png",
             "resize_icon": True,
@@ -104,6 +104,18 @@ weapon_data = {
             "description":
                 ["Your hands can shoot fireballs", "use this skill wisely",
                  "(or ...)"]
+        },
+    "friendly_mob":
+        {
+            "id": 7, "is_ranged": False, 'cooldown': 200, 'damage': 0, "hand_position": (25, 50),
+            'graphics': "assets/items/abilities/friendly_mob.png",
+            'icon': "assets/items/abilities/friendly_mob.png",
+            "display_name": ("Friendly Mob", (10, 255, 10), True),
+            "resize_icon": False,
+            "size_multiplier": 1,
+            "description":
+                ["Friendly mob will spawn", "use and attack enemies",
+                 "You can pet him later ;)"]
         }
 }
 
