@@ -22,7 +22,7 @@ from common.consts import *
 from common.utils import *
 from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
-from backend.networks.networking import parse_message_from_client, \
+from backend.networks.networking import decrypt_client_packet, \
     generate_routine_message, generate_status_message, S2SMessageType, craft_message
 
 from backend.logic.server_controlled_entities import server_entities_handler
@@ -167,7 +167,12 @@ class Node:
         """Communicate with client"""
         while True:
             data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-            data = parse_message_from_client(data, self.entities_manager, self.should_join)
+
+            parsed_packet = json.loads(data)
+            if parsed_packet["uuid"] in self.dead_clients:
+                continue
+
+            data = decrypt_client_packet(parsed_packet, self.entities_manager, self.should_join)
             if not data:
                 continue
             try:
@@ -201,10 +206,14 @@ class Node:
             logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
 
             if data["is_login"]:
+                new_health = data["initial_hp"]
+                if new_health == 0:
+                    new_health = MAX_HEALTH
+
                 self.should_join[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
                                                        fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
                                                        pos=initial_pos, slot=data["initial_slot"],
-                                                       health=data["initial_hp"], inventory=data["initial_inventory"])
+                                                       health=new_health, inventory=data["initial_inventory"])
 
             else:  # on signup
                 self.should_join[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),

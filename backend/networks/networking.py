@@ -3,7 +3,7 @@ import json
 import logging
 import socket
 from enum import IntEnum, auto
-from typing import Iterable, Dict
+from typing import Iterable, Dict, List
 
 from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet
@@ -30,21 +30,20 @@ def do_ecdh(conn: socket.socket) -> None | bytes:
     return get_shared_key(private_key, client_public_key)
 
 
-def parse_message_from_client(packet: bytes, entity_manager: EntityManager, should_join: Dict[str, Player]) -> dict | None:
+def decrypt_client_packet(parsed_packet: dict[str, str], entity_manager: EntityManager, should_join: Dict[str, Player]) -> dict | None:
     try:
-        message_json = json.loads(packet)
-        if message_json["uuid"] in should_join:
-            player_fernet = should_join[message_json["uuid"]].fernet
+        if parsed_packet["uuid"] in should_join:
+            player_fernet = should_join[parsed_packet["uuid"]].fernet
         else:
-            player_fernet = entity_manager.players[message_json["uuid"]].fernet
+            player_fernet = entity_manager.players[parsed_packet["uuid"]].fernet
 
-        contents = json.loads(player_fernet.decrypt(base64.b64decode(message_json["contents"])))
-        message_json["contents"] = contents
-        return message_json
+        contents = json.loads(player_fernet.decrypt(base64.b64decode(parsed_packet["contents"])))
+        parsed_packet["contents"] = contents
+        return parsed_packet
     except KeyError as e:
-        logging.warning(f"[error] invalid message from client, {message_json=}, {e=}")
+        logging.warning(f"[error] invalid message from client, {parsed_packet=}, {e=}")
     except InvalidKey as e:
-        logging.warning(f"[security] invalid key from client, {message_json=}, {e=}")
+        logging.warning(f"[security] invalid key from client, {parsed_packet=}, {e=}")
 
 
 def serialize_entity_list(entities: Iterable[Entity]) -> dict:
