@@ -167,10 +167,13 @@ class Node:
         """Communicate with client"""
         while True:
             data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-
             parsed_packet = json.loads(data)
-            if parsed_packet["uuid"] in self.dead_clients:
-                continue
+
+            try:
+                if parsed_packet["uuid"] in self.dead_clients:
+                    continue
+            except KeyError as e:
+                logging.warning(f"[security] invalid packet {data=}, {e=}")
 
             data = decrypt_client_packet(parsed_packet, self.entities_manager, self.should_join)
             if not data:
@@ -185,15 +188,17 @@ class Node:
                 logging.warning(f"[security] invalid id, {data=}, {e=}")
                 continue
 
-            match message_type:
-                case MessageType.ROUTINE_CLIENT:
-                    self.routine_message_handler(data["uuid"], data["contents"])
-                case MessageType.CHAT_PACKET:
-                    self.chat_handler(data["uuid"], data["contents"])
-                case MessageType.CLOSED_GAME_CLIENT:
-                    self.closed_game_handler(client_uuid)
-                case _:
-                    logging.warning(f"[security] no handler present for {message_type=}, {data=}")
+            if player := self.entities_manager.players.get(parsed_packet["uuid"], None):
+                with player.lock:
+                    match message_type:
+                        case MessageType.ROUTINE_CLIENT:
+                            self.routine_message_handler(data["uuid"], data["contents"])
+                        case MessageType.CHAT_PACKET:
+                            self.chat_handler(data["uuid"], data["contents"])
+                        case MessageType.CLOSED_GAME_CLIENT:
+                            self.closed_game_handler(client_uuid)
+                        case _:
+                            logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 
     def handle_player_prelogin(self, data: dict):
         """Handles the root message of a player that is going to join.

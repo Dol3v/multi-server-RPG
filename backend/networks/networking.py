@@ -33,6 +33,7 @@ def do_ecdh(conn: socket.socket) -> None | bytes:
 def decrypt_client_packet(parsed_packet: dict[str, str], entity_manager: EntityManager, should_join: Dict[str, Player]) -> dict | None:
     try:
         if parsed_packet["uuid"] in should_join:
+            print(f"{parsed_packet['uuid']} got here")
             player_fernet = should_join[parsed_packet["uuid"]].fernet
         else:
             player_fernet = entity_manager.players[parsed_packet["uuid"]].fernet
