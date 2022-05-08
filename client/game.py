@@ -68,6 +68,8 @@ class Game:
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
+        self.ability_item = Item(self.visible_sprites, "fire_ball", "rare", False, False)
+
         # inventory init
         self.inventory = pygame.image.load("assets/inventory.png")
         self.inventory = pygame.transform.scale(self.inventory,
@@ -183,12 +185,10 @@ class Game:
                     case _:
                         print(f"creating entity of type {entity_type}")
                         self.entities[entity_uuid] = Entity((self.visible_sprites, self.obstacles_sprites), entity_type,
-                                                    *pos, entity_dir)
+                                                            *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info["uuid"], entities))
-        print(f"{received_uuids=}")
-        print(f"keys={self.entities.keys()}")
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
                 print(f"killing uuid={entity_uuid}")
@@ -294,6 +294,9 @@ class Game:
         width = (SCREEN_WIDTH - self.hot_bar.get_width()) / 2
         hot_bar = self.hot_bar.copy()
 
+        ability_pos = (80 * 2 + ((32 - self.ability_item.icon.get_width()) / 2),
+                       6 * 2 + ((32 - self.ability_item.icon.get_height()) / 2))
+
         for i, weapon in enumerate(self.player.hotbar):
 
             surface = pygame.Surface((32, 32), pygame.SRCALPHA)
@@ -301,21 +304,14 @@ class Game:
                 surface.fill((0, 0, 0, 100))
 
             if weapon:
-
-                if weapon.is_ranged:
-                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (
-                        (surface.get_width() - pygame.transform.rotate(weapon.icon, -90).get_width()) / 2,
-                        (surface.get_height() - pygame.transform.rotate(weapon.icon, -90).get_height()) / 2)
-                                 )
-                else:
-                    surface.blit(weapon.icon, (
-                        (surface.get_width() - weapon.icon.get_width()) / 2,
-                        (surface.get_height() - weapon.icon.get_height()) / 2)
-                                 )
-            hot_bar.blit(surface, (16 + 36 * i, 18))
+                surface.blit(weapon.icon, (
+                    (surface.get_width() - weapon.icon.get_width()) / 2,
+                    (surface.get_height() - weapon.icon.get_height()) / 2)
+                             )
+            hot_bar.blit(surface, (16 + 36 * i, 56))
             # (16 + 36 * i, 18)
-
-        self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))
+        hot_bar.blit(self.ability_item.icon, ability_pos)
+        self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT - self.hot_bar.get_height()))
 
     def draw_map(self):
         for layer in self.map.layers:

@@ -117,7 +117,8 @@ ENTITY_DATA = {
     EntityType.PLAYER: ("character/knight/knight.png", ["character/knight/move_0.png",
                                                         "character/knight/move_1.png", "character/knight/move_2.png"],
                         10, PLAYER_SIZE_MULTIPLIER, True),
-    EntityType.BAG: ("character/knight/knight.png", [], 10, PLAYER_SIZE_MULTIPLIER, True)
+    EntityType.BAG: ("entity/bag/chest1.png", [], 10, PLAYER_SIZE_MULTIPLIER, False)
+
 }
 
 # Actions format
