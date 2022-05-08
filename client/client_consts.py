@@ -75,7 +75,7 @@ weapon_data = {
             'graphics': "assets/items/health_potion/full.png",
             'icon': "assets/items/health_potion/full.png",
             "resize_icon": True,
-            "size_multiplier": 3,
+            "size_multiplier": 1,
             "display_name": ("Health Potion", (255, 51, 51), False),
             "description":
                 ["A regular health potion", "Basically go slurp and get some health"]
@@ -96,8 +96,8 @@ weapon_data = {
     "fire_ball":
         {
             "id": 6, "is_ranged": False, 'cooldown': 200, 'damage': 100, "hand_position": (25, 50),
-            'graphics': "assets/items/mahak/mahak2.png",
-            'icon': "assets/items/mahak/mahak2.png",
+            'graphics': "assets/items/abilities/fireball.png",
+            'icon': "assets/items/abilities/fireball.png",
             "display_name": ("Fireball", (255, 215, 0), True),
             "resize_icon": False,
             "size_multiplier": 1,
