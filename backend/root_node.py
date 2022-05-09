@@ -93,6 +93,7 @@ class EntryNode:
                 break
             ready_socks, _, _ = select.select(self.conns, [], [])
             for readable in ready_socks:
+                print("got here")
                 self.server_recv_queue.put(readable.recv(RECV_CHUNK))
 
     def servers_handler(self):
@@ -113,7 +114,7 @@ class EntryNode:
     def handle_incoming_players(self):
         while True:
             conn, addr = self.sock.accept()
-            logging.info(f"[update] client with {addr=} tries to login/signup")
+            logging.info(f"[update] client with {addr=} tries to login/signup, {list(self.conns)}")
             shared_key = do_ecdh(conn)
             fernet = Fernet(base64.urlsafe_b64encode(shared_key))
 
@@ -203,6 +204,7 @@ class EntryNode:
         # # server2server threads
         threads.append(Thread(target=self.receiver))
         threads.append(Thread(target=self.sender))
+        threads.append(Thread(target=self.servers_handler))
 
         # client handling threads
         for _ in range(self.client_thread_count):
