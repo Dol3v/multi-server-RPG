@@ -168,7 +168,7 @@ class Node:
         logging.info(f"player uuid={player_uuid} joined")
         player = self.should_join[player_uuid]
         self.should_join.pop(player_uuid)
-        self.entities_manager.add_to_dict(player)
+        self.entities_manager.add_entity(player)
         return player
 
     def client_handler(self):
