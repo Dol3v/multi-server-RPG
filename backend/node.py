@@ -1,195 +1,72 @@
 import logging
 import queue
-import random
-import sched
 import sys
 import threading
+import time
 from collections import defaultdict
+from typing import Set, Dict
 
-import numpy as np
-from cryptography.fernet import InvalidToken
 from pyqtree import Index
 
 # to import from a dir
-from client.map_manager import Map, Layer, TilesetData
+# from backend.logic.attacks import attack
+from backend.database import SqlDatabase, DB_PASS
+from backend.database.database_utils import update_user_info
+from backend.logic.collision import invalid_movement
+from backend.logic.entity_logic import EntityManager, Player, Mob
+from common.message_type import MessageType
 
 sys.path.append('../')
 
 from common.consts import *
 from common.utils import *
-from collision import *
-from consts import WEAPON_DATA, ARM_LENGTH_MULTIPLIER, FRAME_TIME, MAX_SLOT, ROOT_SERVER2SERVER_PORT, MOB_SIGHT_HEIGHT, \
-    MOB_SIGHT_WIDTH
-from entities import *
-from networking import generate_server_message, parse_client_message
+from backend_consts import MAX_SLOT, ROOT_SERVER2SERVER_PORT
 
-EntityData = Tuple[int, str, int, int, float, float, int]
-"""type, uuid, x, y, direction in x, direction in y"""
+from backend.networks.networking import decrypt_client_packet, \
+    generate_routine_message, generate_status_message, S2SMessageType, craft_message
+
+from backend.logic.server_controlled_entities import server_entities_handler
+from client.map_manager import Map, Layer, TilesetData
 
 
 class Node:
+    """Server that receive and transfer data to the clients and root server"""
 
-    def __init__(self, port):
+    def __init__(self, port, db_conn: SqlDatabase):
         # TODO: uncomment when coding on prod
         # self.node_ip = socket.gethostbyname(socket.gethostname())
         self.node_ip = "127.0.0.1"
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_sock = socket.socket()
+        self.db = db_conn
+        self.queue = queue.Queue()
         # TODO: remove when actually deploying exe
-        time.sleep(1)
-        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))
+        # root_ip = enter_ip("Enter root's IP: ")
 
-        self.players: Dict[str, Player] = {}
-        self.mobs: Dict[str, Mob] = {}
-        self.projectiles: defaultdict[str, Projectile] = defaultdict(lambda: Projectile())
-
-        self.spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
-        """Quadtree for collision/range detection. Player keys are tuples `(type, uuid)`, with the type being
-        projectile/player/mob, and the uuid being, well, the uuid."""
-
-        self.send_queue = queue.Queue()
-        self.recv_queue = queue.Queue()
+        self.root_send_queue = queue.Queue()
+        self.root_recv_queue = queue.Queue()
 
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
 
-        self.load_map()
-        # Starts the node
+        self.dead_clients: Set[str] = set()
+        self.should_join: Dict[str, Player] = {}
+        self.entities_manager = EntityManager(create_map())
         self.generate_mobs()
+        # Starts the node
         self.run()
 
-    @property
-    def entities(self) -> Dict[str, Entity]:
-        return self.players | self.mobs | self.projectiles
+    def receiver(self):
+        while True:
+            self.queue.put(self.server_sock.recvfrom(RECV_CHUNK))
 
-    @property
-    def server_controlled(self) -> Dict[str, ServerControlled]:
-        return self.mobs | self.projectiles
-
-    def get_data_from_entity(self, entity_data: Tuple[int, str]) -> EntityData:
-        """Retrieves data about an entity from its quadtree identifier: kind & other data (id/address).
-
-        :returns: flattened tuple of kind, position and direction"""
-        entity = self.entities[entity_data[1]]
-        tool_id = EMPTY_SLOT
-        if entity_data[0] == PLAYER_TYPE:
-            tool_id = entity.tools[entity.slot]
-        elif entity_data[0] == MOB_TYPE:
-            tool_id = entity.weapon
-        return entity_data[0], entity.uuid.encode(), *entity.pos, *entity.direction, tool_id
-
-    def attackable_in_range(self, entity_uuid: str, bbox: Tuple[int, int, int, int]) -> Iterable[Combatant]:
-        return map(lambda data: self.mobs[data[1]] if data[0] == MOB_TYPE else self.players[data[1]],
-                   filter(lambda data: data[1] != entity_uuid and data[0] != PROJECTILE_TYPE,
-                          self.spindex.intersect(bbox)))
-
-    def entities_in_rendering_range(self, entity: Player) -> Iterable[EntityData]:
-        """Returns all players that are within render distance of each other."""
-        return map(self.get_data_from_entity, filter(lambda data: data[1] != entity.uuid and data[0] != OBSTACLE_TYPE,
-                                                     self.spindex.intersect(
-                                                         get_bounding_box(entity.pos, SCREEN_HEIGHT, SCREEN_WIDTH))))
-
-    def entities_in_melee_attack_range(self, entity: Player, melee_range: int) \
-            -> Iterable[Combatant]:
-        """Returns all enemy players that are in the attack range (i.e. in the general direction of the player
-        and close enough)."""
-        weapon_x, weapon_y = int(entity.pos[0] + ARM_LENGTH_MULTIPLIER * entity.direction[0]), \
-                             int(entity.pos[1] + ARM_LENGTH_MULTIPLIER * entity.direction[1])
-        return self.attackable_in_range(entity.uuid, (weapon_x - melee_range // 2, weapon_y - melee_range // 2,
-                                                      weapon_x + melee_range // 2, weapon_y + melee_range // 2))
-
-    def players_in_range(self, pos: Pos, width: int, height: int) -> Iterable[Pos]:
-        intersecting = self.spindex.intersect(get_bounding_box(pos, height, width))
-        filtered = filter(lambda data: data[0] == PLAYER_TYPE, intersecting)
-        mapped = list(map(lambda data: self.entities[data[1]].pos, filtered))
-        logging.debug(f"[debug] {pos=} {intersecting=} filtered={list(filtered)} mapped={list(mapped)}")
-        return mapped
-
-    def load_map(self):
-        """Loads the map"""
-        game_map = Map()
-        game_map.add_layer(Layer("../client/assets/map/animapa_test.csv",
-                                 TilesetData("../client/assets/map/new_props.png",
-                                             "../client/assets/map/new_props.tsj")))
-        game_map.load_collision_objects_to(self.spindex)
-
-    @staticmethod
-    def get_entity_bounding_box(pos: Pos, entity_type: int):
-        width, height = -1, -1
-        if entity_type == PLAYER_TYPE:
-            width, height = CLIENT_WIDTH, CLIENT_HEIGHT
-        elif entity_type == PROJECTILE_TYPE:
-            width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
-        elif entity_type == MOB_TYPE:
-            width, height = BOT_WIDTH, BOT_HEIGHT
-        else:
-            raise ValueError("Non-existent type entered to get_entity_bounding_box")
-        return get_bounding_box(pos, height, width)
-
-    def get_collidables_with(self, pos: Pos, entity_uuid: str, *, kind: int) -> Iterable[Tuple[int, str]]:
-        return filter(lambda data: data[1] != entity_uuid, self.spindex.intersect(
-            self.get_entity_bounding_box(pos, kind)))
-
-    def update_entity_location(self, entity: Entity, new_location: Pos, kind: int):
-        self.spindex.remove((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
-        # are both necessary? prob not, but I'm not gonna take the risk
-        entity.pos = new_location
-        self.entities[entity.uuid].pos = new_location
-        self.spindex.insert((kind, entity.uuid), self.get_entity_bounding_box(entity.pos, kind))
-
-    def get_mob_direction(self, mob: Mob) -> Dir:
-        in_range = self.players_in_range(mob.pos, MOB_SIGHT_WIDTH, MOB_SIGHT_HEIGHT)
-        if not in_range:
-            return 0., 0.
-        nearest_player_pos = min(in_range,
-                                 key=lambda pos: (mob.pos[0] - pos[0]) ** 2 + (mob.pos[1] - pos[1]) ** 2)
-        dir_x, dir_y = nearest_player_pos[0] - mob.pos[0], nearest_player_pos[1] - mob.pos[1]
-        dir_x, dir_y = normalize_vec(dir_x, dir_y)
-        return dir_x * MOB_SPEED, dir_y * MOB_SPEED
-
-    def melee_attack(self, attacker: Combatant, weapon_data: dict):
-        attackable_in_range = self.entities_in_melee_attack_range(attacker,
-                                                                  weapon_data['melee_attack_range'])
-        # resetting cooldown
-        attacker.last_time_attacked = time.time()
-
-        for attackable in attackable_in_range:
-            attackable.health -= weapon_data['damage']
-            if attackable.health < 0:
-                attackable.health = 0
-            logging.debug(f"Updated entity health to {attackable.health}")
-
-    def ranged_attack(self, attacker: Combatant, weapon_data: dict):
-        attacker.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
-        attacker.last_time_attacked = time.time()
-        # adding into saved data
-        projectile = Projectile(pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.direction[0]),
-                                     int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.direction[1])),
-                                direction=attacker.direction, damage=weapon_data['damage'])
-        self.projectiles[projectile.uuid] = projectile
-        self.spindex.insert((PROJECTILE_TYPE, projectile.uuid),
-                            get_bounding_box(projectile.pos, PROJECTILE_HEIGHT, PROJECTILE_WIDTH))
-        logging.info(f"Added projectile {projectile}")
-
-    def attack(self, attacker: Combatant, weapon: int):
-        """Attacks using data from ``attacker``.
-
-        :param attacker: attacker
-        :param weapon: attacking weapon id"""
-        logging.debug(f"[attack] attacker uuid={attacker.uuid} tried to attack")
-        weapon_data = WEAPON_DATA[weapon]
-        if attacker.current_cooldown != -1:
-            if attacker.current_cooldown + attacker.last_time_attacked > (new := time.time()):
-                logging.debug(f"[blocked] cooldown={attacker.current_cooldown} prevented attack by {attacker.uuid}")
-                return
-            logging.info(f"[attack] cooldown={attacker.current_cooldown} passed, {new=}")
-            attacker.current_cooldown = -1
-        attacker.current_cooldown = weapon_data['cooldown'] * FRAME_TIME
-        if weapon_data['is_melee']:
-            self.melee_attack(attacker, weapon_data)
-        else:
-            self.ranged_attack(attacker, weapon_data)
+    def root_sender(self):
+        while True:
+            message = self.root_send_queue.get()
+            self.root_sock.send(json.dumps(message).encode())
+            logging.info(f"sent to root {message=}")
 
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -202,176 +79,253 @@ class Node:
         """
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
-        if self.invalid_movement(player, player_pos, seqn) or seqn != player.last_updated + 1:
-            logging.info(
-                f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}, {player.last_updated=}")
-            secure_pos = self.players[player.uuid].pos
+        if invalid_movement(player, player_pos, seqn, self.entities_manager) or seqn != player.last_updated_seqn + 1:
+            secure_pos = self.entities_manager.players[player.uuid].pos
         else:
-            self.update_entity_location(player, player_pos, PLAYER_TYPE)
+            self.entities_manager.update_entity_location(player, player_pos)
         return secure_pos
 
-    def update_client(self, player_uuid: str, secure_pos: Pos):
-        """sends server message to the client"""
-        new_chat = ""
-        player = self.players[player_uuid]
-        entities_array = flatten(self.entities_in_rendering_range(player))
-        # generate and send message
-        update_packet = generate_server_message(player.tools, new_chat, secure_pos, player.health, entities_array)
-        self.server_sock.sendto(update_packet, player.addr)
+    def kill_player(self, player: Player):
+        logging.info(f"killing {player!r}")
+        self.server_sock.sendto(generate_status_message(MessageType.DIED_SERVER, player.fernet), player.addr)
+        self.entities_manager.remove_entity(player)
+        update_user_info(self.db, player)
+        self.dead_clients.add(player.uuid)
 
-    def handle_client(self):
-        """communicate with client"""
+    def update_client(self, player: Player, secure_pos: Pos):
+        """Sends server message to the client"""
+        entities_array = self.entities_manager.get_entities_in_range(
+            get_bounding_box(player.pos, SCREEN_HEIGHT, SCREEN_WIDTH),
+            entity_filter=lambda _, entity_uuid: entity_uuid != player.uuid
+        )
+        # generate and send message
+        update_packet = generate_routine_message(secure_pos, player, entities_array)
+        self.server_sock.sendto(update_packet, player.addr)
+        logging.debug(f"[debug] sent message to client {player.uuid=}")
+
+    def routine_message_handler(self, player_uuid: str, contents: dict):
+        """Handles messages of type `MessageType.ROUTINE_CLIENT`."""
+        if player_uuid in self.should_join:
+            player = self.should_join.pop(player_uuid)
+            self.entities_manager.add_entity(player)
+
+        if player_uuid in self.dead_clients:
+            return
+
+        try:
+            player_pos, seqn, attack_dir, slot_index, clicked_mouse, did_swap, using_skill = tuple(contents["pos"]), \
+                                                                                             contents["seqn"], \
+                                                                                             contents["dir"], \
+                                                                                             contents["slot"], \
+                                                                                             contents["is_attacking"], \
+                                                                                             contents["did_swap"], \
+                                                                                             contents["using_skill"]
+            swap_indices = (-1, -1)
+            if did_swap:
+                swap_indices = contents["swap"]
+        except KeyError:
+            logging.warning(f"[security] invalid message given by {player_uuid=}")
+            return
+
+        if slot_index > MAX_SLOT or slot_index < 0:
+            return
+
+        player = self.entities_manager.players[player_uuid]
+        logging.debug(f"{player=} sent a routine message, {contents=}")
+        if seqn <= player.last_updated_seqn != 0:
+            logging.info(f"Got outdated packet from {player_uuid=}")
+            return
+
+        if player.health <= MIN_HEALTH:
+            self.kill_player(player)
+            return
+
+        player.attacking_direction = attack_dir
+        secure_pos = self.update_location(player_pos, seqn, player)
+
+        if did_swap:
+            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[
+                                                                                       swap_indices[1]], \
+                                                                                   player.inventory[swap_indices[0]]
+            logging.info(f"{player=!r} swapped inventory slot {swap_indices[0]} with slot {swap_indices[1]}")
+        player.slot = slot_index
+        if clicked_mouse:
+            player.item.on_click(player, self.entities_manager)
+
+        if using_skill:
+            player.skill.on_click(player, self.entities_manager)
+
+        player.last_updated_seqn = seqn
+        player.last_updated_time = time.time()
+
+        bags = self.entities_manager.get_entities_in_range(
+            get_entity_bounding_box(player.pos, player.kind),
+            entity_filter=lambda entity_type, _: entity_type == EntityType.BAG
+        )
+        for bag in bags:
+            player.fill_inventory(bag)
+            self.entities_manager.remove_entity(bag)
+
+        # self.broadcast_clients(player.uuid)
+        self.update_client(player, secure_pos)
+
+    def closed_game_handler(self, player_uuid: str):
+        if player := self.entities_manager.get(player_uuid, EntityType.PLAYER):
+            logging.info(f"player {player_uuid} exited the game.")
+            self.entities_manager.remove_entity(player)
+            update_user_info(self.db, player)
+            self.root_send_queue.put({"status": S2SMessageType.PLAYER_DISCONNECTED, "uuid": player_uuid})
+
+    def handle_should_join(self, player_uuid: str) -> Player | None:
+        logging.info(f"player uuid={player_uuid} joined")
+        player = self.should_join[player_uuid]
+        self.should_join.pop(player_uuid)
+        self.entities_manager.add_entity(player)
+        self.root_send_queue.put({"status": S2SMessageType.PLAYER_CONNECTED, "uuid": player_uuid})
+        return player
+
+    def client_handler(self):
+        """Communicate with client"""
+        while True:
+            data, addr = self.queue.get()
+            parsed_packet = json.loads(data)
+
+            if not (player_uuid := parsed_packet.get("uuid", None)):
+                logging.warning(f"[security] invalid packet {data=}")
+                continue
+
+            # sus
+            if player_uuid in self.dead_clients:
+                continue
+
+            player = self.handle_should_join(player_uuid) if player_uuid in self.should_join.keys() else \
+                self.entities_manager.get(player_uuid, EntityType.PLAYER)
+
+            if not player:
+                logging.warning(f"player uuid={player_uuid} couldn't be found")
+                continue
+
+            data = decrypt_client_packet(parsed_packet, player.fernet)
+            if not data:
+                continue
+            try:
+                message_type = MessageType(data["contents"]["id"])
+            except KeyError as e:
+                logging.warning(f"[security] invalid message, no id/uuid present {data=}, {e=}")
+                continue
+            except ValueError as e:
+                logging.warning(f"[security] invalid id, {data=}, {e=}")
+                continue
+
+            if player := self.entities_manager.players.get(parsed_packet["uuid"], None):
+                with player.lock:
+                    match message_type:
+                        case MessageType.ROUTINE_CLIENT:
+                            self.routine_message_handler(player_uuid, data["contents"])
+                        case MessageType.CHAT_PACKET:
+                            self.chat_handler(player_uuid, data["contents"])
+                        case MessageType.CLOSED_GAME_CLIENT:
+                            self.closed_game_handler(player_uuid)
+                        case _:
+                            logging.warning(f"[security] no handler present for {message_type=}, {data=}")
+
+    def handle_player_prelogin(self, data: dict):
+        """Handles the root message of a player that is going to join.
+
+        :param data: data of message sent from root
+        """
+        try:
+            shared_key, player_uuid, initial_pos, ip, port = base64.b64decode(data["key"]), data["uuid"], \
+                                                             data["initial_pos"], data["client_ip"], data["client_port"]
+            logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
+
+            if data["is_login"]:
+                new_health = data["initial_hp"]
+                if new_health == 0:
+                    new_health = MAX_HEALTH
+
+                self.should_join[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
+                                                       fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                                       pos=initial_pos, slot=data["initial_slot"],
+                                                       health=new_health, inventory=data["initial_inventory"])
+
+            else:  # on signup
+                self.should_join[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
+                                                       fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
+                                                       pos=initial_pos)
+            if player_uuid in self.dead_clients:
+                self.dead_clients.remove(player_uuid)
+        except KeyError as e:
+            logging.warning(f"[error] invalid message from root message, {data=}, {e=}")
+
+    def root_handler(self):
+        """Receive new clients from the root infinitely
+        NOTE: add msg_type
+        """
         while True:
             try:
-                data, addr = self.server_sock.recvfrom(RECV_CHUNK)
-                player_uuid = data[:UUID_SIZE].decode()
-                try:
-                    data = self.players[player_uuid].fernet.decrypt(data[UUID_SIZE:])
-                except InvalidToken:
-                    logging.warning(f"[security] player {addr=} sent non-matching uuid={player_uuid}")
-                    continue
-                client_msg = parse_client_message(data)
-                if not client_msg:
-                    continue
-                seqn, x, y, chat, _, attacked, *attack_dir, slot_index = parse_client_message(data)
-                player_pos = x, y
-                logging.debug(f"[debug] {player_pos=}")
-                if slot_index > MAX_SLOT or slot_index < 0:
-                    continue
+                data = json.loads(self.root_sock.recv(RECV_CHUNK))
+                match S2SMessageType(data["id"]):
+                    case S2SMessageType.PLAYER_LOGIN:
+                        self.handle_player_prelogin(data)
+            except KeyError | ValueError as e:
+                logging.warning(f"[error] prelogin message from root has an invalid format, {data=}, {e=}")
 
-                player = self.players[player_uuid]
-                if seqn <= player.last_updated != 0:
-                    logging.info(f"Got outdated packet from {addr=}")
-                    continue
+    def chat_handler(self, player_uuid: str, contents: dict):
+        """Broadcast clients new messages to each other."""
+        try:
+            new_message = contents["new_message"]
+        except KeyError:
+            logging.warning(f"[error] new_message is not a field in {contents=}")
+            return
 
-                player.direction = attack_dir  # TODO: check if normalized
-                secure_pos = self.update_location(player_pos, seqn, player)
-
-                player.slot = slot_index
-                if attacked:
-                    self.attack(player, player.tools[player.slot])
-                self.update_client(player.uuid, secure_pos)
-                player.last_updated = seqn
-            except Exception as e:
-                logging.exception(e)
-
-    def server_controlled_entities_update(self, s, projectiles, bots):
-        """update all projectiles and bots positions inside a loop"""
-        # projectile handling
-        to_remove = []
-        for projectile in projectiles.values():
-            collided = False
-            intersection = self.get_collidables_with(projectile.pos, projectile.uuid, kind=PROJECTILE_TYPE)
-            if intersection:
-                for kind, identifier in intersection:
-                    if kind == PROJECTILE_TYPE:
-                        continue
-                    collided = True
-                    if kind == PLAYER_TYPE:
-                        player = self.players[identifier]
-                        logging.info(f"Projectile {projectile} hit a player {player}")
-                        player.health -= projectile.damage
-                        if player.health < MIN_HEALTH:
-                            player.health = MIN_HEALTH
-                        logging.debug(f"Updated player {identifier} health to {player.health}")
-                    to_remove.append(projectile)
-            if not collided:
-                self.update_entity_location(projectile,
-                                            (projectile.pos[0] + int(PROJECTILE_SPEED * projectile.direction[0]),
-                                             projectile.pos[1] + int(PROJECTILE_SPEED * projectile.direction[1])),
-                                            PROJECTILE_TYPE)
-                logging.debug(f"[debug] updated projectile {projectile.uuid} to {projectile}")
-
-        for projectile in to_remove:
-            self.projectiles.pop(projectile.uuid)
-            self.spindex.remove((PROJECTILE_TYPE, projectile.uuid), get_bounding_box(projectile.pos,
-                                                                                     PROJECTILE_HEIGHT,
-                                                                                     PROJECTILE_WIDTH))
-            logging.info(f"[update] removed projectile {projectile.uuid}")
-        for mob in self.mobs.values():
-            mob.direction = self.get_mob_direction(mob)
-            colliding = self.get_collidables_with(mob.pos, mob.uuid, kind=MOB_TYPE)
-            if colliding:
-                for kind, identifier in colliding:
-                    if kind == PROJECTILE_TYPE:
-                        continue
-                    mob.direction = 0., 0.
-            self.update_entity_location(mob, (mob.pos[0] + int(mob.direction[0] * MOB_SPEED),
-                                              mob.pos[1] + int(mob.direction[1] * MOB_SPEED)),
-                                        MOB_TYPE)
-            logging.debug(f"[debug] updated position to {mob.pos=}")
-        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, projectiles, bots,))
-
-    def start_location_update(self):
-        """starts the schedular and the function"""
-        s = sched.scheduler(time.time, time.sleep)
-        s.enter(FRAME_TIME, 1, self.server_controlled_entities_update, (s, self.projectiles, self.mobs,))
-        s.run()
-
-    def root_receiver(self):
-        while True:
-            data = self.root_sock.recv(RECV_CHUNK)
-            shared_key, player_uuid = data[:SHARED_KEY_SIZE], data[SHARED_KEY_SIZE:SHARED_KEY_SIZE + UUID_SIZE].decode()
-            ip, port = deserialize_addr(data[SHARED_KEY_SIZE + UUID_SIZE:])
-            logging.info(f"[login] notified player {player_uuid=} with addr={(ip, port)} is about to join")
-            initial_pos = self.get_available_position(PLAYER_TYPE)
-
-            self.players[player_uuid] = Player(uuid=player_uuid, addr=(ip, port),
-                                               fernet=Fernet(base64.urlsafe_b64encode(shared_key)),
-                                               pos=initial_pos)  # TODO: refactor and find out why tf the client starts off 30 pixels off where he should
-
-            self.spindex.insert((PLAYER_TYPE, player_uuid),
-                                get_bounding_box(initial_pos, CLIENT_HEIGHT, CLIENT_WIDTH))
-
-    def get_available_position(self, kind: int) -> Pos:
-        """Generates a position on the map, such that the bounding box of an entity of type ``kind``
-           doesn't intersect with any existing object on the map.
-
-        :param kind: entity type
-        :returns: available position"""
-        pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH)), int(np.random.uniform(0, WORLD_HEIGHT))
-
-        while len(self.spindex.intersect(self.get_entity_bounding_box((pos_x, pos_y), kind))) != 0:
-            pos_x, pos_y = int(np.random.uniform(0, WORLD_WIDTH)), int(np.random.uniform(0, WORLD_HEIGHT))
-        return pos_x, pos_y
+        for uuid_to_broadcast in self.entities_manager.players:
+            if player_uuid != uuid_to_broadcast:
+                player = self.entities_manager.get(uuid_to_broadcast, EntityType.PLAYER)
+                self.server_sock.sendto(craft_message(MessageType.CHAT_PACKET, {"new_message": new_message}
+                                                      , player.fernet), player.addr)
+                # TODO: update root server
 
     def generate_mobs(self):
         """Generate the mobs object with a random positions"""
-        
         for _ in range(MOB_COUNT):
             mob = Mob()
-            mob.pos = (2500, 1700) # self.get_available_position(MOB_TYPE)
-            mob.weapon = random.randint(MIN_WEAPON_NUMBER, MAX_WEAPON_NUMBER)
-            self.mobs[mob.uuid] = mob
-            self.spindex.insert((MOB_TYPE, mob.uuid), self.get_entity_bounding_box(mob.pos, MOB_TYPE))
+            mob.pos = self.entities_manager.get_available_position(EntityType.MOB)
+            self.entities_manager.add_entity(mob)
+            logging.info(f"added mob {mob!r}")
 
-        print(f"{self.mobs=}")
-
-    def run(self) -> None:
-        """starts node threads"""
+    def run(self):
+        """Starts node threads and bind & connect sockets"""
         self.server_sock.bind(self.address)
-        logging.info(f"Binded to address {self.address}")
+        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))  # may case the bug
+        logging.info(f"bound to address {self.address}")
 
-        try:
-            threading.Thread(target=self.start_location_update).start()
-            threading.Thread(target=self.root_receiver).start()
-            for _ in range(THREADS_COUNT):
-                # starts handlers threads
-                client_thread = threading.Thread(target=self.handle_client)
-                client_thread.start()
+        threading.Thread(target=self.receiver).start()
+        threading.Thread(target=server_entities_handler, args=(self.entities_manager,)).start()
+        threading.Thread(target=self.root_handler).start()
+        threading.Thread(target=self.root_sender).start()
+        for _ in range(THREADS_COUNT):
+            # starts handlers threads
+            client_thread = threading.Thread(target=self.client_handler)
+            client_thread.start()
 
-        except Exception as e:
-            logging.exception(f"{e}")
 
-    def invalid_movement(self, entity: Player, player_pos: Pos, seqn: int) -> bool:
-        """
-        Use: check if a given player movement is valid
-        """
-        return entity.last_updated != -1 and (not moved_reasonable_distance(
-            player_pos, entity.pos, seqn - entity.last_updated) or
-                            not is_empty(self.get_collidables_with(player_pos, entity.uuid, kind=PLAYER_TYPE)))
+def create_map():
+    """Create a new quadtree and loads the map
+
+    :returns: spindex: the quadtree
+    """
+    spindex = Index(bbox=(0, 0, WORLD_WIDTH, WORLD_HEIGHT))
+    game_map = Map()
+    game_map.add_layer(Layer("../client/assets/map/animapa_test.csv",
+                             TilesetData("../client/assets/map/new_props.png",
+                                         "../client/assets/map/new_props.tsj")))
+    game_map.load_collision_objects_to(spindex)
+
+    return spindex
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s:%(asctime)s:%(thread)d - %(message)s", level=logging.INFO)
-    Node(NODE_PORT)
+    logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.INFO)
+    db = SqlDatabase("127.0.0.1", DB_PASS)
+    Node(NODE_PORT, db)

@@ -2,9 +2,9 @@ import sqlalchemy
 import ssl
 
 from sqlalchemy import Text, Table, Column, MetaData, VARCHAR, JSON, INT
-
+from backend.database.consts import SQL_TYPE, DB_USERNAME, DB_PORT, DB_NAME, USERS_CREDENTIALS_TABLE, MAX_SIZE, \
+    CHAT_TABLE, USER_TABLE
 from common.consts import UUID_SIZE
-from consts import *
 
 
 class SqlDatabase:
@@ -43,11 +43,9 @@ class SqlDatabase:
         self.users_table = Table(USER_TABLE, self.metadata,
                                  Column("uuid", VARCHAR(UUID_SIZE), primary_key=True),
                                  Column("position", JSON),
-                                 Column("direction", JSON),
-                                 Column("last_seqn", INT),
                                  Column("health", INT),
                                  Column("slot", INT),
-                                 Column("tools", JSON))
+                                 Column("inventory", JSON))
 
         self.conn = self.engine.connect()
         # Generate tables
@@ -73,3 +71,4 @@ class SqlDatabase:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.conn.close()
+

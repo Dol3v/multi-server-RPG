@@ -1,37 +1,35 @@
 """Game loop and communication with the server"""
-import base64
+import atexit
+import functools
 import queue
-import socket
+import signal
 import sys
 import threading
 
-from cryptography.fernet import Fernet
-from pyqtree import Index
-from common.utils import get_bounding_box
-from typing import List
-
-import weapons
-
 # to import from a dir
+import pygame
+
 sys.path.append('../')
+
+import items
 
 from graphics import ChatBox
 from common.consts import *
-from networking import generate_client_message, parse_server_message
+from networking import *
 from player import Player
-from sprites import PlayerEntity, FollowingCameraGroup
-from weapons import *
+from sprites import PlayerEntity, FollowingCameraGroup, Entity
+from items import *
 from map_manager import *
 
 
 class Game:
-    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen):
+    def __init__(self, conn: socket.socket, server_addr: tuple, player_uuid: str, shared_key: bytes, full_screen,
+                 initial_pos: tuple):
         # misc networking
         self.entities = {}
         self.recv_queue = queue.Queue()
         self.seqn = 0
         self.fernet = Fernet(base64.urlsafe_b64encode(shared_key))
-        print(f"{conn=}, {server_addr=}")
 
         # init sprites
         self.can_recv: bool = False
@@ -48,14 +46,11 @@ class Game:
         self.map.load_collision_objects_to(self.map_collision)
 
         # player init
-        self.player = Player((2010, 1530), (self.visible_sprites,), self.obstacles_sprites, self.map_collision)
+
+        self.player = Player(initial_pos, (self.visible_sprites,), self.obstacles_sprites, self.map_collision,
+                             self.display_surface)
         self.player_img = pygame.image.load(PLAYER_IMG)
         self.player_uuid = player_uuid
-
-        # self.map = Map()
-        # self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
-        #                                                                     "assets/map/new_props.tsj")))
-        # self.map.load_collision_objects_to(self.map_collision)
 
         self.full_screen = full_screen
         self.running = False
@@ -77,15 +72,16 @@ class Game:
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
-        # inventory init
-        self.inv = pygame.image.load("assets/inventory.png")
-        self.inv = pygame.transform.scale(self.inv, (self.inv.get_width() * 2.5, self.inv.get_height() * 2.5))
-        self.inv.set_alpha(150)
+        self.ability_item = Item(self.visible_sprites, "fire_ball", "rare", False, False)
 
-        self.actions = [b'', 0, False, 0.0, 0.0, 0]
-        """[message, direction, did attack, attack directions, selected slot]"""
+        # inventory init
+        self.inventory = pygame.image.load("assets/inventory.png")
+        self.inventory = pygame.transform.scale(self.inventory,
+                                                (self.inventory.get_width() * 2.5, self.inventory.get_height() * 2.5))
+        self.inventory.set_alpha(150)
 
         self.chat_msg = ""
+        self.msg_to_send = ""
 
         self.is_showing_chat = True
         self.chat = ChatBox(0, 0, 300, 150, pygame.font.SysFont("arial", 15))
@@ -102,126 +98,143 @@ class Game:
         while not self.can_recv:
             ...
         while True:
-            self.recv_queue.put(self.conn.recvfrom(RECV_CHUNK))
+            self.recv_queue.put(self.conn.recvfrom(UDP_RECV_CHUNK))
+
+    def server_routine_handler(self, contents: dict):
+        """update clients stats by server new message"""
+        pos, inventory, health, entities, skill = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
+                                           contents["entities"], contents["skill_id"]
+
+        print("-" * 10)
+        print(f"{pos=}, {inventory=}, {health=}, {entities=}")
+        if health <= MIN_HEALTH:
+            on_game_exit(self)
+            return
+
+        self.player.current_health = health
+        if self.ability_item.id != skill:
+            self.ability_item = Item(self.visible_sprites, get_weapon_type(skill), "rare")
+
+        for i, tool_id in enumerate(inventory):  # I know its ugly code, but I don't care enough to change it lmao
+            weapon_type = items.get_weapon_type(tool_id)
+            if weapon_type:
+                player_weapon = self.player.get_item_in_slot(i)
+                if player_weapon:
+                    if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
+                        weapon = Item(self.visible_sprites, weapon_type, "rare")
+                        self.player.remove_item_in_slot(i)
+                        self.player.set_item_in_slot(i, weapon)
+                else:
+                    weapon = Item(self.visible_sprites, weapon_type, "rare")
+                    self.player.set_item_in_slot(i, weapon)
+            else:
+                self.player.set_item_in_slot(i, None)
+        self.render_entities(entities)
+        self.update_player_status(pos, health)
 
     def server_update(self):
-        """
-        Use: communicate with the server over UDP.
-        """
-        # update server
-        self.update_player_actions()
-        update_packet = generate_client_message(self.player_uuid, self.seqn, self.x, self.y,
-                                                self.actions, self.fernet)
+        """communicate with the server over UDP."""
+        update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
+                                                        self.player, self.fernet)
         self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
-
         # receive server update
         try:
             packet, addr = self.recv_queue.get(block=False)
         except queue.Empty:
             return
+        if addr != self.server_addr:
+            return
+        contents = parse_message(packet, self.fernet)
 
-        if addr == self.server_addr:
-            (*tools, chat_msg, x, y, health), entities = parse_server_message(packet)
-            for i, tool_id in enumerate(tools):  # I know its ugly code but I don't care enough to change it lmao
-                weapon_type = weapons.get_weapon_type(tool_id)
+        match MessageType(contents["id"]):
+            case MessageType.ROUTINE_SERVER:
+                self.server_routine_handler(contents)
+            case MessageType.CHAT_PACKET:
+                self.chat.add_message(contents["new_message"])
+            case MessageType.DIED_SERVER:
+                self.running = False
+                pygame.quit()
+            case _:
+                print("invalid message type")
 
-                if weapon_type:
-                    player_weapon = self.player.get_weapon_in_slot(i)
+    def update_player_status(self, valid_pos: Pos, health: int) -> None:
+        """update player status by the server message"""
 
-                    if player_weapon:
-                        if player_weapon.weapon_type != weapon_type or player_weapon.rarity != "rare":
-
-                            weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
-                            if weapon.is_ranged:
-                                weapon.kill()
-                                weapon = RangeWeapon([self.visible_sprites], self.obstacles_sprites, self.map_collision,
-                                                     weapon_type, "rare")
-
-                            self.player.remove_weapon_in_slot(i)
-                            self.player.set_weapon_in_slot(i, weapon)
-                    else:
-                        weapon = Weapon((self.visible_sprites,), weapon_type, "rare")
-                        if weapon.is_ranged:
-                            weapon.kill()
-                            weapon = RangeWeapon((self.visible_sprites,), self.obstacles_sprites, self.map_collision,
-                                                 weapon_type, "rare")
-
-                        self.player.set_weapon_in_slot(i, weapon)
-                else:
-                    self.player.set_weapon_in_slot(i, None)
-
-            # update graphics and status
-            self.render_clients(entities)
-            self.update_player_status(tools, (x, y), health)
-
-    def update_player_status(self, tools: list, valid_pos: Pos, health: int) -> None:
-        """
-        Use: update player status by the server message
-        """
         # update client position only when the server says so
         if valid_pos != DEFAULT_POS_MARK:
             self.player.rect.centerx = valid_pos[0]
             self.player.rect.centery = valid_pos[1]
 
-        if health >= MIN_HEALTH:
-            self.player.current_health = health
-
-    def update_player_actions(self) -> None:
-        """
-        Use: update player actions to send
-        """
-        self.actions[CHAT] = self.chat_msg.encode()
-        self.actions[ATTACK] = self.player.attacking
-        self.actions[ATTACK_DIR_X], self.actions[ATTACK_DIR_Y] = self.player.get_direction_vec()
-        self.actions[SELECTED_SLOT] = self.player.current_slot
-
-    def render_clients(self, entities: List[Tuple[int, str, tuple, tuple, int]]) -> None:
+    def render_entities(self, entities: List[dict]) -> None:
         """
         Use: prints the other clients by the given info about them
-
-        #TODO: Remove players that died (or left if player)
-                (For server, add "died" flag)
-                [(1, 3, sword), (2, 4, axe), (4, 3, bow)]
-                [(1, 3, sword), (2, 4, axe, died) (4, 3, bow)]
         """
-        for entity_info in entities:
-            entity_type, entity_uuid, pos, entity_dir, tool_id = entity_info
-            if entity_type == PROJECTILE_TYPE:
-                continue
-            if entity_uuid in self.entities:
+        for entity in entities:
+            entity_type, entity_uuid, pos, entity_dir = entity["type"], entity["uuid"], entity["pos"], entity["dir"]
+            print(f"received entity {entity_uuid=} {entity_type=} {pos=} {entity_dir=}")
+            if entity_uuid in self.entities.keys():
+                print("entity in keys, updating")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
 
-                if self.entities[entity_uuid].tool_id != tool_id:
-                    self.entities[entity_uuid].update_tool(tool_id)
+                if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != entity["tool"]:
+                    self.entities[entity_uuid].update_tool(entity["tool"])
+                if hp := entity.get("hp", None):
+                    self.entities[entity_uuid].health = hp
             else:
-                self.entities[entity_uuid] = PlayerEntity([self.obstacles_sprites, self.visible_sprites], *pos,
-                                                          entity_dir, tool_id, self.map_collision)
+                match entity_type:
+                    case EntityType.PLAYER:
+                        print("creating player")
+                        self.entities[entity_uuid] = PlayerEntity((self.obstacles_sprites, self.visible_sprites), *pos,
+                                                                  entity_dir, entity["tool"], self.map_collision)
+                    case EntityType.BAG:
+                        print(f"creating bag")
+                        self.entities[entity_uuid] = Entity((self.visible_sprites,), entity_type,
+                                                            *pos, entity_dir)
+                    case _:
+                        print(f"creating entity of type {entity_type}")
+                        self.entities[entity_uuid] = Entity((self.visible_sprites, self.obstacles_sprites), entity_type,
+                                                            *pos, entity_dir)
 
-    def run(self) -> None:
+        remove_entities = []
+        received_uuids = list(map(lambda info: info["uuid"], entities))
+        for entity_uuid in self.entities.keys():
+            if entity_uuid not in received_uuids:
+                print(f"killing uuid={entity_uuid}")
+                self.entities[entity_uuid].kill()
+                remove_entities.append(entity_uuid)
+
+        for entity_uuid in remove_entities:
+            self.entities.pop(entity_uuid)
+
+    def run(self):
         """
         Use: game loop
         """
         self.running = True
-        # starts the receiving thread 
+        # starts the receiving thread
         recv_thread = threading.Thread(target=self.receiver)
         recv_thread.start()
         self.draw_map()
 
+        # modifying callbacks for signals
+        # signal.signal(signal.SIGINT, functools.partial(on_game_exit, kwargs={"game": self}))
+        # signal.signal(signal.SIGTERM, functools.partial(on_game_exit, kwargs={"game": self}))
+
         # Game loop
         while self.running:
             event_list = pygame.event.get()
+            self.draw_chat(event_list)
             for event in event_list:
                 if event.type == pygame.MOUSEWHEEL:
                     if event.y > 0:
-                        self.player.previous_slot()
+                        self.player.inv.previous_hotbar_slot()
                     elif event.y < 0:
-                        self.player.next_slot()
+                        self.player.inv.next_hotbar_slot()
 
                 if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
+                    on_game_exit(game=self)
 
                 if event.type == pygame.MOUSEBUTTONDOWN and self.is_showing_chat:
                     self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
@@ -234,6 +247,10 @@ class Game:
 
                         elif event.key == pygame.K_RETURN:  # Check if enter is clicked and sends the message
                             self.chat.add_message(self.chat_msg)
+                            chat_packet = craft_client_message(MessageType.CHAT_PACKET, self.player_uuid,
+                                                               {"new_message": self.chat_msg}, self.fernet)
+                            self.conn.sendto(chat_packet, self.server_addr)
+
                             self.chat_msg = ""
                             self.player.is_typing = not self.player.is_typing
 
@@ -254,6 +271,10 @@ class Game:
                             self.is_showing_chat = not self.is_showing_chat
                         if event.key == pygame.K_e:
                             self.player.is_inv_open = not self.player.is_inv_open
+                        if event.key == pygame.K_f:
+                            self.player.using_skill = True
+                        else:
+                            self.player.using_skill = False
 
             # sprite update
             self.display_surface.fill("black")
@@ -262,7 +283,7 @@ class Game:
             self.draw_health_bar()
             self.draw_hot_bar()
             self.draw_chat(event_list)
-            self.draw_inventory()
+            self.player.draw_inventory(event_list)
             self.server_update()
             self.can_recv = True
             pygame.display.update()
@@ -290,29 +311,35 @@ class Game:
         width = (SCREEN_WIDTH - self.hot_bar.get_width()) / 2
         hot_bar = self.hot_bar.copy()
 
+        ability_pos = (80 * 2 + ((32 - self.ability_item.icon.get_width()) / 2),
+                       6 * 2 + ((32 - self.ability_item.icon.get_height()) / 2))
+
         for i, weapon in enumerate(self.player.hotbar):
 
             surface = pygame.Surface((32, 32), pygame.SRCALPHA)
-            if i == self.player.current_slot:
+            if i == self.player.current_hotbar_slot:
                 surface.fill((0, 0, 0, 100))
 
             if weapon:
-
-                if weapon.is_ranged:
-                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (0, 0))
-                else:
-                    surface.blit(weapon.icon, (0, 0))
-            hot_bar.blit(surface, (16 + 36 * i, 18))
+                surface.blit(weapon.icon, (
+                    (surface.get_width() - weapon.icon.get_width()) / 2,
+                    (surface.get_height() - weapon.icon.get_height()) / 2)
+                             )
+            hot_bar.blit(surface, (16 + 36 * i, 56))
             # (16 + 36 * i, 18)
-
-        self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))
-
-    def draw_inventory(self):
-        if self.player.is_inv_open:
-            x = SCREEN_WIDTH - self.inv.get_width()
-            y = 0
-            self.display_surface.blit(self.inv, (x, y))
+        hot_bar.blit(self.ability_item.icon, ability_pos)
+        self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT - self.hot_bar.get_height()))
 
     def draw_map(self):
         for layer in self.map.layers:
             layer.draw_layer(self.visible_sprites)
+
+
+@atexit.register
+def on_game_exit(*args, game: Game | None = None):
+    """Handles game closure."""
+    pygame.quit()
+    if game:
+        game.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, game.player_uuid, {}, fernet=game.fernet),
+                         game.server_addr)
+        game.running = False

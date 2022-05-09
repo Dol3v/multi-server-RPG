@@ -1,19 +1,29 @@
 """Some useful common utils"""
 import base64
+import json
 import math
 import re
 import socket
 import struct
-from itertools import islice
-from typing import Iterable, Tuple
+from typing import Tuple
 
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, generate_private_key, \
     EllipticCurvePublicKey, ECDH
 from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, MESSAGE_ENDIANESS
+from common.consts import ELLIPTIC_CURVE, SHARED_KEY_SIZE, Pos, CLIENT_WIDTH, \
+    CLIENT_HEIGHT, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, BOT_WIDTH, BOT_HEIGHT, EntityType, BAG_WIDTH, BAG_HEIGHT
+
+
+def enter_ip(enter_string: str):
+    """enter ip only if valid"""
+    ip = input(enter_string)
+    while not valid_ip(ip):
+        ip = input(enter_string)
+    return ip
 
 
 def get_random_port():
@@ -25,33 +35,12 @@ def get_random_port():
     return free_port
 
 
-def parse(parse_format: str, data: bytes) -> tuple | None:
-    """
-    Use: parse a given message by the given format
-    """
-    try:
-        return struct.unpack(parse_format, data)
-    except struct.error as error:
-        print(error)
-        return None
-
-
 def valid_ip(ip: str):
     try:
         socket.inet_aton(ip)
         return True
     except socket.error:
         return False
-
-
-def flatten(iterable: Iterable) -> list:
-    """
-    Flattens an iterable of iterables (list of tuples, for instance) to a shallow list in the expected way.
-    **Example**
-    flatten([(1, 3), (2, 4 ,5)]) = [1, 3, 2, 4, 5]
-    :param iterable: iterable to flatten
-    """
-    return list(sum(iterable, ()))
 
 
 def normalize_vec(x, y) -> Tuple[float, float]:
@@ -99,18 +88,36 @@ def get_shared_key(private_key: EllipticCurvePrivateKey, peer_public_key: Ellipt
     return derived
 
 
+def get_entity_bounding_box(pos: Pos, entity_type: int):
+    """Get width and height by entity type, and create the bounding box for the quadtree"""
+    width, height = -1, -1
+    match entity_type:
+        case EntityType.PLAYER:
+            width, height = CLIENT_WIDTH, CLIENT_HEIGHT
+        case EntityType.PROJECTILE:
+            width, height = PROJECTILE_WIDTH, PROJECTILE_HEIGHT
+        case EntityType.MOB:
+            width, height = BOT_WIDTH, BOT_HEIGHT
+        case EntityType.BAG:
+            width, height = BAG_WIDTH, BAG_HEIGHT
+        case _:
+            raise ValueError("Non-existent type entered to get_entity_bounding_box")
+
+    return get_bounding_box(pos, height, width)
+
+
 def get_bounding_box(pos: Pos, height: int, width: int) -> Tuple[int, int, int, int]:
     return pos[0] - width // 2, pos[1] - height // 2, pos[0] + width // 2, pos[1] + height // 2
 
 
-def serialize_ip(ip: str) -> bytes:
-    return socket.inet_aton(ip)
-
-
-def deserialize_addr(addr_bytes: bytes) -> Tuple[str, int]:
-    components = struct.unpack(MESSAGE_ENDIANESS + "4Bl", addr_bytes)
-    return "".join(str(ip_byte) + "." for ip_byte in components[:-1])[:-1], components[-1]
-
-
 def is_empty(iterable) -> bool:
     return next(iterable, None) is None
+
+
+def serialize_json(data: dict, fernet: Fernet) -> bytes:
+    """Serializes and encrypts a dictionary in JSON format."""
+    return fernet.encrypt(json.dumps(data).encode())
+
+
+def deserialize_json(data: bytes, fernet: Fernet) -> dict:
+    return json.loads(fernet.decrypt(data))

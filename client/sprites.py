@@ -1,21 +1,22 @@
 """Every sprite or group class for the client"""
-import abc
 
+import numpy as np
 import pygame
 
-from client import consts
-from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT
+from common.consts import SCREEN_WIDTH, SCREEN_HEIGHT, EntityType
+
+try:
+    import client_consts as consts
+    import graphics
+    import items
+except ModuleNotFoundError:
+    from client import client_consts as consts
+    from client import graphics
+    from client import items
 
 """
 TODO: merge the weapon classes with the Player class
 """
-
-try:
-    import graphics
-    import weapons
-except ModuleNotFoundError:
-    from client import graphics
-    from client import weapons
 
 
 class Obstacle(pygame.sprite.Sprite):
@@ -68,16 +69,38 @@ class FollowingCameraGroup(pygame.sprite.Group):
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, groups, x, y, direction):
+    def __init__(self, groups, entity_type, x, y, direction):
         super().__init__(*groups)
         self.x = x
         self.y = y
 
+        self.entity_type = entity_type
+
+        self.health = consts.MAX_HEALTH
+
         self.last_x = x
         self.last_y = y
-        self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
-        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * consts.PLAYER_SIZE_MULTIPLIER,
-                                                             self.texture.get_height() * consts.PLAYER_SIZE_MULTIPLIER))
+
+        self.scale_size = consts.ENTITY_DATA[entity_type][3]
+
+        self.draw_hp = consts.ENTITY_DATA[entity_type][4]
+
+        if entity_type == "player":
+            return
+
+        self.texture = pygame.image.load("assets/" + consts.ENTITY_DATA[entity_type][0]).convert_alpha()
+        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * self.scale_size,
+                                                             self.texture.get_height() * self.scale_size))
+        self.animation_ticks = 0  # Animation running delay so it won't look buggy
+        anim = []
+
+        for path in consts.ENTITY_DATA[entity_type][1]:
+            anim.append(pygame.image.load("assets/" + path))
+
+        self.animation = graphics.Animation(anim, consts.ENTITY_DATA[entity_type][2])
+
+        if self.animation.is_empty():
+            self.animation = graphics.Animation([self.texture.copy()], consts.ENTITY_DATA[entity_type][2])
 
         self.original_texture = self.texture.copy()
 
@@ -89,18 +112,51 @@ class Entity(pygame.sprite.Sprite):
         self.last_y = self.y
         self.x = x
         self.y = y
+        if (self.last_x != self.x) or (self.last_y != self.y):
+            self.animation_ticks = 0
 
-    @abc.abstractmethod
     def draw_entity(self):
-        pass
+        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()),
+                                    pygame.SRCALPHA)
+
+        self.image.blit(self.texture, (0, 0))
+        if self.draw_hp:
+            self.image.fill((255, 0, 0),
+                            (0, 0, (self.texture.get_width()) * (self.health / consts.MAX_HEALTH),
+                             self.texture.get_height() * 0.02))
+        self.rect = self.image.get_rect(center=(self.x, self.y))
 
     def update(self):
+        self.update_entity_animation()
         self.draw_entity()
+        if self.animation_ticks < 10:
+            self.animation_ticks += 1
+
+    def update_entity_animation(self):
+        # Movement
+        if (self.last_x != self.x or self.last_y != self.y) or (self.animation_ticks < 10):
+            frame = self.animation.get_next_frame()
+            if self.direction[0] < 0:
+                frame = pygame.transform.flip(frame, True, False)
+            frame = pygame.transform.scale(frame, (frame.get_width() * self.scale_size,
+                                                   frame.get_height() * self.scale_size))
+            self.texture = frame
+
+            if self.entity_type == EntityType.PROJECTILE:
+                angle = -(180 - np.rad2deg(np.arctan2(self.direction[0], self.direction[1])))
+                self.texture = pygame.transform.rotate(self.texture, angle)
+
+        else:
+            if self.entity_type != EntityType.PROJECTILE:
+                if self.direction[0] < 0:
+                    self.texture = pygame.transform.flip(self.original_texture, True, False)
+                else:
+                    self.texture = self.original_texture
 
 
 class PlayerEntity(Entity):
     def __init__(self, groups, x, y, direction, tool_id, map_collision):
-        super().__init__(groups, x, y, direction)
+        super().__init__(groups, EntityType.PLAYER, x, y, direction)
         self.texture = pygame.image.load("assets/character/knight/knight.png").convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * consts.PLAYER_SIZE_MULTIPLIER,
                                                              self.texture.get_height() * consts.PLAYER_SIZE_MULTIPLIER))
@@ -110,7 +166,7 @@ class PlayerEntity(Entity):
         self.visible_sprites = (groups[1],)
         self.obstacles_sprites = (groups[0],)
         self.tool_id = 0
-        self.hand = weapons.Hand(self.visible_sprites)
+        self.hand = items.Hand(self.visible_sprites)
         self.map_collision = map_collision
         self.update_tool(tool_id)
 
@@ -126,13 +182,6 @@ class PlayerEntity(Entity):
         )
 
         self.draw_entity()
-
-    def draw_entity(self):
-        self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()),
-                                    pygame.SRCALPHA)
-
-        self.image.blit(self.texture, (0, 0))
-        self.rect = self.image.get_rect(center=(self.x, self.y))
 
     def get_direction_vec(self):
         return self.direction
@@ -159,43 +208,16 @@ class PlayerEntity(Entity):
     def update_tool(self, tool_id):
         self.tool_id = tool_id
         self.hand.kill()
-        match tool_id:
-            case 0:
-                self.hand = weapons.Hand(self.visible_sprites)
-            case 1:
-                self.hand = weapons.Weapon(self.visible_sprites, "sword", "rare")
-            case 2:
-                self.hand = weapons.Weapon(self.visible_sprites, "axe", "rare")
-            case 3:
-                self.hand = weapons.RangeWeapon(self.visible_sprites, self.obstacles_sprites, self.map_collision,
-                                        "bow", "rare")
+
+        if tool_id == 0:
+            self.hand = items.Hand(self.visible_sprites)
+            return
+        for item in consts.weapon_data.keys():
+            if consts.weapon_data[item]["id"] == tool_id:
+                self.hand = items.Item(self.visible_sprites, item, "rare")
+                return
 
     def update(self):
         self.draw_entity()
-        self.update_player_animation()
-
-
-class EntityBoots(Entity):
-    def __init__(self, groups, x, y, direction):
-        super().__init__(groups, x, y, direction)
-        self.texture = pygame.image.load("assets/mobs/Big demon/big_demon_idle_anim_f0.png").convert_alpha()
-        self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * consts.PLAYER_SIZE_MULTIPLIER,
-                                                             self.texture.get_height() * consts.PLAYER_SIZE_MULTIPLIER))
-        self.original_texture = self.texture.copy()
-        self.direction = direction
-
-        self.visible_sprites = (groups[1],)
-        self.obstacles_sprites = (groups[0],)
-        self.groups = groups
-
-        self.animation = graphics.Animation(
-            [
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f0.png"),
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f1.png"),
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f2.png"),
-                pygame.image.load("assets/mobs/Big demon/big_demon_run_anim_f3.png")
-            ],
-            10
-        )
-
-        self.draw_entity()
+        self.hand.draw(self)
+        self.update_entity_animation()
