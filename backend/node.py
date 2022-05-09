@@ -60,7 +60,10 @@ class Node:
 
     def receiver(self):
         while True:
-            self.queue.put(self.server_sock.recvfrom(RECV_CHUNK))
+            try:
+                self.queue.put(self.server_sock.recvfrom(RECV_CHUNK))
+            except ConnectionError:
+                continue
 
     def root_sender(self):
         while True:
@@ -85,12 +88,15 @@ class Node:
             self.entities_manager.update_entity_location(player, player_pos)
         return secure_pos
 
-    def kill_player(self, player: Player):
-        logging.info(f"killing {player!r}")
-        self.server_sock.sendto(generate_status_message(MessageType.DIED_SERVER, player.fernet), player.addr)
+    def handle_player_termination(self, player: Player):
         self.entities_manager.remove_entity(player)
         update_user_info(self.db, player)
         self.dead_clients.add(player.uuid)
+        self.root_send_queue.put({"status": S2SMessageType.PLAYER_DISCONNECTED, "uuid": player.uuid})
+
+    def kill_player(self, player: Player):
+        logging.info(f"killing {player!r}")
+        self.handle_player_termination(player)
 
     def update_client(self, player: Player, secure_pos: Pos):
         """Sends server message to the client"""
@@ -172,9 +178,7 @@ class Node:
     def closed_game_handler(self, player_uuid: str):
         if player := self.entities_manager.get(player_uuid, EntityType.PLAYER):
             logging.info(f"player {player_uuid} exited the game.")
-            self.entities_manager.remove_entity(player)
-            update_user_info(self.db, player)
-            self.root_send_queue.put({"status": S2SMessageType.PLAYER_DISCONNECTED, "uuid": player_uuid})
+            self.handle_player_termination(player)
 
     def handle_should_join(self, player_uuid: str) -> Player | None:
         logging.info(f"player uuid={player_uuid} joined")
