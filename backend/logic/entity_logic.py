@@ -516,7 +516,8 @@ class PetEggSkill(Skill):
 
     def use_to_attack(self, player: Player, manager: EntityManager):
         to_spawn = Mob(parent_uuid=player.uuid, pos=manager.get_available_position
-        (EntityType.MOB, *get_bounding_box(player.pos, PET_SPAWN_X_DELTA, PET_SPAWN_Y_DELTA)))
+        (EntityType.MOB, *get_bounding_box(player.pos, PET_SPAWN_X_DELTA, PET_SPAWN_Y_DELTA)),
+                       weapon=BOW)
         manager.add_entity(to_spawn)
         logging.info(f"{player=!r} used pet egg and added mob={to_spawn=}")
 
