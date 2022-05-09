@@ -41,11 +41,12 @@ class Node:
         self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.root_sock = socket.socket()
         self.db = db_conn
+        self.queue = queue.Queue()
         # TODO: remove when actually deploying exe
         # root_ip = enter_ip("Enter root's IP: ")
 
-        self.send_queue = queue.Queue()
-        self.recv_queue = queue.Queue()
+        self.root_send_queue = queue.Queue()
+        self.root_recv_queue = queue.Queue()
 
         self.socket_dict = defaultdict(lambda: self.server_sock)
         self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
@@ -56,6 +57,10 @@ class Node:
         self.generate_mobs()
         # Starts the node
         self.run()
+
+    def receiver(self):
+        while True:
+            self.queue.put(self.server_sock.recvfrom(RECV_CHUNK))
 
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
@@ -170,7 +175,7 @@ class Node:
     def client_handler(self):
         """Communicate with client"""
         while True:
-            data, addr = self.server_sock.recvfrom(RECV_CHUNK)
+            data, addr = self.queue.get()
             parsed_packet = json.loads(data)
 
             if not (player_uuid := parsed_packet.get("uuid", None)):
@@ -283,6 +288,7 @@ class Node:
         self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))  # may case the bug
         logging.info(f"bound to address {self.address}")
 
+        threading.Thread(target=self.receiver).start()
         threading.Thread(target=server_entities_handler, args=(self.entities_manager,)).start()
         threading.Thread(target=self.root_handler).start()
         for _ in range(THREADS_COUNT):
