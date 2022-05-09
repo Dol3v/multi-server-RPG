@@ -387,7 +387,7 @@ class FireballProjectile(Projectile):
 
     def serialize(self) -> dict:
         prev = super().serialize()
-        prev["kind"] = self.type
+        prev["type"] = self.type
         return prev
 
 
@@ -396,7 +396,7 @@ class EraserProjectile(Projectile):
 
     def serialize(self) -> dict:
         prev = super().serialize()
-        prev["kind"] = self.type
+        prev["type"] = self.type
         return prev
 
 
@@ -455,6 +455,7 @@ class RangedWeapon(Weapon):
     """Projectile type to be shot. Can be any class which inherits from `Projectile`."""
 
     def use_to_attack(self, attacker: Combatant, manager: EntityManager):
+        print(self.projectile_class)
         projectile = self.projectile_class(
             pos=(int(attacker.pos[0] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[0]),
                  int(attacker.pos[1] + ARROW_OFFSET_FACTOR * attacker.attacking_direction[1])),
