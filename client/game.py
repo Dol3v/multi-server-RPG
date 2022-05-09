@@ -1,8 +1,6 @@
 """Game loop and communication with the server"""
 import atexit
-import functools
 import queue
-import signal
 import sys
 import threading
 
@@ -39,8 +37,19 @@ class Game:
         self.attack_sprite = None
 
         self.map = Map()
+
+        plant_set = TilesetData("assets/map/new_plants.png", "assets/map/new_plants.tsj")
+
         self.map.add_layer(Layer("assets/map/animapa_test.csv", TilesetData("assets/map/new_props.png",
                                                                             "assets/map/new_props.tsj")))
+
+        # self.map.add_layer(Layer("assets/map/map_bushes.csv", plant_set))
+
+        self.map.add_layer(Layer("assets/map/map_trees.csv", plant_set))
+
+        # self.map.add_layer(Layer("assets/map/map_benches.csv", TilesetData("assets/map/new_props.png",
+        #                                                                   "assets/map/new_props.tsj")))
+
         self.map_collision = Index((0, 0, self.visible_sprites.floor_surface.get_width(),
                                     self.visible_sprites.floor_surface.get_height()))
         self.map.load_collision_objects_to(self.map_collision)
@@ -102,8 +111,9 @@ class Game:
 
     def server_routine_handler(self, contents: dict):
         """update clients stats by server new message"""
-        pos, inventory, health, entities, skill = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
-                                           contents["entities"], contents["skill_id"]
+        pos, inventory, health, entities, skill = tuple(contents["valid_pos"]), contents["inventory"], contents[
+            "health"], \
+                                                  contents["entities"], contents["skill_id"]
 
         print("-" * 10)
         print(f"{pos=}, {inventory=}, {health=}, {entities=}")
