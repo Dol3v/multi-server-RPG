@@ -150,6 +150,9 @@ class Game:
                 self.server_routine_handler(contents)
             case MessageType.CHAT_PACKET:
                 self.chat.add_message(contents["new_message"])
+            case MessageType.DIED_SERVER:
+                self.running = False
+                pygame.quit()
             case _:
                 print("invalid message type")
 

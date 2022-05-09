@@ -33,7 +33,7 @@ def main():
     # signal.signal(signal.SIGTERM, game.on_game_exit)
     while True:
         screen = init_pygame()
-        connection_screen = connect_screen.ConnectScreen(screen, get_random_port())
+        connection_screen = connect_screen.ConnectScreen(screen, 10000)
         connection_screen.run()
         if not connection_screen.sock:
             print("Login/Signup failed")

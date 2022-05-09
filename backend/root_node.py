@@ -130,10 +130,9 @@ class EntryNode:
                     "is_login": False}
 
             if is_login:
-                user_data = load_user_info(self.db_conn, user_uuid)
-                data["is_login"] = True
-                for row in user_data:  # there's really only one row
-                    (_, initial_pos, hp, slot, inventory) = row
+                for row in load_user_info(self.db_conn, user_uuid):
+                    data["is_login"] = True
+                    _, initial_pos, hp, slot, inventory = row
                     data["initial_pos"] = initial_pos
                     data = data | {"initial_hp": MAX_HEALTH if hp < MIN_HEALTH else hp,
                                    "initial_slot": slot,

@@ -18,7 +18,6 @@ def server_controlled_entities_update(entities_manager: EntityManager, s):
 def update_projectiles(entities_manager: EntityManager):
     """Update projectile position, ttl and existence.
        In addition, lowers entities HP, and kill them if needed"""
-    logging.debug("thread trying to access projectiles for update")
     with entities_manager.projectile_lock:
         to_remove = list(filter(lambda p: p.advance_per_tick(entities_manager), entities_manager.projectiles.values()))
         for projectile in to_remove:
@@ -28,7 +27,6 @@ def update_projectiles(entities_manager: EntityManager):
 
 def update_mobs(entities_manager: EntityManager):
     """Update mobs position. In addition, attack if mob is locked on target"""
-    logging.debug("thread trying to access mobs for update")
     with entities_manager.mob_lock:
         to_remove = list(filter(lambda m: m.advance_per_tick(entities_manager), entities_manager.mobs.values()))
         for mob in to_remove:

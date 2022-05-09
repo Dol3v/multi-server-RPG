@@ -103,10 +103,8 @@ class EntityManager:
         """Returns a matching lock for an entity, or a null context handler otherwise."""
         match entity.kind:
             case EntityType.PROJECTILE:
-                logging.debug("thread trying to access projectiles for some specific entity thing idk")
                 return self.projectile_lock
             case EntityType.MOB:
-                logging.debug("thread trying to access mobs for some entity thing")
                 return self.mob_lock
             case EntityType.PLAYER:
                 return entity.lock
@@ -195,8 +193,8 @@ class ServerControlled(Entity, abc.ABC):
         res = self.action_per_tick(manager)
         manager.update_entity_location(self, (self.pos[0] + int(self.speed * self.direction[0]),
                                               self.pos[1] + int(self.speed * self.direction[1])))
-        if self.kind != EntityType.PROJECTILE:
-            logging.debug(f"updated mob location to {self.pos}, {self.speed=}, {self.direction=}, {self.uuid}")
+        # if self.kind != EntityType.PROJECTILE:
+            # logging.debug(f"updated mob location to {self.pos}, {self.speed=}, {self.direction=}, {self.uuid}")
         return res
 
 

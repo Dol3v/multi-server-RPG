@@ -69,9 +69,6 @@ class Node:
         # if the received packet is dated then update player
         secure_pos = DEFAULT_POS_MARK
         if invalid_movement(player, player_pos, seqn, self.entities_manager) or seqn != player.last_updated_seqn + 1:
-            logging.info(
-                f"[update] invalid movement of {player.uuid=} from {player.pos} to {player_pos}. {seqn=}"
-                f", {player.last_updated_seqn=}")
             secure_pos = self.entities_manager.players[player.uuid].pos
         else:
             self.entities_manager.update_entity_location(player, player_pos)
@@ -122,30 +119,29 @@ class Node:
             return
 
         player = self.entities_manager.players[player_uuid]
-        logging.debug(f"{player=} sent a routine message")
+        logging.debug(f"{player=} sent a routine message, {contents=}")
         if seqn <= player.last_updated_seqn != 0:
             logging.info(f"Got outdated packet from {player_uuid=}")
             return
 
-        with player.lock:
-            if player.health <= MIN_HEALTH:
-                self.kill_player(player)
-                return
+        if player.health <= MIN_HEALTH:
+            self.kill_player(player)
+            return
 
-            player.attacking_direction = attack_dir
-            secure_pos = self.update_location(player_pos, seqn, player)
+        player.attacking_direction = attack_dir
+        secure_pos = self.update_location(player_pos, seqn, player)
 
-            if did_swap:
-                player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[
-                                                                                           swap_indices[1]], \
-                                                                                       player.inventory[swap_indices[0]]
-                logging.info(f"{player=!r} swaped inventory slot {swap_indices[0]} with slot {swap_indices[1]}")
-            player.slot = slot_index
-            if clicked_mouse:
-                player.item.on_click(player, self.entities_manager)
+        if did_swap:
+            player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[
+                                                                                       swap_indices[1]], \
+                                                                                   player.inventory[swap_indices[0]]
+            logging.info(f"{player=!r} swapped inventory slot {swap_indices[0]} with slot {swap_indices[1]}")
+        player.slot = slot_index
+        if clicked_mouse:
+            player.item.on_click(player, self.entities_manager)
 
-            player.last_updated_seqn = seqn
-            player.last_updated_time = time.time()
+        player.last_updated_seqn = seqn
+        player.last_updated_time = time.time()
 
         bags = self.entities_manager.get_entities_in_range(
             get_entity_bounding_box(player.pos, player.kind),
