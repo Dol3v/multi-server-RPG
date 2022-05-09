@@ -136,7 +136,8 @@ class Node:
             secure_pos = self.update_location(player_pos, seqn, player)
 
             if did_swap:
-                player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[swap_indices[1]], \
+                player.inventory[swap_indices[0]], player.inventory[swap_indices[1]] = player.inventory[
+                                                                                           swap_indices[1]], \
                                                                                        player.inventory[swap_indices[0]]
                 logging.info(f"{player=!r} swaped inventory slot {swap_indices[0]} with slot {swap_indices[1]}")
             player.slot = slot_index
@@ -163,24 +164,39 @@ class Node:
             self.entities_manager.remove_entity(player)
             update_user_info(self.db, player)
 
+    def handle_should_join(self, player_uuid: str) -> Player | None:
+        logging.info(f"player uuid={player_uuid} joined")
+        player = self.should_join[player_uuid]
+        self.should_join.pop(player_uuid)
+        self.entities_manager.add_to_dict(player)
+        return player
+
     def client_handler(self):
         """Communicate with client"""
         while True:
             data, addr = self.server_sock.recvfrom(RECV_CHUNK)
             parsed_packet = json.loads(data)
 
-            try:
-                if parsed_packet["uuid"] in self.dead_clients:
-                    continue
-            except KeyError as e:
-                logging.warning(f"[security] invalid packet {data=}, {e=}")
+            if not (player_uuid := parsed_packet.get("uuid", None)):
+                logging.warning(f"[security] invalid packet {data=}")
+                continue
 
-            data = decrypt_client_packet(parsed_packet, self.entities_manager, self.should_join)
+            # sus
+            if player_uuid in self.dead_clients:
+                continue
+
+            player = self.handle_should_join(player_uuid) if player_uuid in self.should_join.keys() else \
+                self.entities_manager.get(player_uuid, EntityType.PLAYER)
+
+            if not player:
+                logging.warning(f"player uuid={player_uuid} couldn't be found")
+                continue
+
+            data = decrypt_client_packet(parsed_packet, player.fernet)
             if not data:
                 continue
             try:
                 message_type = MessageType(data["contents"]["id"])
-                client_uuid = data["uuid"]
             except KeyError as e:
                 logging.warning(f"[security] invalid message, no id/uuid present {data=}, {e=}")
                 continue
@@ -192,11 +208,11 @@ class Node:
                 with player.lock:
                     match message_type:
                         case MessageType.ROUTINE_CLIENT:
-                            self.routine_message_handler(data["uuid"], data["contents"])
+                            self.routine_message_handler(player_uuid, data["contents"])
                         case MessageType.CHAT_PACKET:
-                            self.chat_handler(data["uuid"], data["contents"])
+                            self.chat_handler(player_uuid, data["contents"])
                         case MessageType.CLOSED_GAME_CLIENT:
-                            self.closed_game_handler(client_uuid)
+                            self.closed_game_handler(player_uuid)
                         case _:
                             logging.warning(f"[security] no handler present for {message_type=}, {data=}")
 

@@ -3,7 +3,7 @@ import json
 import logging
 import socket
 from enum import IntEnum, auto
-from typing import Iterable, Dict, List
+from typing import Iterable, Dict, List, Any
 
 from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet
@@ -30,14 +30,8 @@ def do_ecdh(conn: socket.socket) -> None | bytes:
     return get_shared_key(private_key, client_public_key)
 
 
-def decrypt_client_packet(parsed_packet: dict[str, str], entity_manager: EntityManager, should_join: Dict[str, Player]) -> dict | None:
+def decrypt_client_packet(parsed_packet: dict[str, Any], player_fernet: Fernet) -> dict | None:
     try:
-        if parsed_packet["uuid"] in should_join:
-            print(f"{parsed_packet['uuid']} got here")
-            player_fernet = should_join[parsed_packet["uuid"]].fernet
-        else:
-            player_fernet = entity_manager.players[parsed_packet["uuid"]].fernet
-
         contents = json.loads(player_fernet.decrypt(base64.b64decode(parsed_packet["contents"])))
         parsed_packet["contents"] = contents
         return parsed_packet
