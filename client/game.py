@@ -180,6 +180,8 @@ class Game:
 
                 if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != entity["tool"]:
                     self.entities[entity_uuid].update_tool(entity["tool"])
+                if hp := entity.get("hp", None):
+                    self.entities[entity_uuid].health = hp
             else:
                 match entity_type:
                     case EntityType.PLAYER:

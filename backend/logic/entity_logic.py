@@ -326,7 +326,7 @@ class Mob(Combatant, ServerControlled):
         return EntityType.MOB if self.parent_uuid else EntityType.PLAYER
 
     def serialize(self) -> dict:
-        return super().serialize() | {"weapon": self.weapon}
+        return super().serialize() | {"weapon": self.weapon, "hp": self.health}
 
     def in_attack_range(self, pos: Pos) -> bool:
         return abs(self.pos[0] - pos[0]) <= MOB_SIGHT_WIDTH and \
