@@ -8,7 +8,7 @@ import sys
 import uuid
 from dataclasses import dataclass
 from threading import Thread
-from typing import List, Iterable
+from typing import List, Iterable, Set
 
 # to import from a dir
 import numpy as np
@@ -67,6 +67,8 @@ class EntryNode:
         self.server_recv_queue = queue.Queue()
         """Queue of messages that are received from the other nodes"""
 
+        self.connected_players: Set[str] = set()
+
     @property
     def conns(self) -> Iterable[socket.socket]:
         """Connections with server"""
@@ -95,7 +97,18 @@ class EntryNode:
 
     def servers_handler(self):
         """Handles incoming packets from servers and responds accordingly."""
-        ...
+        while True:
+            try:
+                message = json.loads(self.server_recv_queue.get())
+                logging.info(f"root: got {message=}")
+                match S2SMessageType(message["status"]):
+                    case S2SMessageType.PLAYER_CONNECTED:
+                        self.connected_players.add(message["uuid"])
+                    case S2SMessageType.PLAYER_DISCONNECTED:
+                        self.connected_players.remove(message["uuid"])
+
+            except KeyError | ValueError:
+                continue
 
     def handle_incoming_players(self):
         while True:
@@ -116,6 +129,12 @@ class EntryNode:
             if not success:
                 logging.info(f"[blocked] login/signup failed, error msg: {error_msg}")
                 conn.send(serialize_json({"success": False, "error": error_msg}, fernet))
+                conn.close()
+                continue
+
+            if user_uuid in self.connected_players:
+                logging.info("player tried to login twice")
+                conn.send(serialize_json({"success": False, "error": "logged in already"}, fernet))
                 conn.close()
                 continue
 

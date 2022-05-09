@@ -62,6 +62,12 @@ class Node:
         while True:
             self.queue.put(self.server_sock.recvfrom(RECV_CHUNK))
 
+    def root_sender(self):
+        while True:
+            message = self.root_send_queue.get()
+            self.root_sock.send(json.dumps(message).encode())
+            logging.info(f"sent to root {message=}")
+
     def update_location(self, player_pos: Pos, seqn: int, player: Player) -> Pos:
         """Updates the player location in the server and returns location data to be sent to the client.
 
@@ -164,16 +170,18 @@ class Node:
         self.update_client(player, secure_pos)
 
     def closed_game_handler(self, player_uuid: str):
-        logging.info(f"player {player_uuid} exited the game.")
         if player := self.entities_manager.get(player_uuid, EntityType.PLAYER):
+            logging.info(f"player {player_uuid} exited the game.")
             self.entities_manager.remove_entity(player)
             update_user_info(self.db, player)
+            self.root_send_queue.put({"status": S2SMessageType.PLAYER_DISCONNECTED, "uuid": player_uuid})
 
     def handle_should_join(self, player_uuid: str) -> Player | None:
         logging.info(f"player uuid={player_uuid} joined")
         player = self.should_join[player_uuid]
         self.should_join.pop(player_uuid)
         self.entities_manager.add_entity(player)
+        self.root_send_queue.put({"status": S2SMessageType.PLAYER_CONNECTED, "uuid": player_uuid})
         return player
 
     def client_handler(self):
@@ -295,6 +303,7 @@ class Node:
         threading.Thread(target=self.receiver).start()
         threading.Thread(target=server_entities_handler, args=(self.entities_manager,)).start()
         threading.Thread(target=self.root_handler).start()
+        threading.Thread(target=self.root_sender).start()
         for _ in range(THREADS_COUNT):
             # starts handlers threads
             client_thread = threading.Thread(target=self.client_handler)
