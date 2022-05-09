@@ -93,6 +93,7 @@ class Node:
         update_user_info(self.db, player)
         self.dead_clients.add(player.uuid)
         self.root_send_queue.put({"status": S2SMessageType.PLAYER_DISCONNECTED, "uuid": player.uuid})
+        self.server_sock.sendto(generate_status_message(MessageType.DIED_SERVER, player.fernet), player.addr)
 
     def kill_player(self, player: Player):
         logging.info(f"killing {player!r}")
