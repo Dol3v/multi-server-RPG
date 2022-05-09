@@ -82,6 +82,7 @@ class Layer:
             for x in range(len(self.layer_grid[0])):
                 tile_id = int(self.layer_grid[y][x])
                 if tile_id != -1:
+                    tile_id = int(tile_id)
                     tile = self.tileset.get_tile(tile_id)
                     if tile.has_collision:
                         for rect in tile.get_collision_objects():
