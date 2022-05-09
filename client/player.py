@@ -51,6 +51,7 @@ class Player(pygame.sprite.Sprite):
             return
 
         keys = pygame.key.get_pressed()
+
         if keys[pygame.K_w]:
             if pygame.time.get_ticks() < self.attack_cooldown:
                 self.direction.x = 0
@@ -80,7 +81,8 @@ class Player(pygame.sprite.Sprite):
         else:
             self.direction.x = 0
 
-        if pygame.mouse.get_pressed()[0]:  # Check if the mouse is clicked
+        if pygame.mouse.get_pressed()[0] and not (self.is_inv_open and (self.inv.rect and self.inv.rect.collidepoint(
+                pygame.mouse.get_pos()))):  # Check if the mouse is clicked
             if not self.hotbar[self.current_hotbar_slot]:
                 return
             item = self.hotbar[self.current_hotbar_slot]
@@ -150,6 +152,8 @@ class Player(pygame.sprite.Sprite):
             self.hand.draw(self)
 
     def set_item_in_slot(self, slot, item):
+        if self.inv.items[slot]:
+            self.inv.items[slot].hide()
         self.inv.items[slot] = item
 
     def get_item_in_slot(self, slot) -> Item:
