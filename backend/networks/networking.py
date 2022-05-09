@@ -9,7 +9,7 @@ from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet
 
 from backend.logic.entity_logic import EntityManager, Entity, Player
-from common.consts import Pos, RECV_CHUNK
+from common.consts import Pos, RECV_CHUNK, FIRE_BALL
 from common.message_type import MessageType
 from common.utils import send_public_key, get_shared_key, deserialize_public_key
 
@@ -58,5 +58,6 @@ def generate_status_message(status: MessageType, fernet: Fernet) -> bytes:
 def generate_routine_message(valid_pos: Pos, player: Player, sent_entities: Iterable[Entity]) -> bytes:
     return craft_message(MessageType.ROUTINE_SERVER, {"valid_pos": valid_pos,
                                                       "health": player.health,
-                                                      "inventory": player.inventory} | serialize_entity_list(sent_entities),
+                                                      "inventory": player.inventory,
+                                                      "skill_id": player.skill_id} | serialize_entity_list(sent_entities),
                          player.fernet)

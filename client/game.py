@@ -102,8 +102,8 @@ class Game:
 
     def server_routine_handler(self, contents: dict):
         """update clients stats by server new message"""
-        pos, inventory, health, entities = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
-                                           contents["entities"]
+        pos, inventory, health, entities, skill = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
+                                           contents["entities"], contents["skill_id"]
 
         print("-" * 10)
         print(f"{pos=}, {inventory=}, {health=}, {entities=}")
@@ -112,6 +112,8 @@ class Game:
             return
 
         self.player.current_health = health
+        if self.ability_item.id != skill:
+            self.ability_item = Item(self.visible_sprites, get_weapon_type(skill), "rare")
 
         for i, tool_id in enumerate(inventory):  # I know its ugly code, but I don't care enough to change it lmao
             weapon_type = items.get_weapon_type(tool_id)
@@ -267,6 +269,10 @@ class Game:
                             self.is_showing_chat = not self.is_showing_chat
                         if event.key == pygame.K_e:
                             self.player.is_inv_open = not self.player.is_inv_open
+                        if event.key == pygame.K_f:
+                            self.player.using_skill = True
+                        else:
+                            self.player.using_skill = False
 
             # sprite update
             self.display_surface.fill("black")
