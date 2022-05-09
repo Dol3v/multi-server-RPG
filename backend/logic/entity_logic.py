@@ -385,9 +385,19 @@ class Mob(Combatant, ServerControlled):
 class FireballProjectile(Projectile):
     type: int = FIREBALL_PROJECTILE
 
+    def serialize(self) -> dict:
+        prev = super().serialize()
+        prev["kind"] = self.type
+        return prev
+
 
 class EraserProjectile(Projectile):
     type: int = ERASER_PROJECTILE
+
+    def serialize(self) -> dict:
+        prev = super().serialize()
+        prev["kind"] = self.type
+        return prev
 
 
 @dataclass(frozen=True)
@@ -511,7 +521,7 @@ class UselessItem(Item):
 
 
 class FireballSkill(Skill, RangedWeapon):
-    type = FIRE_BALL
+    type: int = FIRE_BALL
     projectile_class = FireballProjectile
 
 
