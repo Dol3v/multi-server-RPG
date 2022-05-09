@@ -76,10 +76,14 @@ class Entity(pygame.sprite.Sprite):
 
         self.entity_type = entity_type
 
+        self.health = consts.MAX_HEALTH
+
         self.last_x = x
         self.last_y = y
 
         self.scale_size = consts.ENTITY_DATA[entity_type][3]
+
+        self.draw_hp = consts.ENTITY_DATA[entity_type][4]
 
         if entity_type == "player":
             return
@@ -87,7 +91,7 @@ class Entity(pygame.sprite.Sprite):
         self.texture = pygame.image.load("assets/" + consts.ENTITY_DATA[entity_type][0]).convert_alpha()
         self.texture = pygame.transform.scale(self.texture, (self.texture.get_width() * self.scale_size,
                                                              self.texture.get_height() * self.scale_size))
-
+        self.animation_ticks = 0  # Animation running delay so it won't look buggy
         anim = []
 
         for path in consts.ENTITY_DATA[entity_type][1]:
@@ -108,21 +112,29 @@ class Entity(pygame.sprite.Sprite):
         self.last_y = self.y
         self.x = x
         self.y = y
+        if (self.last_x != self.x) or (self.last_y != self.y):
+            self.animation_ticks = 0
 
     def draw_entity(self):
         self.image = pygame.Surface((self.texture.get_width(), self.texture.get_height()),
                                     pygame.SRCALPHA)
 
         self.image.blit(self.texture, (0, 0))
+        if self.draw_hp:
+            self.image.fill((255, 0, 0),
+                            (0, 0, (self.texture.get_width()) * (self.health / consts.MAX_HEALTH),
+                             self.texture.get_height() * 0.02))
         self.rect = self.image.get_rect(center=(self.x, self.y))
 
     def update(self):
         self.update_entity_animation()
         self.draw_entity()
+        if self.animation_ticks < 10:
+            self.animation_ticks += 1
 
     def update_entity_animation(self):
         # Movement
-        if self.last_x != self.x or self.last_y != self.y:
+        if (self.last_x != self.x or self.last_y != self.y) or (self.animation_ticks < 10):
             frame = self.animation.get_next_frame()
             if self.direction[0] < 0:
                 frame = pygame.transform.flip(frame, True, False)
@@ -209,4 +221,3 @@ class PlayerEntity(Entity):
         self.draw_entity()
         self.hand.draw(self)
         self.update_entity_animation()
-

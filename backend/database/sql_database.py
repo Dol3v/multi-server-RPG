@@ -43,11 +43,9 @@ class SqlDatabase:
         self.users_table = Table(USER_TABLE, self.metadata,
                                  Column("uuid", VARCHAR(UUID_SIZE), primary_key=True),
                                  Column("position", JSON),
-                                 Column("direction", JSON),
-                                 Column("last_seqn", INT),
                                  Column("health", INT),
                                  Column("slot", INT),
-                                 Column("tools", JSON))
+                                 Column("inventory", JSON))
 
         self.conn = self.engine.connect()
         # Generate tables

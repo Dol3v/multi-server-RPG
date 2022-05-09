@@ -1,7 +1,8 @@
 """General consts for client side"""
 # Images
 
-from common.consts import EntityType, SWORD, AXE, BOW, REGENERATION_POTION, MAHAK, DAMAGE_POTION, RESISTANCE_POTION
+from common.consts import EntityType, INVENTORY_COLUMNS, SWORD, AXE, BOW, REGENERATION_POTION, MAHAK, DAMAGE_POTION, \
+    RESISTANCE_POTION, FIRE_BALL, PET_EGG
 
 PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
@@ -27,8 +28,6 @@ ATTACK_COOLDOWN = 250
 MAX_HEALTH = 100
 
 # inventory data
-INVENTORY_ROWS = 4
-INVENTORY_COLUMNS = 9
 INVENTORY_SIZE_MULTIPLIER = 3
 ICON_SIZE = 16 * INVENTORY_SIZE_MULTIPLIER
 
@@ -62,7 +61,7 @@ weapon_data = {
         {
             "id": BOW, "is_ranged": True, 'cooldown': 100, 'damage': 40, 'graphics': "assets/items/bow/full.png",
             'icon': "assets/items/bow/full.png",
-            "resize_icon": True,
+            "resize_icon": False,
             "hand_position": (20, 15), "size_multiplier": 1,
             "display_name": ("Bow", (255, 255, 255), False),
             "description":
@@ -71,11 +70,11 @@ weapon_data = {
 
     'health_potion':
         {
-            "id": REGENERATION_POTION, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
+            "id": REGENERATION_POTION, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (7, 15),
             'graphics': "assets/items/health_potion/full.png",
             'icon': "assets/items/health_potion/full.png",
             "resize_icon": True,
-            "size_multiplier": 3,
+            "size_multiplier": 1,
             "display_name": ("Health Potion", (255, 51, 51), False),
             "description":
                 ["A regular health potion", "Basically go slurp and get some health"]
@@ -84,10 +83,10 @@ weapon_data = {
     'damage_potion':
         {
             "id": DAMAGE_POTION, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
-            'graphics': "assets/items/health_potion/full.png",
-            'icon': "assets/items/health_potion/full.png",
+            'graphics': "assets/items/damage_potion/damage_potion.png",
+            'icon': "assets/items/damage_potion/damage_potion.png",
             "resize_icon": True,
-            "size_multiplier": 3,
+            "size_multiplier": 1,
             "display_name": ("Damage Potion", (255, 51, 51), False),
             "description":
                 ["damage", "Basically go slurp and get some damage"]
@@ -96,10 +95,10 @@ weapon_data = {
     'resistance_potion':
         {
             "id": RESISTANCE_POTION, "is_ranged": False, 'cooldown': 0, 'damage': 0, "hand_position": (10, 20),
-            'graphics': "assets/items/health_potion/full.png",
-            'icon': "assets/items/health_potion/full.png",
+            'graphics': "assets/items/res_potion/res_potion.png",
+            'icon': "assets/items/res_potion/res_potion.png",
             "resize_icon": True,
-            "size_multiplier": 3,
+            "size_multiplier": 1,
             "display_name": ("Resistance Potion", (255, 51, 51), False),
             "description":
                 ["resistance", "Basically go slurp and get some resistance"]
@@ -119,28 +118,42 @@ weapon_data = {
         },
     "fire_ball":
         {
-            "id": 6, "is_ranged": False, 'cooldown': 200, 'damage': 100, "hand_position": (25, 50),
-            'graphics': "assets/items/mahak/mahak2.png",
-            'icon': "assets/items/mahak/mahak2.png",
+            "id": FIRE_BALL, "is_ranged": False, 'cooldown': 200, 'damage': 100, "hand_position": (25, 50),
+            'graphics': "assets/items/abilities/fireball.png",
+            'icon': "assets/items/abilities/fireball.png",
             "display_name": ("Fireball", (255, 215, 0), True),
             "resize_icon": False,
             "size_multiplier": 1,
             "description":
-                ["Your hands can shoot fireballs", "use this skill wisely",
+                ["Your hands can shoot fireballs", "use this skill_id wisely",
                  "(or ...)"]
+        },
+    "friendly_mob":
+        {
+            "id": PET_EGG, "is_ranged": False, 'cooldown': 200, 'damage': 0, "hand_position": (25, 50),
+            'graphics': "assets/items/abilities/friendly_mob.png",
+            'icon': "assets/items/abilities/friendly_mob.png",
+            "display_name": ("Friendly Mob", (10, 255, 10), True),
+            "resize_icon": False,
+            "size_multiplier": 1,
+            "description":
+                ["Friendly mob will spawn", "use and attack enemies",
+                 "You can pet him later ;)"]
         }
 }
 
 ENTITY_DATA = {
-    # (texture, [animation], frame per second, size_multiplier
-    EntityType.PROJECTILE: ("entity/arrow/projectile.png", [], 10, 1),
+    # (texture, [animation], frame per second, size_multiplier, draw_hp
+    EntityType.PROJECTILE: ("entity/arrow/projectile.png", [], 10, 1, False),
     EntityType.MOB: ("entity/dino/lizard.png", ["entity/dino/lizard.png", "entity/dino/lizard_run_0.png",
                                                 "entity/dino/lizard_run_1.png",
-                                                "entity/dino/lizard_run_2.png", "entity/dino/lizard_run_3.png"], 1, 4),
+                                                "entity/dino/lizard_run_2.png", "entity/dino/lizard_run_3.png"], 4, 4,
+                     True),
     EntityType.PLAYER: ("character/knight/knight.png", ["character/knight/move_0.png",
                                                         "character/knight/move_1.png", "character/knight/move_2.png"],
-                        10, PLAYER_SIZE_MULTIPLIER),
-    EntityType.BAG: ("character/knight/knight.png", [], 10, PLAYER_SIZE_MULTIPLIER)
+                        10, PLAYER_SIZE_MULTIPLIER, True),
+    EntityType.BAG: ("entity/bag/chest1.png", [], 10, PLAYER_SIZE_MULTIPLIER, False)
+
 }
 
 # Actions format

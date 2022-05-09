@@ -1,31 +1,38 @@
 """utils for database, using SqlDatabase class"""
-from sqlalchemy import select, insert, delete
+from sqlalchemy import select, delete
+from sqlalchemy.dialects.mysql import insert
 
+from backend.database.consts import USERNAME_COL, HASH_COL, SALT_COL, UUID_COL
+from backend.database.sql_database import SqlDatabase
 from backend.logic.entity_logic import Player
 from common.utils import *
-from backend.database.sql_database import SqlDatabase
-from backend.database.consts import USERNAME_COL, HASH_COL, SALT_COL, UUID_COL
 
 
-def save_user_info(db: SqlDatabase, user: Player):
-    """Insert a new row inside the users_info table"""
+def update_user_info(db: SqlDatabase, user: Player):
+    """Save some user's data in ``db.users_table``."""
     stmt = (
         insert(db.users_table).values(uuid=user.uuid, position=user.pos,
-                                      direction=user.direction, last_seqn=user.last_updated, health=user.health,
-                                      slot=user.slot, tools=user.inventory)
+                                      health=user.health,
+                                      slot=user.slot, inventory=user.inventory)
     )
-    return db.exec(stmt)
+    on_duplicate_key = stmt.on_duplicate_key_update(
+        position=stmt.inserted.position,
+        health=stmt.inserted.health,
+        slot=stmt.inserted.slot,
+        inventory=stmt.inserted.inventory,
+    )
+    return db.exec(on_duplicate_key)
 
 
 def load_user_info(db: SqlDatabase, uuid: str):
-    """Select and return the result of the given uuid"""
-    stmt = select(db.users_table).where(db.users_table.uuid == uuid)
+    """Select and return the result of the given uuid."""
+    stmt = select(db.users_table).where(db.users_table.c.uuid == uuid)
     return db.exec(stmt)
 
 
 def delete_user_info(db: SqlDatabase, uuid: str):
     """Delete the row of the given uuid"""
-    stmt = delete().where(db.users_table.uuid == uuid)
+    stmt = delete().where(db.users_table.c.uuid == uuid)
     return db.exec(stmt)
 
 

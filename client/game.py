@@ -1,9 +1,13 @@
 """Game loop and communication with the server"""
+import atexit
+import functools
 import queue
+import signal
 import sys
 import threading
 
 # to import from a dir
+import pygame
 
 sys.path.append('../')
 
@@ -68,6 +72,8 @@ class Game:
         self.hot_bar = pygame.transform.scale(self.hot_bar,
                                               (self.hot_bar.get_width() * 2, self.hot_bar.get_height() * 2))
 
+        self.ability_item = Item(self.visible_sprites, "fire_ball", "rare", False, False)
+
         # inventory init
         self.inventory = pygame.image.load("assets/inventory.png")
         self.inventory = pygame.transform.scale(self.inventory,
@@ -96,17 +102,18 @@ class Game:
 
     def server_routine_handler(self, contents: dict):
         """update clients stats by server new message"""
-        pos, inventory, health, entities = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
-                                           contents["entities"]
+        pos, inventory, health, entities, skill = tuple(contents["valid_pos"]), contents["inventory"], contents["health"], \
+                                           contents["entities"], contents["skill_id"]
 
         print("-" * 10)
         print(f"{pos=}, {inventory=}, {health=}, {entities=}")
         if health <= MIN_HEALTH:
-            print("ded")
-            pygame.quit()
-            sys.exit(0)
+            on_game_exit(self)
+            return
 
         self.player.current_health = health
+        if self.ability_item.id != skill:
+            self.ability_item = Item(self.visible_sprites, get_weapon_type(skill), "rare")
 
         for i, tool_id in enumerate(inventory):  # I know its ugly code, but I don't care enough to change it lmao
             weapon_type = items.get_weapon_type(tool_id)
@@ -145,6 +152,9 @@ class Game:
                 self.server_routine_handler(contents)
             case MessageType.CHAT_PACKET:
                 self.chat.add_message(contents["new_message"])
+            case MessageType.DIED_SERVER:
+                self.running = False
+                pygame.quit()
             case _:
                 print("invalid message type")
 
@@ -170,6 +180,8 @@ class Game:
 
                 if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != entity["tool"]:
                     self.entities[entity_uuid].update_tool(entity["tool"])
+                if hp := entity.get("hp", None):
+                    self.entities[entity_uuid].health = hp
             else:
                 match entity_type:
                     case EntityType.PLAYER:
@@ -183,12 +195,10 @@ class Game:
                     case _:
                         print(f"creating entity of type {entity_type}")
                         self.entities[entity_uuid] = Entity((self.visible_sprites, self.obstacles_sprites), entity_type,
-                                                    *pos, entity_dir)
+                                                            *pos, entity_dir)
 
         remove_entities = []
         received_uuids = list(map(lambda info: info["uuid"], entities))
-        print(f"{received_uuids=}")
-        print(f"keys={self.entities.keys()}")
         for entity_uuid in self.entities.keys():
             if entity_uuid not in received_uuids:
                 print(f"killing uuid={entity_uuid}")
@@ -208,6 +218,10 @@ class Game:
         recv_thread.start()
         self.draw_map()
 
+        # modifying callbacks for signals
+        # signal.signal(signal.SIGINT, functools.partial(on_game_exit, kwargs={"game": self}))
+        # signal.signal(signal.SIGTERM, functools.partial(on_game_exit, kwargs={"game": self}))
+
         # Game loop
         while self.running:
             event_list = pygame.event.get()
@@ -220,8 +234,7 @@ class Game:
                         self.player.inv.next_hotbar_slot()
 
                 if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
+                    on_game_exit(game=self)
 
                 if event.type == pygame.MOUSEBUTTONDOWN and self.is_showing_chat:
                     self.player.is_typing = self.chat.has_collision(*pygame.mouse.get_pos())
@@ -258,6 +271,10 @@ class Game:
                             self.is_showing_chat = not self.is_showing_chat
                         if event.key == pygame.K_e:
                             self.player.is_inv_open = not self.player.is_inv_open
+                        if event.key == pygame.K_f:
+                            self.player.using_skill = True
+                        else:
+                            self.player.using_skill = False
 
             # sprite update
             self.display_surface.fill("black")
@@ -294,6 +311,9 @@ class Game:
         width = (SCREEN_WIDTH - self.hot_bar.get_width()) / 2
         hot_bar = self.hot_bar.copy()
 
+        ability_pos = (80 * 2 + ((32 - self.ability_item.icon.get_width()) / 2),
+                       6 * 2 + ((32 - self.ability_item.icon.get_height()) / 2))
+
         for i, weapon in enumerate(self.player.hotbar):
 
             surface = pygame.Surface((32, 32), pygame.SRCALPHA)
@@ -301,22 +321,25 @@ class Game:
                 surface.fill((0, 0, 0, 100))
 
             if weapon:
-
-                if weapon.is_ranged:
-                    surface.blit(pygame.transform.rotate(weapon.icon, -90), (
-                        (surface.get_width() - pygame.transform.rotate(weapon.icon, -90).get_width()) / 2,
-                        (surface.get_height() - pygame.transform.rotate(weapon.icon, -90).get_height()) / 2)
-                                 )
-                else:
-                    surface.blit(weapon.icon, (
-                        (surface.get_width() - weapon.icon.get_width()) / 2,
-                        (surface.get_height() - weapon.icon.get_height()) / 2)
-                                 )
-            hot_bar.blit(surface, (16 + 36 * i, 18))
+                surface.blit(weapon.icon, (
+                    (surface.get_width() - weapon.icon.get_width()) / 2,
+                    (surface.get_height() - weapon.icon.get_height()) / 2)
+                             )
+            hot_bar.blit(surface, (16 + 36 * i, 56))
             # (16 + 36 * i, 18)
-
-        self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT * 0.9))
+        hot_bar.blit(self.ability_item.icon, ability_pos)
+        self.display_surface.blit(hot_bar, (width, SCREEN_HEIGHT - self.hot_bar.get_height()))
 
     def draw_map(self):
         for layer in self.map.layers:
             layer.draw_layer(self.visible_sprites)
+
+
+@atexit.register
+def on_game_exit(*args, game: Game | None = None):
+    """Handles game closure."""
+    pygame.quit()
+    if game:
+        game.conn.sendto(craft_client_message(MessageType.CLOSED_GAME_CLIENT, game.player_uuid, {}, fernet=game.fernet),
+                         game.server_addr)
+        game.running = False

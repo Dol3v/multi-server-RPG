@@ -82,6 +82,7 @@ class Item(pygame.sprite.Sprite):
         self.is_ranged = data.get("is_ranged")
         self.damage = data.get("damage")
         self.cooldown = data.get("cooldown")
+        self.id = data.get("id")
 
         hand_position = data.get("hand_position")
 

@@ -3,19 +3,19 @@ import base64
 import json
 import logging
 import queue
-import select
 import socket
-import struct
 import sys
 import uuid
 from dataclasses import dataclass
 from threading import Thread
-from typing import List, Iterable
+from typing import List, Iterable, Set
 
 # to import from a dir
 import numpy as np
+import select
 from cryptography.fernet import Fernet
 
+from backend.database.database_utils import load_user_info
 from backend.networks.networking import S2SMessageType
 
 sys.path.append('../')
@@ -27,7 +27,7 @@ from networks import do_ecdh
 
 from common.utils import deserialize_json, serialize_json
 from common.consts import ROOT_IP, ROOT_PORT, Addr, DEFAULT_ADDR, RECV_CHUNK, NUM_NODES, \
-    WORLD_WIDTH, WORLD_HEIGHT
+    WORLD_WIDTH, WORLD_HEIGHT, MIN_HEALTH, MAX_HEALTH
 from backend_consts import ROOT_SERVER2SERVER_PORT
 
 
@@ -67,6 +67,8 @@ class EntryNode:
         self.server_recv_queue = queue.Queue()
         """Queue of messages that are received from the other nodes"""
 
+        self.connected_players: Set[str] = set()
+
     @property
     def conns(self) -> Iterable[socket.socket]:
         """Connections with server"""
@@ -95,7 +97,18 @@ class EntryNode:
 
     def servers_handler(self):
         """Handles incoming packets from servers and responds accordingly."""
-        ...
+        while True:
+            try:
+                message = json.loads(self.server_recv_queue.get())
+                logging.info(f"root: got {message=}")
+                match S2SMessageType(message["status"]):
+                    case S2SMessageType.PLAYER_CONNECTED:
+                        self.connected_players.add(message["uuid"])
+                    case S2SMessageType.PLAYER_DISCONNECTED:
+                        self.connected_players.remove(message["uuid"])
+
+            except KeyError | ValueError:
+                continue
 
     def handle_incoming_players(self):
         while True:
@@ -119,17 +132,37 @@ class EntryNode:
                 conn.close()
                 continue
 
+            if user_uuid in self.connected_players:
+                logging.info("player tried to login twice")
+                conn.send(serialize_json({"success": False, "error": "logged in already"}, fernet))
+                conn.close()
+                continue
+
             target_node = self.get_minimal_load_server()
+
+            data = {"id": S2SMessageType.PLAYER_LOGIN,
+                    "key": base64.b64encode(shared_key).decode(),
+                    "uuid": user_uuid,
+                    "initial_pos": initial_pos,
+                    "client_ip": client_game_addr[0],
+                    "client_port": client_game_addr[1],
+                    "is_login": False}
+
+            if is_login:
+                for row in load_user_info(self.db_conn, user_uuid):
+                    data["is_login"] = True
+                    _, initial_pos, hp, slot, inventory = row
+                    data["initial_pos"] = initial_pos
+                    data = data | {"initial_hp": MAX_HEALTH if hp < MIN_HEALTH else hp,
+                                   "initial_slot": slot,
+                                   "initial_inventory": inventory}
+
             conn.send(serialize_json({"ip": target_node.ip,
                                       "initial_pos": initial_pos,
                                       "uuid": user_uuid,
                                       "success": True}, fernet))
-            self.server_send_queue.put(([target_node], {"id": S2SMessageType.PLAYER_LOGIN,
-                                                        "key": base64.b64encode(shared_key).decode(),
-                                                        "uuid": user_uuid,
-                                                        "initial_pos": initial_pos,
-                                                        "client_ip": client_game_addr[0],
-                                                        "client_port": client_game_addr[1]}))
+
+            self.server_send_queue.put(([target_node], data))
             conn.close()
             logging.info(f"client redirected to {target_node.ip}")
 
