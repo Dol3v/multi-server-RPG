@@ -2,7 +2,7 @@
 # Images
 
 from common.consts import EntityType, INVENTORY_COLUMNS, SWORD, AXE, BOW, REGENERATION_POTION, MAHAK, DAMAGE_POTION, \
-    RESISTANCE_POTION, FIRE_BALL
+    RESISTANCE_POTION, FIRE_BALL, PET_EGG
 
 PLAYER_SIZE_MULTIPLIER = 3
 PLAYER_IMG = "assets/idle_down.png"
@@ -125,21 +125,21 @@ weapon_data = {
             "resize_icon": False,
             "size_multiplier": 1,
             "description":
-                ["Your hands can shoot fireballs", "use this skill wisely",
+                ["Your hands can shoot fireballs", "use this skill_id wisely",
                  "(or ...)"]
         },
-    # "friendly_mob":
-    #     {
-    #         "id": 7, "is_ranged": False, 'cooldown': 200, 'damage': 0, "hand_position": (25, 50),
-    #         'graphics': "assets/items/abilities/friendly_mob.png",
-    #         'icon': "assets/items/abilities/friendly_mob.png",
-    #         "display_name": ("Friendly Mob", (10, 255, 10), True),
-    #         "resize_icon": False,
-    #         "size_multiplier": 1,
-    #         "description":
-    #             ["Friendly mob will spawn", "use and attack enemies",
-    #              "You can pet him later ;)"]
-    #     }
+    "friendly_mob":
+        {
+            "id": PET_EGG, "is_ranged": False, 'cooldown': 200, 'damage': 0, "hand_position": (25, 50),
+            'graphics': "assets/items/abilities/friendly_mob.png",
+            'icon': "assets/items/abilities/friendly_mob.png",
+            "display_name": ("Friendly Mob", (10, 255, 10), True),
+            "resize_icon": False,
+            "size_multiplier": 1,
+            "description":
+                ["Friendly mob will spawn", "use and attack enemies",
+                 "You can pet him later ;)"]
+        }
 }
 
 ENTITY_DATA = {

@@ -274,7 +274,7 @@ class Player(Combatant):
     inventory: List[int] = dataclasses.field(default_factory=lambda: [SWORD, AXE, BOW, REGENERATION_POTION] + [EMPTY_SLOT
                                                                                                    for _ in range(
             INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
-    skill: int = dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
+    skill_id: int = dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
     last_time_used_skill: int = 0
@@ -285,8 +285,12 @@ class Player(Combatant):
     def item(self) -> Item:
         return get_item(self.inventory[self.slot])
 
+    @property
+    def skill(self) -> Item:
+        return get_item(self.skill_id)
+
     def serialize(self) -> dict:
-        return super().serialize() | {"tool": self.inventory[self.slot], "skill": self.skill}
+        return super().serialize() | {"tool": self.inventory[self.slot], "skill_id": self.skill_id}
 
     def __repr__(self):
         return f"Player(uuid={self.uuid}, addr={self.addr}, pos={self.pos}, item={self.item!r}, health={self.health})"

@@ -36,6 +36,7 @@ class Player(pygame.sprite.Sprite):
         self.obstacle_sprites = obstacle_sprites
         self.attack_cooldown = pygame.time.get_ticks()
         self.attacking = False
+        self.using_skill = False
         self.is_typing = False
         self.is_inv_open = True
 

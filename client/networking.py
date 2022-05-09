@@ -26,6 +26,7 @@ def generate_client_routine_message(player_uuid: str, seqn: int, x: int, y: int,
         "dir": player.get_direction_vec(),
         "slot": player.current_hotbar_slot,
         "is_attacking": player.attacking,
+        "using_skill": player.using_skill,
         "did_swap": False
     }
     if player.inv.move != (-1, -1):
