@@ -20,7 +20,8 @@ from common.consts import EntityType, DEFAULT_POS_MARK, Pos, Dir, DEFAULT_DIR, W
     MIN_ITEM_NUMBER, MAX_ITEM_NUMBER, MAX_HEALTH, PROJECTILE_TTL, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, PROJECTILE_SPEED, \
     SWORD, AXE, BOW, REGENERATION_POTION, EMPTY_SLOT, INVENTORY_COLUMNS, INVENTORY_ROWS, Addr, MOB_MIN_WEAPON, \
     MOB_MAX_WEAPON, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, MIN_HEALTH, \
-    ARROW_OFFSET_FACTOR, DAMAGE_POTION, RESISTANCE_POTION, USELESS_ITEM, FIRE_BALL, MAHAK, PET_EGG, MIN_SKILL, MAX_SKILL
+    ARROW_OFFSET_FACTOR, DAMAGE_POTION, RESISTANCE_POTION, USELESS_ITEM, FIRE_BALL, MAHAK, PET_EGG, MIN_SKILL, \
+    MAX_SKILL, FIREBALL_PROJECTILE, ERASER_PROJECTILE
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -381,6 +382,14 @@ class Mob(Combatant, ServerControlled):
         return False
 
 
+class FireballProjectile(Projectile):
+    type: int = FIREBALL_PROJECTILE
+
+
+class EraserProjectile(Projectile):
+    type: int = ERASER_PROJECTILE
+
+
 @dataclass(frozen=True)
 class Weapon(Item):
     """An in-game weapon."""
@@ -503,12 +512,12 @@ class UselessItem(Item):
 
 class FireballSkill(Skill, RangedWeapon):
     type = FIRE_BALL
-    projectile_class = Projectile
+    projectile_class = FireballProjectile
 
 
 class EraserSkill(Skill, RangedWeapon):
     type: int = MAHAK
-    projectile_class = Projectile
+    projectile_class = EraserProjectile
 
 
 class PetEggSkill(Skill):
