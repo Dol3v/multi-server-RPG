@@ -423,7 +423,7 @@ class MeleeWeapon(Weapon):
                                               entity_uuid != attacker.uuid and
                                               entity_kind != EntityType.BAG)
         for attackable in in_range:
-            if attackable.kind == EntityType.MOB == attacker.kind:
+            if attackable.kind == EntityType.MOB == attacker.kind and attacker.parent_uuid:
                 continue  # mobs shouldn't attack mobs
             with manager.get_entity_lock(attackable):
                 attacker.deal_damage_to(attackable, self.damage)
