@@ -1,30 +1,8 @@
 # multi-server-RPG
-Advance multi server system, with RPG client
+Relatively modest RPG server that was supposed to be multi-server but it definitely isn't.
 ## Packet structure
-Client update message
-```
-[pos(x, y), new_chat_msg, dir_bit, attacked, attack_dir, slot_index]
-```
-Server update message
-```
-[tools, new_chat_msg, last_valid_pos, HP, entities in range]
-entity
-[enitity_type, pos, dir_vector]
-```
-Data base structure
-```
-creds
-chat
-user_info (uuid, pos, direction, last_seqn, health, slot, tools (JSON))
-
-```
-redirect message
-```
-[go_to_addr]
-```
-
-
-
+ha.
 # Potential hacks
-- spawn player on another entity near a wall, the player will jump out of the wall.
-
+where should I even begin lol
+ඞඞඞඞ
+[HalMakeBeep](https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/_kernel/)
