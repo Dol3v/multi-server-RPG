@@ -20,7 +20,7 @@ from common.consts import EntityType, DEFAULT_POS_MARK, Pos, Dir, DEFAULT_DIR, W
     MIN_ITEM_NUMBER, MAX_ITEM_NUMBER, MAX_HEALTH, PROJECTILE_TTL, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, PROJECTILE_SPEED, \
     SWORD, AXE, BOW, REGENERATION_POTION, EMPTY_SLOT, INVENTORY_COLUMNS, INVENTORY_ROWS, Addr, MOB_MIN_WEAPON, \
     MOB_MAX_WEAPON, MOB_SPEED, BOT_HEIGHT, BOT_WIDTH, CLIENT_HEIGHT, CLIENT_WIDTH, MIN_HEALTH, \
-    ARROW_OFFSET_FACTOR, DAMAGE_POTION, RESISTANCE_POTION, USELESS_ITEM, FIRE_BALL, MAHAK, PET_EGG
+    ARROW_OFFSET_FACTOR, DAMAGE_POTION, RESISTANCE_POTION, USELESS_ITEM, FIRE_BALL, MAHAK, PET_EGG, MIN_SKILL, MAX_SKILL
 from common.utils import get_entity_bounding_box, get_bounding_box, normalize_vec
 
 
@@ -277,7 +277,7 @@ class Player(Combatant):
         default_factory=lambda: [SWORD, AXE, BOW, REGENERATION_POTION] + [EMPTY_SLOT
                                                                           for _ in range(
                 INVENTORY_COLUMNS * INVENTORY_ROWS - 4)])
-    skill_id: int = PET_EGG  # dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
+    skill_id: int = dataclasses.field(default_factory=lambda: random.randint(MIN_SKILL, MAX_SKILL))
     fernet: Fernet | None = None
     kind: int = EntityType.PLAYER
     last_time_used_skill: int = 0
@@ -407,6 +407,7 @@ class Skill(Weapon, ABC):
             self.use_to_attack(player, manager)
             player.last_time_used_skill = time.time()
             player.skill_cooldown = self.cooldown * FRAME_TIME
+            player.skill_id = random.randint(MIN_SKILL, MAX_SKILL)
 
 
 @dataclass(frozen=True)

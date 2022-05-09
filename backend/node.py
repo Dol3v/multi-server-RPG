@@ -108,12 +108,12 @@ class Node:
 
         try:
             player_pos, seqn, attack_dir, slot_index, clicked_mouse, did_swap, using_skill = tuple(contents["pos"]), \
-                                                                                contents["seqn"], \
-                                                                                contents["dir"], \
-                                                                                contents["slot"], \
-                                                                                contents["is_attacking"], \
-                                                                                contents["did_swap"], \
-                                                                                contents["using_skill"]
+                                                                                             contents["seqn"], \
+                                                                                             contents["dir"], \
+                                                                                             contents["slot"], \
+                                                                                             contents["is_attacking"], \
+                                                                                             contents["did_swap"], \
+                                                                                             contents["using_skill"]
             swap_indices = (-1, -1)
             if did_swap:
                 swap_indices = contents["swap"]
@@ -145,6 +145,7 @@ class Node:
         player.slot = slot_index
         if clicked_mouse:
             player.item.on_click(player, self.entities_manager)
+
         if using_skill:
             player.skill.on_click(player, self.entities_manager)
 
