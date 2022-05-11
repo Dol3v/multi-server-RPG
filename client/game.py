@@ -187,8 +187,8 @@ class Game:
                 print("entity in keys, updating")
                 self.entities[entity_uuid].direction = entity_dir
                 self.entities[entity_uuid].move_to(*pos)
-
                 if entity_type == EntityType.PLAYER and self.entities[entity_uuid].tool_id != entity["tool"]:
+                    print("THERE IS A PLAYER")
                     self.entities[entity_uuid].update_tool(entity["tool"])
                 if hp := entity.get("hp", None):
                     self.entities[entity_uuid].health = hp
