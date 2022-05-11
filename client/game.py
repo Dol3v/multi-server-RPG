@@ -296,7 +296,8 @@ class Game:
             self.player.draw_inventory(event_list)
             self.server_update()
             self.can_recv = True
-            pygame.display.update()
+            if self.running:
+                pygame.display.update()
             self.clock.tick(FPS)
 
     def draw_chat(self, event_list):
