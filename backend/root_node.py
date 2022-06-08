@@ -26,7 +26,7 @@ from networks import login, signup
 from networks import do_ecdh
 
 from common.utils import deserialize_json, serialize_json
-from common.consts import ROOT_IP, ROOT_PORT, Addr, DEFAULT_ADDR, RECV_CHUNK, NUM_NODES, \
+from common.consts import ROOT_PORT, Addr, DEFAULT_ADDR, RECV_CHUNK, NUM_NODES, \
     WORLD_WIDTH, WORLD_HEIGHT, MIN_HEALTH, MAX_HEALTH
 from backend_consts import ROOT_SERVER2SERVER_PORT
 
@@ -54,13 +54,13 @@ class EntryNode:
         self.servers_white_list = []
         self.sock = sock
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind((ROOT_IP, ROOT_PORT))
+        self.sock.bind((socket.gethostbyname(socket.gethostname()), ROOT_PORT))
 
         self.db_conn = db
         # addresses currently connected to a given server
         self.nodes: List[NodeData] = []
         self.server2server = socket.socket()
-        self.server2server.bind((ROOT_IP, ROOT_SERVER2SERVER_PORT))
+        self.server2server.bind(("127.0.0.1", ROOT_SERVER2SERVER_PORT))
 
         self.server_send_queue = queue.Queue()
         """Queue of messages to be broadcast-ed from the root to other nodes"""
@@ -185,7 +185,9 @@ class EntryNode:
             logging.info(f"[update] accepted one server connection with {addr=}")
 
             # conn.send(struct.pack(map_id, ))
-            self.nodes.append(NodeData(addr[0], map_id, [], conn))
+            # here address should be the server address, the problem is that if the server and the root server on the
+            # same pc addr[0] = 127.0.0.1, but we need the public
+            self.nodes.append(NodeData(socket.gethostbyname(socket.gethostname()), map_id, [], conn))
             map_id += 1
         # TODO: send here the generated SQL password for user
         # self.server_send_queue.put()

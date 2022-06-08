@@ -25,7 +25,7 @@ class ConnectScreen:
         self.width = SCREEN_WIDTH
         self.height = SCREEN_HEIGHT
         self.screen = screen
-        self.udp_client_addr = ("127.0.0.1", port)
+        self.udp_client_addr = (socket.gethostbyname(socket.gethostname()), port)
         self.login_bg = pygame.transform.scale(pygame.image.load(LOGIN_BACKGROUND), (SCREEN_WIDTH, SCREEN_HEIGHT))
         self.register_bg = pygame.transform.scale(pygame.image.load(REGISTER_BACKGROUND), (SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -33,6 +33,7 @@ class ConnectScreen:
         self.full_screen = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+        print(self.udp_client_addr)
         self.sock.bind(self.udp_client_addr)
         self.clock = pygame.time.Clock()
 

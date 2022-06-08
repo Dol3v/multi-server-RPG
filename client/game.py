@@ -146,6 +146,7 @@ class Game:
         """communicate with the server over UDP."""
         update_packet = generate_client_routine_message(self.player_uuid, self.seqn, self.x, self.y,
                                                         self.player, self.fernet)
+        print(self.server_addr)
         self.conn.sendto(update_packet, self.server_addr)
         self.seqn += 1
         # receive server update

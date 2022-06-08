@@ -34,8 +34,8 @@ class Node:
 
     def __init__(self, port, db_conn: SqlDatabase):
         # TODO: uncomment when coding on prod
-        # self.node_ip = socket.gethostbyname(socket.gethostname())
-        self.node_ip = "127.0.0.1"
+        self.node_ip = "0.0.0.0" # the server need to bind to all possible ips
+        #self.node_ip = "127.0.0.1"
         self.address = (self.node_ip, port)
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -49,7 +49,7 @@ class Node:
         self.root_recv_queue = queue.Queue()
 
         self.socket_dict = defaultdict(lambda: self.server_sock)
-        self.socket_dict[(ROOT_IP, ROOT_PORT)] = self.root_sock
+        self.socket_dict[("127.0.0.1", ROOT_PORT)] = self.root_sock
 
         self.dead_clients: Set[str] = set()
         self.should_join: Dict[str, Player] = {}
@@ -302,7 +302,7 @@ class Node:
     def run(self):
         """Starts node threads and bind & connect sockets"""
         self.server_sock.bind(self.address)
-        self.root_sock.connect((ROOT_IP, ROOT_SERVER2SERVER_PORT))  # may case the bug
+        self.root_sock.connect(("127.0.0.1", ROOT_SERVER2SERVER_PORT))  # may case the bug
         logging.info(f"bound to address {self.address}")
 
         threading.Thread(target=self.receiver).start()
@@ -333,4 +333,5 @@ def create_map():
 if __name__ == "__main__":
     logging.basicConfig(format="%(levelname)s:%(asctime)s %(threadName)s:%(thread)d - %(message)s", level=logging.INFO)
     db = SqlDatabase("127.0.0.1", DB_PASS)
+    print(socket.gethostbyname(socket.gethostname()))
     Node(NODE_PORT, db)

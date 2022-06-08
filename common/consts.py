@@ -100,7 +100,6 @@ SHARED_KEY_SIZE = 32
 MOB_COUNT = 100
 PROJECTILE_TTL = 120
 # Some temporary consts
-ROOT_IP = "127.0.0.1"
 ROOT_PORT = 30000
 
 # mob consts
